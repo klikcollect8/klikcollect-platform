@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, Plus, Trash2 } from "lucide-react";
 import {
   loadPayments,
   savePayments,
   type SavedPayment,
 } from "@/lib/account-storage";
 import { useToast } from "@/components/ToastProvider";
-import { ui } from "@/components/system/tokens";
-import { cn } from "@/lib/utils";
+
+const fieldClass =
+  "h-auto w-full border-0 border-b border-black/15 bg-transparent px-0 py-3 text-[15px] text-black outline-none placeholder:text-black/30 focus:border-black/50";
+const labelClass =
+  "text-[11px] font-medium uppercase tracking-[0.18em] text-black/35";
 
 const emptyPayment = (): SavedPayment => ({
   id: String(Date.now()),
@@ -51,57 +53,61 @@ export default function AccountPaymentsPage() {
   };
 
   if (!mounted) {
-    return <p className="text-[13px] text-[var(--kc-faint)]">Loading…</p>;
+    return <p className="text-[14px] text-black/35">Loading…</p>;
   }
 
   return (
-    <div className="space-y-10">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className={ui.pageEyebrow}>Account</p>
-        <h1 className={`mt-3 ${ui.pageTitle}`}>Payments</h1>
-          <p className={cn("mt-2", ui.pageDesc)}>
-            Reference cards for checkout — stored locally until Stripe vaulting ships.
-          </p>
-        </div>
-        <button type="button" onClick={add} className={cn("inline-flex items-center gap-2", ui.btnPrimary)}>
-          <Plus className="h-4 w-4" />
-          Add method
-        </button>
+    <div className="space-y-10 text-left">
+      <div>
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-black/35">
+          Payments
+        </p>
+        <p className="mt-2 text-[14px] leading-relaxed text-black/45">
+          Reference cards for checkout — stored locally until Stripe vaulting ships.
+        </p>
       </div>
 
       {methods.length === 0 ? (
-        <section className={cn(ui.panel, "p-10 text-center")}>
-          <CreditCard className="mx-auto h-10 w-10 text-[var(--kc-line)]" strokeWidth={1.5} />
-          <p className="mt-3 text-[13px] text-[var(--kc-mute)]">No payment methods saved.</p>
-          <button type="button" onClick={add} className={cn("mt-4", ui.btnPrimary)}>
+        <div>
+          <p className="text-[14px] text-black/40">No payment methods saved.</p>
+          <button
+            type="button"
+            onClick={add}
+            className="mt-6 flex h-12 w-full items-center justify-center bg-black text-[12px] font-medium uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-80"
+          >
             Add a card
           </button>
-        </section>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {methods.map((method) => (
-            <section key={method.id} className={ui.panel}>
-              <div className="flex items-center justify-between border-b border-[var(--kc-line-soft)] px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-[var(--kc-mute)]" />
-                  <span className="text-[14px] font-semibold text-[var(--kc-ink)]">{method.brand}</span>
-                </div>
+        <div className="space-y-10">
+          {methods.map((method, index) => (
+            <section key={method.id} className="space-y-0">
+              <div className="flex h-12 items-center justify-between border-b border-black/[0.08]">
+                <span className="text-[15px] font-medium text-black">
+                  {method.brand || "Card"}
+                  {method.last4 ? ` ···· ${method.last4}` : ""}
+                </span>
                 <button
                   type="button"
                   onClick={() => remove(method.id)}
-                  className="rounded-[var(--kc-radius-sm)] p-2 text-[var(--kc-mute)] hover:bg-[#fcebea] hover:text-[#8e1b0d]"
+                  className="text-[11px] uppercase tracking-[0.14em] text-black/25 transition-colors hover:text-black"
                   aria-label="Remove payment method"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  Remove
                 </button>
               </div>
-              <div className="grid gap-3 p-4 sm:grid-cols-2">
-                <Field label="Brand" value={method.brand} onChange={(v) => update(method.id, { brand: v })} />
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Brand"
+                  value={method.brand}
+                  onChange={(v) => update(method.id, { brand: v })}
+                />
                 <Field
                   label="Last 4 digits"
                   value={method.last4}
-                  onChange={(v) => update(method.id, { last4: v.replace(/\D/g, "").slice(0, 4) })}
+                  onChange={(v) =>
+                    update(method.id, { last4: v.replace(/\D/g, "").slice(0, 4) })
+                  }
                 />
                 <Field
                   label="Expiry month"
@@ -114,18 +120,31 @@ export default function AccountPaymentsPage() {
                   onChange={(v) => update(method.id, { expiryYear: v })}
                 />
               </div>
+              {index < methods.length - 1 ? (
+                <div className="mt-8 border-b border-black/[0.08]" />
+              ) : null}
             </section>
           ))}
-          <button
-            type="button"
-            onClick={() => {
-              savePayments(methods);
-              showToast("Payment methods saved", "success");
-            }}
-            className={ui.btnSecondary}
-          >
-            Save changes
-          </button>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => {
+                savePayments(methods);
+                showToast("Payment methods saved", "success");
+              }}
+              className="flex h-12 w-full items-center justify-center bg-black text-[12px] font-medium uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-80"
+            >
+              Save changes
+            </button>
+            <button
+              type="button"
+              onClick={add}
+              className="flex h-12 w-full items-center justify-center border border-black/15 text-[12px] font-medium uppercase tracking-[0.14em] text-black transition-colors hover:border-black"
+            >
+              Add method
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -142,9 +161,13 @@ function Field({
   onChange: (v: string) => void;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-[12px] font-medium text-[var(--kc-mute)]">{label}</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} className={cn("w-full", ui.input)} />
+    <label className="block text-left">
+      <span className={labelClass}>{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={fieldClass}
+      />
     </label>
   );
 }

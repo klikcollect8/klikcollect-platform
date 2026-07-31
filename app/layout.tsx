@@ -1,6 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import ConditionalHeader from "@/components/ConditionalHeader";
 import { ConditionalFooter } from "@/components/ConditionalHeader";
@@ -14,14 +14,15 @@ import ShellMain from "@/components/ShellMain";
 import ObscuraLoader from "@/components/obscura/ObscuraLoader";
 import { cn } from "@/lib/utils";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { LocationProvider } from "@/components/providers/LocationProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import { clerkAppearance } from "@/lib/clerk-appearance";
 
-const montreal = localFont({
-  src: "../public/obscura/fonts/NeueMontreal-Medium.otf",
-  variable: "--font-montreal",
-  weight: "500",
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -62,25 +63,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-KE" className={cn(montreal.variable)} suppressHydrationWarning>
-      <body className="antialiased font-[family-name:var(--font-montreal)]">
+    <html lang="en-KE" className={cn(jakarta.variable)} suppressHydrationWarning>
+      <body className={cn("antialiased", jakarta.className)}>
         <ClerkProvider appearance={clerkAppearance}>
           <PostHogProvider>
             <QueryProvider>
-              <CapacitorInit />
-              <MaintenanceCheck>
-                <ToastProvider>
-                  <SignInModalProvider>
-                    <AccountRestrictionCheck />
-                    <ObscuraLoader />
-                    <ConditionalHeader />
-                    <ShellMain>{children}</ShellMain>
-                    <ConditionalFooter />
-                    <BottomNav />
-                  </SignInModalProvider>
-                </ToastProvider>
-              </MaintenanceCheck>
-              <Toaster position="top-right" richColors />
+              <LocationProvider>
+                <CapacitorInit />
+                <MaintenanceCheck>
+                  <ToastProvider>
+                    <SignInModalProvider>
+                      <AccountRestrictionCheck />
+                      <ObscuraLoader />
+                      <ConditionalHeader />
+                      <ShellMain>{children}</ShellMain>
+                      <ConditionalFooter />
+                      <BottomNav />
+                    </SignInModalProvider>
+                  </ToastProvider>
+                </MaintenanceCheck>
+                <Toaster position="top-right" richColors />
+              </LocationProvider>
             </QueryProvider>
           </PostHogProvider>
         </ClerkProvider>

@@ -7,7 +7,7 @@ export default function SignOutPage() {
   const { signOut } = useClerk();
 
   useEffect(() => {
-    void signOut({ redirectUrl: "/sign-in" });
+    void signOut({ redirectUrl: "/" });
   }, [signOut]);
 
   return (

@@ -15,12 +15,15 @@ export type AdmittedVendor = {
   name: string;
   slug: string;
   neighbourhood: string;
+  address?: string;
   tagline: string;
   email?: string;
   categories: string[];
   productCount: number;
   coverImage: string;
   status: "admitted";
+  lng?: number;
+  lat?: number;
 };
 
 export async function getAdmittedVendors(): Promise<AdmittedVendor[]> {
@@ -64,6 +67,7 @@ export async function getAdmittedVendors(): Promise<AdmittedVendor[]> {
       name,
       slug,
       neighbourhood: founding?.neighbourhood || app.neighbourhood || "Nairobi",
+      address: founding?.address,
       tagline:
         founding?.tagline ||
         app.notes ||
@@ -74,6 +78,8 @@ export async function getAdmittedVendors(): Promise<AdmittedVendor[]> {
       productCount: vendorOffers.length,
       coverImage: resolveProductImage(cover),
       status: "admitted",
+      lng: founding?.lng,
+      lat: founding?.lat,
     });
   }
 
@@ -96,6 +102,7 @@ export async function getAdmittedVendors(): Promise<AdmittedVendor[]> {
       name: v.name,
       slug: v.slug,
       neighbourhood: v.neighbourhood,
+      address: v.address,
       tagline: v.tagline,
       email: v.email,
       categories,
@@ -104,6 +111,8 @@ export async function getAdmittedVendors(): Promise<AdmittedVendor[]> {
         coverProduct?.image || "/products/sourdough-loaf.jpeg",
       ),
       status: "admitted",
+      lng: v.lng,
+      lat: v.lat,
     });
   }
 

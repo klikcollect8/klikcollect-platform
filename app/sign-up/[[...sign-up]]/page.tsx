@@ -1,34 +1,37 @@
-import { SignUp } from "@clerk/nextjs";
-import AuthShell from "@/components/auth/AuthShell";
-import { clerkAppearance } from "@/lib/clerk-appearance";
+"use client";
 
-type SignUpPageProps = {
-  searchParams: Promise<{ redirect?: string }>;
-};
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { queueAuthModal } from "@/components/SignInModalProvider";
 
-export default async function SignUpPage({ searchParams }: SignUpPageProps) {
-  const params = await searchParams;
-  const redirect = params.redirect?.trim() || "/";
+/** Bridge — opens the auth overlay instead of a dedicated page. */
+export default function SignUpPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const redirect = searchParams.get("redirect")?.trim() || "/";
+    const target =
+      redirect.startsWith("/") &&
+      !redirect.startsWith("/sign-in") &&
+      !redirect.startsWith("/sign-up")
+        ? redirect
+        : "/";
+
+    const intent = {
+      mode: "sign-up" as const,
+      redirect: target,
+    };
+    queueAuthModal(intent);
+    window.dispatchEvent(new CustomEvent("openAuthModal", { detail: intent }));
+    router.replace(target);
+  }, [router, searchParams]);
 
   return (
-    <AuthShell
-      eyebrow="Join KlikCollect"
-      title="Create your account"
-      description="Start collecting from trusted vendors — free, fast, and built for everyday life."
-      alternateHref="/sign-in"
-      alternateLabel="Already have an account?"
-      alternateCta="Sign in"
-      stageTitle="Your neighbourhood market, finally organised."
-      stageBody="Create a free account to save favourites, reorder in a tap, and collect when it suits you."
-    >
-      <SignUp
-        routing="path"
-        path="/sign-up"
-        signInUrl="/sign-in"
-        forceRedirectUrl={redirect}
-        fallbackRedirectUrl={redirect}
-        appearance={clerkAppearance}
-      />
-    </AuthShell>
+    <div className="flex min-h-[100svh] items-center justify-center bg-[#f7f7f5]">
+      <p className="text-[12px] uppercase tracking-[0.18em] text-black/35">
+        Opening…
+      </p>
+    </div>
   );
 }

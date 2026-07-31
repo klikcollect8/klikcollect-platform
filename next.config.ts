@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  transpilePackages: ["mapbox-gl"],
   images: {
     unoptimized: process.env.CAPACITOR === 'true',
     remotePatterns: [

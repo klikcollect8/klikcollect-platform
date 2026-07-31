@@ -58,7 +58,7 @@ export default function Checkout() {
   useEffect(() => {
     if (authLoading || cartLoading) return;
     if (!isSignedIn) {
-      router.replace('/sign-in?redirect=' + encodeURIComponent('/checkout'));
+      router.replace('/sign-in?redirect=/checkout');
       return;
     }
 

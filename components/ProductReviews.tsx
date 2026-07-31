@@ -7,9 +7,13 @@ import { format } from "date-fns";
 
 interface ProductReviewsProps {
   productId: string;
+  vendorName?: string;
 }
 
-export default function ProductReviews({ productId }: ProductReviewsProps) {
+export default function ProductReviews({
+  productId,
+  vendorName,
+}: ProductReviewsProps) {
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -71,6 +75,13 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
 
   return (
     <div className="w-full">
+      {vendorName ? (
+        <p className="mb-8 text-[13px] text-black/45">
+          Reviews for pickups from{" "}
+          <span className="font-medium text-black/80">{vendorName}</span>
+        </p>
+      ) : null}
+
       {/* Summary */}
       <div className="grid gap-10 border-b border-black/[0.06] pb-12 sm:grid-cols-[auto_1fr] sm:items-end sm:gap-16">
         <div>

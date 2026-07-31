@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FulfilmentMethod, Product, ProductOffer, ProductVariation } from "@/types";
-import { Minus, Plus } from "lucide-react";
+import { ChevronDown, Minus, Plus } from "lucide-react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import RelatedProducts from "@/components/RelatedProducts";
 import ImageGallery from "@/components/ImageGallery";
@@ -17,8 +17,9 @@ import { useUserAuth } from "@/lib/hooks/useUserAuth";
 import { useCart } from "@/lib/hooks/useCart";
 import { formatPrice } from "@/lib/currency";
 import { resolveVendorSlug } from "@/lib/vendor-slug";
+import MapPreview from "@/components/map/MapPreview";
 
-type TabType = "details" | "reviews" | "questions";
+type TabType = "details" | "location" | "reviews" | "questions";
 
 function ProductPageInner() {
   const params = useParams();
@@ -36,8 +37,15 @@ function ProductPageInner() {
   const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [fulfilment, setFulfilment] = useState<FulfilmentMethod>("pickup");
+  const [moreVendorsOpen, setMoreVendorsOpen] = useState(false);
 
   const prefillOffer = searchParams.get("offer");
+
+  useEffect(() => {
+    if (!selectedOfferId && activeTab !== "details") {
+      setActiveTab("details");
+    }
+  }, [selectedOfferId, activeTab]);
 
   useEffect(() => {
     if (!params.id) return;
@@ -124,6 +132,29 @@ function ProductPageInner() {
     if (selectedOffer) router.push("/checkout");
   };
 
+  const availableOffers = useMemo(
+    () => offers.filter((o) => o.stock > 0),
+    [offers],
+  );
+
+  const { visibleOffers, hiddenOffers } = useMemo(() => {
+    if (availableOffers.length <= 2) {
+      return { visibleOffers: availableOffers, hiddenOffers: [] as ProductOffer[] };
+    }
+    const top = availableOffers.slice(0, 2);
+    if (!selectedOfferId || top.some((o) => o.id === selectedOfferId)) {
+      return {
+        visibleOffers: top,
+        hiddenOffers: availableOffers.slice(2),
+      };
+    }
+    const selected = availableOffers.find((o) => o.id === selectedOfferId);
+    const rest = availableOffers.filter((o) => o.id !== selectedOfferId);
+    const visible = [selected, rest[0]].filter(Boolean) as ProductOffer[];
+    const hidden = rest.slice(1);
+    return { visibleOffers: visible, hiddenOffers: hidden };
+  }, [availableOffers, selectedOfferId]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
@@ -159,7 +190,6 @@ function ProductPageInner() {
     (img): img is string => img != null && img.trim() !== "",
   );
   const stock = selectedOffer?.stock ?? 0;
-  const availableOffers = offers.filter((o) => o.stock > 0);
 
   return (
     <div className="min-h-screen w-full bg-[#f7f7f5] text-black">
@@ -190,19 +220,82 @@ function ProductPageInner() {
             </h1>
 
             {rating > 0 ? (
-              <Link
-                href="#reviews"
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedOfferId) {
+                    showToast("Select a vendor to see reviews", "error");
+                    return;
+                  }
+                  setActiveTab("reviews");
+                  document
+                    .getElementById("product-info")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }}
                 className="mt-4 inline-block text-[13px] text-black/45 underline underline-offset-[5px] decoration-black/15 hover:text-black hover:decoration-black"
               >
                 {rating.toFixed(1)} · {reviewCount} ratings
-              </Link>
+              </button>
             ) : null}
 
-            {/* Vendors */}
+            {/* How you get it — choose before buying */}
             <section className="mt-10">
-              <div className="mb-4 flex items-end justify-between gap-4">
+              <h2 className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
+                How you get it
+              </h2>
+              <div
+                className="grid grid-cols-2 border border-black/[0.1]"
+                role="group"
+                aria-label="Fulfilment method"
+              >
+                <button
+                  type="button"
+                  onClick={() => setFulfilment("pickup")}
+                  className={`px-3 py-3.5 text-left transition-colors ${
+                    fulfilment === "pickup"
+                      ? "bg-black text-white"
+                      : "bg-transparent text-black/55 hover:text-black"
+                  }`}
+                >
+                  <span className="block text-[14px] font-medium tracking-tight">
+                    Click &amp; collect
+                  </span>
+                  <span
+                    className={`mt-1 block text-[12px] ${
+                      fulfilment === "pickup" ? "text-white/65" : "text-black/35"
+                    }`}
+                  >
+                    Pick up at the store
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFulfilment("delivery")}
+                  className={`border-l border-black/[0.1] px-3 py-3.5 text-left transition-colors ${
+                    fulfilment === "delivery"
+                      ? "bg-black text-white"
+                      : "bg-transparent text-black/55 hover:text-black"
+                  }`}
+                >
+                  <span className="block text-[14px] font-medium tracking-tight">
+                    Delivery
+                  </span>
+                  <span
+                    className={`mt-1 block text-[12px] ${
+                      fulfilment === "delivery" ? "text-white/65" : "text-black/35"
+                    }`}
+                  >
+                    Fee at checkout
+                  </span>
+                </button>
+              </div>
+            </section>
+
+            {/* Vendors — 2 shown, rest in dropdown */}
+            <section className="mt-10">
+              <div className="mb-3 flex items-end justify-between gap-4">
                 <h2 className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
-                  Vendors
+                  Vendor
                 </h2>
                 <p className="text-[12px] text-black/35">
                   {availableOffers.length} available
@@ -214,53 +307,120 @@ function ProductPageInner() {
                   No vendors available right now.
                 </p>
               ) : (
-                <ul>
-                  {availableOffers.map((offer) => {
-                    const active = selectedOfferId === offer.id;
-                    return (
-                      <li key={offer.id}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOfferId(offer.id)}
-                          className="flex w-full items-center justify-between gap-4 border-b border-black/[0.06] py-4 text-left transition-opacity hover:opacity-55"
-                        >
-                          <span className="min-w-0">
-                            <span
-                              className={`block text-[15px] font-medium tracking-tight ${
-                                active ? "text-black" : "text-black/75"
-                              }`}
-                            >
-                              {offer.vendorName}
-                            </span>
-                            {offer.neighbourhood ? (
-                              <span className="mt-0.5 block text-[12px] text-black/40">
-                                {offer.neighbourhood}
+                <div>
+                  <ul>
+                    {visibleOffers.map((offer) => {
+                      const active = selectedOfferId === offer.id;
+                      return (
+                        <li key={offer.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedOfferId(offer.id);
+                              setMoreVendorsOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between gap-4 border-b border-black/[0.06] py-4 text-left transition-colors ${
+                              active ? "opacity-100" : "opacity-70 hover:opacity-100"
+                            }`}
+                          >
+                            <span className="min-w-0">
+                              <span
+                                className={`block text-[15px] font-medium tracking-tight ${
+                                  active ? "text-black" : "text-black/75"
+                                }`}
+                              >
+                                {offer.vendorName}
                               </span>
-                            ) : null}
-                          </span>
-                          <span className="shrink-0 text-right">
-                            <span
-                              className={`block text-[15px] font-medium tabular-nums ${
-                                active ? "text-black" : "text-black/50"
-                              }`}
-                            >
-                              {formatPrice(offer.price)}
+                              {offer.neighbourhood || offer.address ? (
+                                <span className="mt-0.5 block text-[12px] text-black/40">
+                                  {offer.address || offer.neighbourhood}
+                                </span>
+                              ) : null}
                             </span>
-                            {active ? (
-                              <span className="mt-0.5 block text-[11px] uppercase tracking-[0.14em] text-black/40">
-                                Selected
+                            <span className="shrink-0 text-right">
+                              <span
+                                className={`block text-[15px] font-medium tabular-nums ${
+                                  active ? "text-black" : "text-black/50"
+                                }`}
+                              >
+                                {formatPrice(offer.price)}
                               </span>
-                            ) : null}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                              {active ? (
+                                <span className="mt-0.5 block text-[11px] uppercase tracking-[0.14em] text-black/40">
+                                  Selected
+                                </span>
+                              ) : null}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  {hiddenOffers.length > 0 ? (
+                    <div className="relative mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setMoreVendorsOpen((v) => !v)}
+                        className="flex w-full items-center justify-between gap-3 py-3.5 text-left text-[13px] text-black/45 transition-colors hover:text-black"
+                        aria-expanded={moreVendorsOpen}
+                      >
+                        <span>
+                          {moreVendorsOpen
+                            ? "Hide other vendors"
+                            : `More vendors (${hiddenOffers.length})`}
+                        </span>
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 transition-transform ${
+                            moreVendorsOpen ? "rotate-180" : ""
+                          }`}
+                          strokeWidth={1.75}
+                        />
+                      </button>
+                      {moreVendorsOpen ? (
+                        <ul className="border border-black/[0.08] bg-[var(--kc-canvas)]">
+                          {hiddenOffers.map((offer) => {
+                            const active = selectedOfferId === offer.id;
+                            return (
+                              <li key={offer.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedOfferId(offer.id);
+                                    setMoreVendorsOpen(false);
+                                  }}
+                                  className="flex w-full items-center justify-between gap-4 border-b border-black/[0.06] px-3 py-3.5 text-left last:border-b-0 hover:bg-black/[0.02]"
+                                >
+                                  <span className="min-w-0">
+                                    <span
+                                      className={`block text-[14px] font-medium tracking-tight ${
+                                        active ? "text-black" : "text-black/75"
+                                      }`}
+                                    >
+                                      {offer.vendorName}
+                                    </span>
+                                    {offer.neighbourhood || offer.address ? (
+                                      <span className="mt-0.5 block text-[12px] text-black/40">
+                                        {offer.address || offer.neighbourhood}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                  <span className="shrink-0 text-[14px] font-medium tabular-nums text-black/55">
+                                    {formatPrice(offer.price)}
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               )}
             </section>
 
-            {/* Price + actions after vendor */}
+            {/* Price after vendor */}
             <div className="mt-8">
               {selectedOffer ? (
                 <>
@@ -278,47 +438,16 @@ function ProductPageInner() {
                     >
                       {selectedOffer.vendorName}
                     </Link>
+                    {fulfilment === "pickup" && selectedOffer.neighbourhood
+                      ? ` · Collect in ${selectedOffer.neighbourhood}`
+                      : fulfilment === "delivery"
+                        ? " · Delivery"
+                        : ""}
                   </p>
                 </>
               ) : (
                 <p className="text-[15px] text-black/45">Select a vendor to see price</p>
               )}
-            </div>
-
-            <div className="mt-8">
-              <p className="text-[13px] text-black/50">
-                <span className="font-medium text-black">Get it</span>
-                {" · "}
-                {fulfilment === "pickup"
-                  ? selectedOffer?.neighbourhood
-                    ? `Collect in ${selectedOffer.neighbourhood}`
-                    : "Click & collect"
-                  : "Delivery · fee at checkout"}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-                <button
-                  type="button"
-                  onClick={() => setFulfilment("pickup")}
-                  className={`text-[14px] transition-colors ${
-                    fulfilment === "pickup"
-                      ? "font-medium text-black underline underline-offset-[5px]"
-                      : "text-black/40 hover:text-black"
-                  }`}
-                >
-                  Click &amp; collect
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFulfilment("delivery")}
-                  className={`text-[14px] transition-colors ${
-                    fulfilment === "delivery"
-                      ? "font-medium text-black underline underline-offset-[5px]"
-                      : "text-black/40 hover:text-black"
-                  }`}
-                >
-                  Delivery
-                </button>
-              </div>
             </div>
 
             {product.variations && product.variations.length > 0 ? (
@@ -436,131 +565,205 @@ function ProductPageInner() {
           </div>
         </div>
 
-        {/* Details / Reviews / Questions */}
-        <section className="mt-24 lg:mt-32" id="reviews">
-          <div className="flex flex-wrap items-end justify-between gap-6 border-b border-black/[0.06] pb-6">
-            <div className="flex gap-8 sm:gap-10">
-              {(
-                [
-                  ["details", "Details"],
-                  ["reviews", "Reviews"],
-                  ["questions", "Questions"],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setActiveTab(key)}
-                  className={`pb-1 text-[15px] tracking-tight transition-colors ${
-                    activeTab === key
-                      ? "font-medium text-black"
-                      : "text-black/35 hover:text-black"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+        {/* Vendor-specific: Details / Location / Reviews / Questions */}
+        <section className="mt-24 lg:mt-32" id="product-info">
+          {!selectedOffer ? (
+            <div className="border-t border-black/[0.06] pt-14 text-center">
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
+                Vendor details
+              </p>
+              <h2 className="mt-4 text-[clamp(1.35rem,2.5vw,1.85rem)] font-medium tracking-tight">
+                Select a vendor to continue
+              </h2>
+              <p className="mx-auto mt-3 max-w-md text-[14px] leading-relaxed text-black/45">
+                Details, exact pickup location, reviews and questions are shown
+                for the vendor you choose.
+              </p>
             </div>
-            <p className="text-[12px] text-black/30">
-              {activeTab === "details"
-                ? "Product information"
-                : activeTab === "reviews"
-                  ? "From verified shoppers"
-                  : "Ask before you buy"}
-            </p>
-          </div>
-
-          <div className="mt-12 max-w-4xl">
-            {activeTab === "details" ? (
-              <div className="grid gap-14 lg:grid-cols-12 lg:gap-16">
-                <div className="lg:col-span-7">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
-                    About
-                  </p>
-                  <p className="mt-5 whitespace-pre-line text-[16px] leading-[1.8] text-black/60">
-                    {product.longDescription || product.description}
-                  </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-end justify-between gap-6 border-b border-black/[0.06] pb-6">
+                <div className="flex flex-wrap gap-x-8 gap-y-3 sm:gap-x-10">
+                  {(
+                    [
+                      ["details", "Details"],
+                      ["location", "Location"],
+                      ["reviews", "Reviews"],
+                      ["questions", "Questions"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveTab(key)}
+                      className={`pb-1 text-[15px] tracking-tight transition-colors ${
+                        activeTab === key
+                          ? "font-medium text-black"
+                          : "text-black/35 hover:text-black"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
+                <p className="text-[12px] text-black/30">
+                  {selectedOffer.vendorName}
+                  {selectedOffer.neighbourhood
+                    ? ` · ${selectedOffer.neighbourhood}`
+                    : ""}
+                </p>
+              </div>
 
-                <div className="lg:col-span-5">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
-                    At a glance
-                  </p>
-                  <dl className="mt-5">
-                    {[
-                      { label: "Category", value: product.category },
-                      {
-                        label: "Pickup",
-                        value: "Click & collect from your chosen vendor",
-                      },
-                      {
-                        label: "Sellers",
-                        value:
-                          availableOffers.length > 0
-                            ? `${availableOffers.length} nearby`
-                            : "None available",
-                      },
-                      {
-                        label: "Availability",
-                        value: selectedOffer
-                          ? selectedOffer.stock > 0
-                            ? "In stock"
-                            : "Out of stock"
-                          : "Select a vendor",
-                      },
-                    ].map((row) => (
-                      <div
-                        key={row.label}
-                        className="flex items-baseline justify-between gap-6 border-b border-black/[0.06] py-4"
-                      >
-                        <dt className="text-[13px] text-black/35">{row.label}</dt>
-                        <dd className="text-right text-[14px] font-medium tracking-tight text-black/80">
-                          {row.value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-
-                  {availableOffers.length > 0 ? (
-                    <div className="mt-10">
+              <div
+                className={`mt-12 ${activeTab === "location" ? "max-w-none" : "max-w-4xl"}`}
+                id={activeTab === "reviews" ? "reviews" : undefined}
+              >
+                {activeTab === "details" ? (
+                  <div className="space-y-16">
+                    <div>
                       <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
-                        Available from
+                        Order summary
                       </p>
-                      <ul className="mt-4 space-y-3">
-                        {availableOffers.map((offer) => (
-                          <li key={offer.id}>
+                      <dl className="mt-5 grid gap-0 sm:grid-cols-2 sm:gap-x-12">
+                        {[
+                          { label: "Product", value: product.name },
+                          { label: "Category", value: product.category },
+                          {
+                            label: "Vendor",
+                            value: selectedOffer.vendorName,
+                          },
+                          {
+                            label: "Price",
+                            value: formatPrice(selectedOffer.price),
+                          },
+                          {
+                            label: "Availability",
+                            value:
+                              selectedOffer.stock > 0
+                                ? `${selectedOffer.stock} in stock`
+                                : "Out of stock",
+                          },
+                          {
+                            label: "Fulfilment",
+                            value: fulfilment === "delivery"
+                              ? "Delivery"
+                              : "Click & collect",
+                          },
+                          {
+                            label: "Area",
+                            value:
+                              selectedOffer.neighbourhood || "Nairobi",
+                          },
+                          ...(selectedOffer.address
+                            ? [
+                                {
+                                  label: "Address",
+                                  value: selectedOffer.address,
+                                },
+                              ]
+                            : []),
+                          ...(Object.keys(selectedVariations).length
+                            ? Object.entries(selectedVariations).map(
+                                ([name, value]) => ({
+                                  label: name,
+                                  value,
+                                }),
+                              )
+                            : []),
+                        ].map((row) => (
+                          <div
+                            key={`${row.label}-${row.value}`}
+                            className="flex items-baseline justify-between gap-6 border-b border-black/[0.06] py-4"
+                          >
+                            <dt className="text-[13px] text-black/35">
+                              {row.label}
+                            </dt>
+                            <dd className="text-right text-[14px] font-medium tracking-tight text-black/80">
+                              {row.value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+
+                    <div className="grid gap-14 lg:grid-cols-12 lg:gap-16">
+                      <div className="lg:col-span-7">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
+                          About this product
+                        </p>
+                        <p className="mt-5 whitespace-pre-line text-[16px] leading-[1.8] text-black/60">
+                          {product.longDescription || product.description}
+                        </p>
+                      </div>
+                      <div className="lg:col-span-5">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
+                          Collect from
+                        </p>
+                        <div className="mt-5 border border-black/[0.08] bg-white p-5">
+                          <p className="text-[17px] font-medium tracking-tight">
+                            {selectedOffer.vendorName}
+                          </p>
+                          <p className="mt-2 text-[14px] leading-relaxed text-black/50">
+                            {[selectedOffer.address, selectedOffer.neighbourhood]
+                              .filter(Boolean)
+                              .join(" · ") || "Nairobi pickup"}
+                          </p>
+                          <div className="mt-6">
                             <Link
                               href={`/vendors/${resolveVendorSlug({
-                                id: offer.vendorId,
-                                name: offer.vendorName,
+                                id: selectedOffer.vendorId,
+                                name: selectedOffer.vendorName,
                               })}`}
-                              className="group flex items-baseline justify-between gap-4 text-[14px]"
+                              className="text-[13px] font-medium underline underline-offset-[5px] decoration-black/25 hover:decoration-black"
                             >
-                              <span className="font-medium tracking-tight transition-opacity group-hover:opacity-50">
-                                {offer.vendorName}
-                              </span>
-                              <span className="tabular-nums text-black/45">
-                                {formatPrice(offer.price)}
-                              </span>
+                              Store page →
                             </Link>
-                            {offer.neighbourhood ? (
-                              <p className="mt-0.5 text-[12px] text-black/35">
-                                {offer.neighbourhood}
-                              </p>
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
+                          </div>
+                        </div>
+                        <p className="mt-6 text-[13px] leading-relaxed text-black/40">
+                          Pay on KlikCollect, then collect in person from this
+                          vendor. Reviews and questions below are for this
+                          seller.
+                        </p>
+                      </div>
                     </div>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
+
+                {activeTab === "location" ? (
+                  <MapPreview
+                    variant="tab"
+                    selectedOfferId={selectedOfferId}
+                    offers={availableOffers.map((o) => ({
+                      id: o.id,
+                      vendorId: o.vendorId,
+                      vendorName: o.vendorName,
+                      neighbourhood: o.neighbourhood,
+                      address: o.address,
+                      lng: o.lng,
+                      lat: o.lat,
+                    }))}
+                  />
+                ) : null}
+
+                {activeTab === "reviews" ? (
+                  <ProductReviews
+                    key={`reviews-${selectedOffer.vendorId}`}
+                    productId={product.id}
+                    vendorName={selectedOffer.vendorName}
+                  />
+                ) : null}
+
+                {activeTab === "questions" ? (
+                  <ProductQuestions
+                    key={`questions-${selectedOffer.vendorId}`}
+                    productId={product.id}
+                    vendorName={selectedOffer.vendorName}
+                  />
+                ) : null}
               </div>
-            ) : null}
-            {activeTab === "reviews" ? <ProductReviews productId={product.id} /> : null}
-            {activeTab === "questions" ? (
-              <ProductQuestions productId={product.id} />
-            ) : null}
-          </div>
+            </>
+          )}
         </section>
 
         {/* Related */}

@@ -6,9 +6,13 @@ import { format } from "date-fns";
 
 interface ProductQuestionsProps {
   productId: string;
+  vendorName?: string;
 }
 
-export default function ProductQuestions({ productId }: ProductQuestionsProps) {
+export default function ProductQuestions({
+  productId,
+  vendorName,
+}: ProductQuestionsProps) {
   const [questions, setQuestions] = useState<ProductQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -58,6 +62,13 @@ export default function ProductQuestions({ productId }: ProductQuestionsProps) {
 
   return (
     <div className="w-full">
+      {vendorName ? (
+        <p className="mb-8 text-[13px] text-black/45">
+          Questions about buying from{" "}
+          <span className="font-medium text-black/80">{vendorName}</span>
+        </p>
+      ) : null}
+
       <div className="flex items-end justify-between gap-4 border-b border-black/[0.06] pb-8">
         <div>
           <p className="text-[clamp(1.75rem,3vw,2.25rem)] font-medium tracking-tight tabular-nums leading-none">

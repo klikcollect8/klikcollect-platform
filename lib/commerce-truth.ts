@@ -10,6 +10,11 @@ import {
   getOfferById,
 } from "@/lib/offers-store";
 import { resolveProductImage } from "@/lib/product-image";
+import {
+  resolveVendorAddress,
+  resolveVendorCoords,
+  vendorById,
+} from "@/lib/founding-vendors";
 import type { Product, ProductOffer } from "@/types";
 
 export type StorefrontProduct = Product & {
@@ -52,9 +57,25 @@ export async function getProductDetail(id: string): Promise<ProductDetail | null
   const product = await getProductById(id);
   if (!product || product.status !== "published") return null;
 
-  const offers = (await listOffersForProduct(id)).map((o) => ({
-    ...o,
-  }));
+  const offers = (await listOffersForProduct(id)).map((o) => {
+    const coords = resolveVendorCoords({
+      vendorId: o.vendorId,
+      neighbourhood: o.neighbourhood,
+    });
+    const founding = vendorById(o.vendorId);
+    const address =
+      resolveVendorAddress({
+        vendorId: o.vendorId,
+        neighbourhood: o.neighbourhood,
+      }) || undefined;
+    return {
+      ...o,
+      neighbourhood: o.neighbourhood || founding?.neighbourhood,
+      address,
+      lng: coords?.lng,
+      lat: coords?.lat,
+    };
+  });
 
   return {
     ...product,

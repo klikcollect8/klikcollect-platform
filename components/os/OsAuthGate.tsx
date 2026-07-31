@@ -14,14 +14,21 @@ export function OsAuthGate({
   return (
     <>
       <Show when="signed-out">
-        <div className="rounded-xl border border-neutral-200 bg-white px-6 py-12 text-center">
-          <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
-          <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">{description}</p>
-          <div className="mt-5">
+        <div className="border border-[#1c1b19]/10 bg-[#f7f7f5] px-6 py-14 text-center">
+          <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-[#1c1b19]/35">
+            Account
+          </p>
+          <h3 className="mt-3 text-[1.35rem] font-medium tracking-[-0.02em] text-[#1c1b19]">
+            {title}
+          </h3>
+          <p className="mx-auto mt-3 max-w-md text-[14px] leading-relaxed text-[#1c1b19]/45">
+            {description}
+          </p>
+          <div className="mt-7">
             <SignInButton mode="redirect">
               <button
                 type="button"
-                className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+                className="h-11 bg-[#1c1b19] px-6 text-[11px] font-medium uppercase tracking-[0.18em] text-[#f7f7f5] transition-opacity hover:opacity-85"
               >
                 Sign in
               </button>

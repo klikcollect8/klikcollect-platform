@@ -7,6 +7,7 @@ import { useClerk } from "@clerk/nextjs";
 import { LogOut, Menu, X } from "lucide-react";
 import { accountNav, isAccountNavActive } from "./account-nav";
 import { useUserAuth } from "@/lib/hooks/useUserAuth";
+import { useSignInModal } from "@/components/SignInModalProvider";
 import { cn } from "@/lib/utils";
 import { ui } from "@/components/system/tokens";
 
@@ -14,6 +15,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useClerk();
+  const { showSignInModal } = useSignInModal();
   const { user, isSignedIn, loading } = useUserAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -24,15 +26,16 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
     if (!isSignedIn) {
-      router.replace("/sign-in");
+      showSignInModal("Sign in to view your account", { redirect: "/account" });
+      router.replace("/");
     }
-  }, [loading, isSignedIn, router]);
+  }, [loading, isSignedIn, router, showSignInModal]);
 
   const handleSignOut = async () => {
     try {
-      await signOut({ redirectUrl: "/sign-in" });
+      await signOut({ redirectUrl: "/" });
     } catch {
-      window.location.href = "/sign-in";
+      window.location.href = "/";
     }
   };
 

@@ -5,8 +5,6 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { useUserAuth } from "@/lib/hooks/useUserAuth";
 import { useToast } from "@/components/ToastProvider";
-import { ui } from "@/components/system/tokens";
-import { cn } from "@/lib/utils";
 
 type Ticket = {
   id: string;
@@ -14,6 +12,11 @@ type Ticket = {
   message: string;
   created_at: string;
 };
+
+const fieldClass =
+  "h-auto w-full border-0 border-b border-black/15 bg-transparent px-0 py-3 text-[15px] text-black outline-none placeholder:text-black/30 focus:border-black/50";
+const labelClass =
+  "text-[11px] font-medium uppercase tracking-[0.18em] text-black/35";
 
 export default function AccountSupportPage() {
   const { user } = useUserAuth();
@@ -65,70 +68,84 @@ export default function AccountSupportPage() {
   };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 text-left">
       <div>
-        <p className={ui.pageEyebrow}>Account</p>
-        <h1 className={`mt-3 ${ui.pageTitle}`}>Support</h1>
-        <p className={cn("mt-2", ui.pageDesc)}>
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-black/35">
+          Support
+        </p>
+        <p className="mt-2 text-[14px] leading-relaxed text-black/45">
           Questions about pickup, payments, or your account? We are here to help.
         </p>
       </div>
 
-      <section className={cn(ui.panel, "p-4")}>
-        <p className="text-[13px] text-[var(--kc-mute)]">
-          Browse quick answers on our{" "}
-          <Link href="/customer-service" className="font-medium text-[var(--kc-ink)] hover:underline">
-            customer service hub
-          </Link>
-          , or email{" "}
-          <a href="mailto:support@klikcollect.co.ke" className="font-medium text-[var(--kc-ink)] hover:underline">
-            support@klikcollect.co.ke
-          </a>
-          .
-        </p>
-      </section>
+      <p className="text-[14px] leading-relaxed text-black/45">
+        Browse quick answers on our{" "}
+        <Link
+          href="/customer-service"
+          className="text-[13px] text-black/40 underline decoration-black/20 underline-offset-[5px] hover:text-black hover:decoration-black"
+        >
+          customer service hub
+        </Link>
+        , or email{" "}
+        <a
+          href="mailto:support@klikcollect.co.ke"
+          className="text-[13px] text-black/40 underline decoration-black/20 underline-offset-[5px] hover:text-black hover:decoration-black"
+        >
+          support@klikcollect.co.ke
+        </a>
+        .
+      </p>
 
-      <section className={ui.panel}>
-        <div className="border-b border-[var(--kc-line-soft)] px-4 py-3">
-          <h2 className="text-[14px] font-semibold text-[var(--kc-ink)]">Send a message</h2>
-        </div>
-        <form onSubmit={(e) => void onSubmit(e)} className="space-y-3 p-4">
-          <label className="block">
-            <span className="mb-1 block text-[12px] font-medium text-[var(--kc-mute)]">Subject</span>
+      <section>
+        <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-black/35">
+          Send a message
+        </h2>
+        <form onSubmit={(e) => void onSubmit(e)} className="mt-4 space-y-5">
+          <label className="block text-left">
+            <span className={labelClass}>Subject</span>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className={cn("w-full", ui.input)}
+              className={fieldClass}
               placeholder="Order pickup, refund, etc."
             />
           </label>
-          <label className="block">
-            <span className="mb-1 block text-[12px] font-medium text-[var(--kc-mute)]">Message</span>
+          <label className="block text-left">
+            <span className={labelClass}>Message</span>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={5}
-              className={cn("w-full resize-y", ui.input)}
+              className={`${fieldClass} resize-y`}
               placeholder="Tell us what you need…"
             />
           </label>
-          <button type="submit" disabled={submitting} className={ui.btnPrimary}>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="flex h-12 w-full items-center justify-center bg-black text-[12px] font-medium uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+          >
             {submitting ? "Sending…" : "Submit ticket"}
           </button>
         </form>
       </section>
 
       {tickets.length > 0 ? (
-        <section className={ui.panel}>
-          <div className="border-b border-[var(--kc-line-soft)] px-4 py-3">
-            <h2 className="text-[14px] font-semibold text-[var(--kc-ink)]">Your recent tickets</h2>
-          </div>
-          <ul className="divide-y divide-[var(--kc-line-soft)]">
+        <section>
+          <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-black/35">
+            Recent tickets
+          </h2>
+          <ul className="mt-2">
             {tickets.slice(0, 5).map((t) => (
-              <li key={t.id} className="px-4 py-3">
-                <p className="text-[13px] font-medium text-[var(--kc-ink)]">{t.subject}</p>
-                <p className="mt-0.5 line-clamp-2 text-[12px] text-[var(--kc-mute)]">{t.message}</p>
-                <p className="mt-1 text-[11px] text-[var(--kc-faint)]">
+              <li
+                key={t.id}
+                className="border-b border-black/[0.08] py-4 text-left"
+              >
+                <p className="text-[15px] font-medium text-black">{t.subject}</p>
+                <p className="mt-0.5 line-clamp-2 text-[13px] text-black/35">
+                  {t.message}
+                </p>
+                <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-black/25">
                   {format(new Date(t.created_at), "MMM d, yyyy · h:mm a")}
                 </p>
               </li>

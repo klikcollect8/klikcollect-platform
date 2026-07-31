@@ -1,36 +1,39 @@
-import { SignIn } from "@clerk/nextjs";
-import AuthShell from "@/components/auth/AuthShell";
-import { clerkAppearance } from "@/lib/clerk-appearance";
+"use client";
 
-type SignInPageProps = {
-  searchParams: Promise<{ notice?: string; redirect?: string }>;
-};
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { queueAuthModal } from "@/components/SignInModalProvider";
 
-export default async function SignInPage({ searchParams }: SignInPageProps) {
-  const params = await searchParams;
-  const notice = params.notice?.trim() || null;
-  const redirect = params.redirect?.trim() || "/";
+/** Bridge — opens the auth overlay instead of a dedicated page. */
+export default function SignInPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const notice = searchParams.get("notice")?.trim() || null;
+    const redirect = searchParams.get("redirect")?.trim() || "/";
+    const target =
+      redirect.startsWith("/") &&
+      !redirect.startsWith("/sign-in") &&
+      !redirect.startsWith("/sign-up")
+        ? redirect
+        : "/";
+
+    const intent = {
+      mode: "sign-in" as const,
+      message: notice,
+      redirect: target,
+    };
+    queueAuthModal(intent);
+    window.dispatchEvent(new CustomEvent("openAuthModal", { detail: intent }));
+    router.replace(target);
+  }, [router, searchParams]);
 
   return (
-    <AuthShell
-      eyebrow="Welcome back"
-      title="Sign in"
-      description="One account for your bag, saved picks, and pickup updates."
-      notice={notice}
-      alternateHref="/sign-up"
-      alternateLabel="New to KlikCollect?"
-      alternateCta="Create an account"
-      stageTitle="Shop the city. Collect on your time."
-      stageBody="The best of Nairobi's neighbourhood vendors — ordered in minutes, ready when you walk in."
-    >
-      <SignIn
-        routing="path"
-        path="/sign-in"
-        signUpUrl="/sign-up"
-        forceRedirectUrl={redirect}
-        fallbackRedirectUrl={redirect}
-        appearance={clerkAppearance}
-      />
-    </AuthShell>
+    <div className="flex min-h-[100svh] items-center justify-center bg-[#f7f7f5]">
+      <p className="text-[12px] uppercase tracking-[0.18em] text-black/35">
+        Opening…
+      </p>
+    </div>
   );
 }

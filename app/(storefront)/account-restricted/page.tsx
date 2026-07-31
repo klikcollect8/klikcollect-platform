@@ -14,7 +14,7 @@ export default function AccountRestrictedPage() {
   useEffect(() => {
     if (loading) return;
     if (!isSignedIn) {
-      router.replace("/sign-in");
+      router.replace("/sign-in?redirect=/");
       return;
     }
     if (userStatus === "active" || !userStatus) {
@@ -69,7 +69,7 @@ export default function AccountRestrictedPage() {
 
         <button
           type="button"
-          onClick={() => void signOut({ redirectUrl: "/sign-in" })}
+          onClick={() => void signOut({ redirectUrl: "/" })}
           className="mt-10 flex w-full items-center justify-center gap-2 border border-black py-3.5 text-[12px] font-medium uppercase tracking-[0.16em] transition-colors hover:bg-black hover:text-white"
         >
           <LogOut className="h-4 w-4" />

@@ -7,8 +7,6 @@ import {
   type NotificationPrefs,
 } from "@/lib/account-storage";
 import { useToast } from "@/components/ToastProvider";
-import { ui } from "@/components/system/tokens";
-import { cn } from "@/lib/utils";
 
 const PREFS: { key: keyof NotificationPrefs; label: string; desc: string }[] = [
   { key: "orderUpdates", label: "Order updates", desc: "Pickup status and collection reminders." },
@@ -34,52 +32,39 @@ export default function AccountNotificationsPage() {
   };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 text-left">
       <div>
-        <p className={ui.pageEyebrow}>Account</p>
-        <h1 className={`mt-3 ${ui.pageTitle}`}>Notifications</h1>
-        <p className={cn("mt-2", ui.pageDesc)}>Choose what we should email you about.</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-black/35">
+          Notifications
+        </p>
+        <p className="mt-2 text-[14px] leading-relaxed text-black/45">
+          Choose what we should email you about.
+        </p>
       </div>
 
-      <section className={ui.panel}>
-        {!prefs ? (
-          <p className="p-6 text-[13px] text-[var(--kc-faint)]">Loading…</p>
-        ) : (
-          <ul className="divide-y divide-[var(--kc-line-soft)]">
-            {PREFS.map((pref) => (
-              <li key={pref.key} className="flex items-center justify-between gap-4 p-4">
-                <div>
-                  <p className="text-[14px] font-medium text-[var(--kc-ink)]">{pref.label}</p>
-                  <p className="text-[12px] text-[var(--kc-mute)]">{pref.desc}</p>
+      {!prefs ? (
+        <p className="text-[14px] text-black/35">Loading…</p>
+      ) : (
+        <ul>
+          {PREFS.map((pref) => (
+            <li key={pref.key}>
+              <button
+                type="button"
+                onClick={() => toggle(pref.key)}
+                className="flex w-full items-center justify-between gap-4 border-b border-black/[0.08] py-4 text-left transition-colors hover:text-black"
+              >
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium text-black">{pref.label}</p>
+                  <p className="mt-0.5 text-[13px] text-black/35">{pref.desc}</p>
                 </div>
-                <Toggle checked={prefs[pref.key]} onChange={() => toggle(pref.key)} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={onChange}
-      className={cn(
-        "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-        checked ? "bg-[var(--kc-ink)]" : "bg-[var(--kc-line)]",
+                <span className="shrink-0 text-[11px] uppercase tracking-[0.14em] text-black/25">
+                  {prefs[pref.key] ? "On" : "Off"}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
-    >
-      <span
-        className={cn(
-          "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-          checked && "translate-x-5",
-        )}
-      />
-    </button>
+    </div>
   );
 }

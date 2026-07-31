@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, Search, ShoppingBag, X } from "lucide-react";
-import { Show, UserButton } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
 import Cart from "./Cart";
 import WishlistSidebar from "./WishlistSidebar";
 import MobileSearch from "./MobileSearch";
+import ProfileMenu from "./ProfileMenu";
+import { useSignInModal } from "./SignInModalProvider";
 import { useCart } from "@/lib/hooks/useCart";
 import { useWishlist } from "@/lib/hooks/useWishlist";
 import { V1_CATEGORIES } from "@/lib/curation-policy";
@@ -24,6 +26,7 @@ const NAV = [
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
+  const { showSignInModal } = useSignInModal();
   const { cartItems, updateQuantity, removeFromCart } = useCart();
   const { wishlist, removeFromWishlist } = useWishlist();
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -102,21 +105,16 @@ export default function Header() {
               <Search className="h-4 w-4" strokeWidth={1.75} />
             </button>
             <Show when="signed-out">
-              <Link
-                href="/sign-in"
+              <button
+                type="button"
+                onClick={() => showSignInModal()}
                 className="hidden text-[13px] font-medium underline underline-offset-4 decoration-black/30 hover:decoration-black sm:inline"
               >
                 Sign in
-              </Link>
+              </button>
             </Show>
             <Show when="signed-in">
-              <Link
-                href="/account"
-                className="hidden text-[13px] font-medium underline underline-offset-4 decoration-black/30 hover:decoration-black sm:inline"
-              >
-                Account
-              </Link>
-              <UserButton />
+              <ProfileMenu />
             </Show>
             <button
               type="button"

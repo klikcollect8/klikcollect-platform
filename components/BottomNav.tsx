@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Show } from "@clerk/nextjs";
 import { useCart } from "@/lib/hooks/useCart";
-import { useWishlist } from "@/lib/hooks/useWishlist";
+import { useSignInModal } from "@/components/SignInModalProvider";
 import { useEffect, useState } from "react";
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { showSignInModal } = useSignInModal();
   const { cartItems } = useCart();
-  const { wishlist } = useWishlist();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -49,15 +49,10 @@ export default function BottomNav() {
           Search
         </button>
         <Link
-          href="/saved"
-          className={`relative flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] ${item(pathname === "/saved")}`}
+          href="/brands"
+          className={`flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] ${item(pathname?.startsWith("/brands") || pathname?.startsWith("/vendors"))}`}
         >
-          Saved
-          {wishlist.length > 0 ? (
-            <span className="absolute right-[30%] top-0 text-[9px] tabular-nums text-black">
-              {wishlist.length}
-            </span>
-          ) : null}
+          Vendors
         </Link>
         <button
           type="button"
@@ -80,12 +75,13 @@ export default function BottomNav() {
           </Link>
         </Show>
         <Show when="signed-out">
-          <Link
-            href="/sign-in"
+          <button
+            type="button"
+            onClick={() => showSignInModal()}
             className="flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-black/40"
           >
             Sign in
-          </Link>
+          </button>
         </Show>
       </div>
     </nav>

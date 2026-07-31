@@ -50,6 +50,12 @@ export interface ProductOffer {
   vendorId: string;
   vendorName: string;
   neighbourhood?: string;
+  /** Street-level pickup address (enriched for map) */
+  address?: string;
+  /** Pickup longitude (enriched for map) */
+  lng?: number;
+  /** Pickup latitude (enriched for map) */
+  lat?: number;
   price: number;
   moneyMinor: number;
   onHand: number;
