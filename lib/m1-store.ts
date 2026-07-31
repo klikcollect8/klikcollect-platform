@@ -1,28 +1,24 @@
 import { promises as fs } from "fs";
 import path from "path";
 import type { CurationApplication } from "./curation-policy";
+import { readJsonStore, writeJsonStore } from "./json-store";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 
 async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-}
-
-async function readJson<T>(file: string, fallback: T): Promise<T> {
-  await ensureDir();
-  const full = path.join(DATA_DIR, file);
   try {
-    const raw = await fs.readFile(full, "utf8");
-    return JSON.parse(raw) as T;
+    await fs.mkdir(DATA_DIR, { recursive: true });
   } catch {
-    return fallback;
+    /* serverless may not allow mkdir — ignore */
   }
 }
 
+async function readJson<T>(file: string, fallback: T): Promise<T> {
+  return readJsonStore<T>(file, fallback);
+}
+
 async function writeJson<T>(file: string, data: T): Promise<void> {
-  await ensureDir();
-  const full = path.join(DATA_DIR, file);
-  await fs.writeFile(full, JSON.stringify(data, null, 2), "utf8");
+  await writeJsonStore(file, data);
 }
 
 export type UsageEvent = {
@@ -42,9 +38,16 @@ export async function saveApplications(apps: CurationApplication[]): Promise<voi
 }
 
 export async function appendUsageEvent(event: UsageEvent): Promise<void> {
-  await ensureDir();
-  const full = path.join(DATA_DIR, "usage-events.jsonl");
-  await fs.appendFile(full, `${JSON.stringify(event)}\n`, "utf8");
+  try {
+    await ensureDir();
+    const full = path.join(DATA_DIR, "usage-events.jsonl");
+    await fs.appendFile(full, `${JSON.stringify(event)}\n`, "utf8");
+  } catch (err) {
+    console.warn(
+      "[m1-store] usage event append failed",
+      err instanceof Error ? err.message : err,
+    );
+  }
 }
 
 export async function countUsageEvents(): Promise<number> {

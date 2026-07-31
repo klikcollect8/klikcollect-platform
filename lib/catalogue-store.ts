@@ -1,13 +1,11 @@
-import { promises as fs } from "fs";
-import path from "path";
 import type { Product } from "@/types";
 import { publicId } from "./ids";
 import { majorToMinor } from "./money";
 import { DEMO_VENDOR_ID } from "./tenancy";
+import { readJsonStore, writeJsonStore } from "./json-store";
 
 export { DEMO_VENDOR_ID };
 
-const DATA_DIR = path.join(process.cwd(), ".data");
 const FILE = "vendor-catalogue.json";
 
 export type CatalogueProduct = Omit<Product, "price" | "stock"> & {
@@ -57,28 +55,16 @@ function normalise(p: Partial<CatalogueProduct> & Product & { vendorId: string }
   };
 }
 
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-}
-
 async function readAll(): Promise<CatalogueProduct[]> {
-  await ensureDir();
-  try {
-    const raw = await fs.readFile(path.join(DATA_DIR, FILE), "utf8");
-    const data = JSON.parse(raw) as CatalogueProduct[];
-    if (!Array.isArray(data)) return [];
-    return data.map((p) => normalise(p));
-  } catch {
-    return [];
-  }
+  const data = await readJsonStore<CatalogueProduct[]>(FILE, []);
+  if (!Array.isArray(data)) return [];
+  return data.map((p) => normalise(p));
 }
 
 async function writeAll(products: CatalogueProduct[]): Promise<void> {
-  await ensureDir();
-  await fs.writeFile(
-    path.join(DATA_DIR, FILE),
-    JSON.stringify(products.map((p) => normalise(p)), null, 2),
-    "utf8",
+  await writeJsonStore(
+    FILE,
+    products.map((p) => normalise(p)),
   );
 }
 

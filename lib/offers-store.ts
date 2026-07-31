@@ -1,9 +1,7 @@
-import { promises as fs } from "fs";
-import path from "path";
 import type { ProductOffer } from "@/types";
 import { majorToMinor } from "./money";
+import { readJsonStore, writeJsonStore } from "./json-store";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
 const FILE = "offers.json";
 
 function normalise(o: ProductOffer): ProductOffer {
@@ -21,27 +19,15 @@ function normalise(o: ProductOffer): ProductOffer {
   };
 }
 
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-}
-
 async function readAll(): Promise<ProductOffer[]> {
-  await ensureDir();
-  try {
-    const raw = await fs.readFile(path.join(DATA_DIR, FILE), "utf8");
-    const data = JSON.parse(raw) as ProductOffer[];
-    return Array.isArray(data) ? data.map(normalise) : [];
-  } catch {
-    return [];
-  }
+  const data = await readJsonStore<ProductOffer[]>(FILE, []);
+  return Array.isArray(data) ? data.map(normalise) : [];
 }
 
 async function writeAll(offers: ProductOffer[]): Promise<void> {
-  await ensureDir();
-  await fs.writeFile(
-    path.join(DATA_DIR, FILE),
-    JSON.stringify(offers.map(normalise), null, 2),
-    "utf8",
+  await writeJsonStore(
+    FILE,
+    offers.map(normalise),
   );
 }
 

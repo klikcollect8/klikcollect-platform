@@ -11,10 +11,7 @@ import { saveProducts } from "./products-store";
 import { saveOffers } from "./offers-store";
 import { FOUNDING_VENDORS, vendorForCategory } from "./founding-vendors";
 import catalogue from "./seed-catalogue.json";
-import { promises as fs } from "fs";
-import path from "path";
-
-const DATA_DIR = path.join(process.cwd(), ".data");
+import { writeJsonStore } from "./json-store";
 
 type CatalogueRow = {
   id: string;
@@ -177,12 +174,7 @@ export async function ensureNairobiSeed(): Promise<{
   await saveOffers(offers);
 
   const legacy = buildLegacyCatalogue(products, offers);
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(
-    path.join(DATA_DIR, "vendor-catalogue.json"),
-    JSON.stringify(legacy, null, 2),
-    "utf8",
-  );
+  await writeJsonStore<CatalogueProduct[]>("vendor-catalogue.json", legacy);
 
   const admittedTemplate: CurationApplication[] = FOUNDING_VENDORS.map((v, i) => ({
     id: v.id,
@@ -242,11 +234,7 @@ export async function ensureNairobiSeed(): Promise<{
   const apps = [...pendingTemplate, ...admittedTemplate, ...extras];
   await saveApplications(apps);
 
-  await fs.writeFile(
-    path.join(DATA_DIR, "vendors.json"),
-    JSON.stringify(FOUNDING_VENDORS, null, 2),
-    "utf8",
-  );
+  await writeJsonStore("vendors.json", FOUNDING_VENDORS);
 
   return {
     products: products.length,

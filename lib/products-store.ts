@@ -1,30 +1,17 @@
-import { promises as fs } from "fs";
-import path from "path";
 import type { Product } from "@/types";
+import { readJsonStore, writeJsonStore } from "./json-store";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
 const FILE = "products.json";
 
 export type CanonicalProduct = Product;
 
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-}
-
 async function readAll(): Promise<CanonicalProduct[]> {
-  await ensureDir();
-  try {
-    const raw = await fs.readFile(path.join(DATA_DIR, FILE), "utf8");
-    const data = JSON.parse(raw) as CanonicalProduct[];
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
+  const data = await readJsonStore<CanonicalProduct[]>(FILE, []);
+  return Array.isArray(data) ? data : [];
 }
 
 async function writeAll(products: CanonicalProduct[]): Promise<void> {
-  await ensureDir();
-  await fs.writeFile(path.join(DATA_DIR, FILE), JSON.stringify(products, null, 2), "utf8");
+  await writeJsonStore(FILE, products);
 }
 
 export async function listProducts(): Promise<CanonicalProduct[]> {
