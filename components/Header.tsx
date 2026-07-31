@@ -107,7 +107,7 @@ export default function Header() {
                   type="button"
                   className="hidden text-[13px] font-medium underline underline-offset-4 decoration-black/30 hover:decoration-black sm:inline"
                 >
-                  Let&apos;s talk
+                  Sign in
                 </button>
               </SignInButton>
             </Show>
