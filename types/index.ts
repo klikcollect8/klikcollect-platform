@@ -141,8 +141,8 @@ export interface Category {
   image?: string;
   icon?: string;
   productCount?: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DeletedItem {

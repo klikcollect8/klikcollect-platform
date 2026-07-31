@@ -7,6 +7,19 @@ import { Category } from "@/types";
 import { StorePage, StoreHeading } from "@/components/marketplace/StorePage";
 import { CATEGORY_CARDS, categoryImage } from "@/lib/category-images";
 
+function fallbackCategories(): Category[] {
+  const now = new Date().toISOString();
+  return CATEGORY_CARDS.map((cat, i) => ({
+    id: String(i + 1),
+    name: cat.name,
+    slug: cat.name.toLowerCase().replace(/\s+/g, "-"),
+    image: cat.image,
+    description: "",
+    createdAt: now,
+    updatedAt: now,
+  }));
+}
+
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,27 +37,11 @@ export default function CategoriesPage() {
             })),
           );
         } else {
-          setCategories(
-            CATEGORY_CARDS.map((cat, i) => ({
-              id: String(i + 1),
-              name: cat.name,
-              slug: cat.name.toLowerCase().replace(/\s+/g, "-"),
-              image: cat.image,
-              description: "",
-            })),
-          );
+          setCategories(fallbackCategories());
         }
       })
       .catch(() => {
-        setCategories(
-          CATEGORY_CARDS.map((cat, i) => ({
-            id: String(i + 1),
-            name: cat.name,
-            slug: cat.name.toLowerCase().replace(/\s+/g, "-"),
-            image: cat.image,
-            description: "",
-          })),
-        );
+        setCategories(fallbackCategories());
       })
       .finally(() => setLoading(false));
   }, []);

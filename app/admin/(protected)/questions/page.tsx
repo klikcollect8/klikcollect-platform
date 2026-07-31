@@ -624,7 +624,7 @@ function QuestionsContent() {
                                     <h3 className="font-medium text-neutral-900 text-lg mb-1">{product.name}</h3>
                                     <p className="text-neutral-500 text-sm mb-4">{product.category}</p>
                                     <div className="flex items-center gap-3">
-                                       <span className="px-3 py-1 bg-neutral-100 rounded-lg text-sm font-medium text-neutral-900">${product.price.toFixed(2)}</span>
+                                       <span className="px-3 py-1 bg-neutral-100 rounded-lg text-sm font-medium text-neutral-900">${(product.price ?? 0).toFixed(2)}</span>
                                        <Link 
                                           href={`/products/${product.id}`} 
                                           target="_blank"

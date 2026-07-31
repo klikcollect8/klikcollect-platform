@@ -623,7 +623,9 @@ function CategoriesContent() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-neutral-900 truncate">{product.name}</p>
-                          <p className="text-xs text-neutral-500">${product.price.toFixed(2)}</p>
+                          <p className="text-xs text-neutral-500">
+                            ${(product.price ?? 0).toFixed(2)}
+                          </p>
                         </div>
                         <Link href={`/admin/products?search=${encodeURIComponent(product.name)}`} className="p-1.5 text-neutral-300 hover:text-neutral-900 transition-colors">
                           <ArrowUpRight className="w-4 h-4" />

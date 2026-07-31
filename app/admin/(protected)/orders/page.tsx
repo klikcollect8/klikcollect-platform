@@ -397,7 +397,9 @@ function OrdersContent() {
                       <span className="text-neutral-600 truncate flex-1 pr-4">
                         <span className="font-medium text-neutral-900">{item.quantity}x</span> {item.product.name}
                       </span>
-                      <span className="text-neutral-900 font-medium">${(item.quantity * item.product.price).toFixed(2)}</span>
+                      <span className="text-neutral-900 font-medium">
+                        ${(item.quantity * (item.offerPrice ?? item.product.price ?? 0)).toFixed(2)}
+                      </span>
                     </div>
                   ))}
                   {order.items.length > 2 && (
@@ -664,7 +666,9 @@ function OrdersContent() {
                         <div className="flex-1 min-w-0 py-1">
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="text-lg font-medium text-neutral-900 truncate pr-4">{item.product.name}</h4>
-                            <p className="text-lg font-semibold text-neutral-900">${(item.quantity * item.product.price).toFixed(2)}</p>
+                            <p className="text-lg font-semibold text-neutral-900">
+                              ${(item.quantity * (item.offerPrice ?? item.product.price ?? 0)).toFixed(2)}
+                            </p>
                           </div>
                           
                           <div className="flex items-center justify-between">
@@ -672,7 +676,9 @@ function OrdersContent() {
                               {item.product.category}
                             </p>
                             <p className="text-sm text-neutral-500 font-medium">
-                              {item.quantity} <span className="text-neutral-300 mx-1">×</span> ${item.product.price.toFixed(2)}
+                              {item.quantity}{" "}
+                              <span className="text-neutral-300 mx-1">×</span> $
+                              {(item.offerPrice ?? item.product.price ?? 0).toFixed(2)}
                             </p>
                           </div>
                         </div>

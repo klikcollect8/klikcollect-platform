@@ -93,10 +93,13 @@ function ProductsPageContent() {
   const stats = useMemo(() => {
     return {
       total: products.length,
-      inStock: products.filter(p => p.stock > 0).length,
-      lowStock: products.filter(p => p.stock > 0 && p.stock < 10).length,
-      outOfStock: products.filter(p => p.stock === 0).length,
-      value: products.reduce((sum, p) => sum + (p.price * p.stock), 0),
+      inStock: products.filter((p) => (p.stock ?? 0) > 0).length,
+      lowStock: products.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) < 10).length,
+      outOfStock: products.filter((p) => (p.stock ?? 0) === 0).length,
+      value: products.reduce(
+        (sum, p) => sum + (p.price ?? 0) * (p.stock ?? 0),
+        0,
+      ),
     };
   }, [products]);
 
@@ -118,11 +121,11 @@ function ProductsPageContent() {
     }
 
     if (stockFilter === 'in') {
-      result = result.filter(p => p.stock > 0);
+      result = result.filter((p) => (p.stock ?? 0) > 0);
     } else if (stockFilter === 'low') {
-      result = result.filter(p => p.stock > 0 && p.stock < 10);
+      result = result.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) < 10);
     } else if (stockFilter === 'out') {
-      result = result.filter(p => p.stock === 0);
+      result = result.filter((p) => (p.stock ?? 0) === 0);
     }
 
     // Sort
@@ -199,11 +202,11 @@ function ProductsPageContent() {
       name: product.name,
       description: product.description,
       longDescription: product.longDescription || '',
-      price: product.price.toString(),
+      price: (product.price ?? 0).toString(),
       image: product.image,
       images: product.images || [],
       category: product.category,
-      stock: product.stock.toString(),
+      stock: (product.stock ?? 0).toString(),
       status: (product as any).status || 'published',
       badges: product.badges || [],
       rating: product.rating?.toString() || '',
@@ -429,15 +432,15 @@ function ProductsPageContent() {
                   </span>
                 </div>
                 <div className="absolute top-3 right-3 flex flex-col gap-2">
-                  {product.stock === 0 ? (
+                  {(product.stock ?? 0) === 0 ? (
                     <span className="px-2 py-1 bg-black/[0.04]0/90 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-sm">
                       Sold Out
                     </span>
-                  ) : product.stock < 10 && (
+                  ) : (product.stock ?? 0) < 10 ? (
                     <span className="px-2 py-1 bg-black/[0.04]0/90 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-sm">
                       Low Stock
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 
                 {/* Hover Actions */}
@@ -520,13 +523,17 @@ function ProductsPageContent() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${
-                        product.stock === 0 ? 'bg-black/[0.04]0' : product.stock < 10 ? 'bg-black/[0.04]0' : 'bg-black/[0.04]0'
+                        (product.stock ?? 0) === 0
+                          ? "bg-black/[0.04]0"
+                          : (product.stock ?? 0) < 10
+                            ? "bg-black/[0.04]0"
+                            : "bg-black/[0.04]0"
                       }`} />
-                      <span className="text-sm text-neutral-600">{product.stock} units</span>
+                      <span className="text-sm text-neutral-600">{product.stock ?? 0} units</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right font-medium text-neutral-900">
-                    ${product.price.toFixed(2)}
+                    ${(product.price ?? 0).toFixed(2)}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
