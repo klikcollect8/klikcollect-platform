@@ -12,9 +12,9 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
   return (
     <AuthShell
-      eyebrow="Account"
+      eyebrow="Join KlikCollect"
       title="Create account"
-      description="Join KlikCollect for Nairobi click & collect from trusted vendors."
+      description="Shop local vendors and collect on your schedule."
       alternateHref="/sign-in"
       alternateLabel="Already have an account?"
       alternateCta="Sign in"

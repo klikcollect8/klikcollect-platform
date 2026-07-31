@@ -13,12 +13,12 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   return (
     <AuthShell
-      eyebrow="Account"
+      eyebrow="Welcome back"
       title="Sign in"
-      description="Access your orders, saved items, and click & collect pickups."
+      description="Your orders, saved picks, and pickups — ready when you are."
       notice={notice}
       alternateHref="/sign-up"
-      alternateLabel="New here?"
+      alternateLabel="New to KlikCollect?"
       alternateCta="Create an account"
     >
       <SignIn

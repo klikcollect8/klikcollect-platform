@@ -37,11 +37,14 @@ export default function ConditionalHeader() {
 export function ConditionalFooter() {
   const pathname = usePathname();
 
-  // Don't show footer on OS shells
+  // Don't show footer on OS shells or branded auth pages
   if (
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/app") ||
-    pathname?.startsWith("/account")
+    pathname?.startsWith("/account") ||
+    pathname?.startsWith("/sign-in") ||
+    pathname?.startsWith("/sign-up") ||
+    pathname?.startsWith("/sign-out")
   ) {
     return null;
   }

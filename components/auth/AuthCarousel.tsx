@@ -6,15 +6,9 @@ import Link from "next/link";
 import { gsap } from "gsap";
 import { HERO_ASSETS } from "@/lib/hero-assets";
 
-const INTERVAL_MS = 3500;
+const INTERVAL_MS = 4500;
 
-const SLIDE_COPY = [
-  { eyebrow: "Nairobi", title: "Click & collect\nfrom vendors\nnear you." },
-  { eyebrow: "Fresh", title: "Groceries\nready when\nyou are." },
-  { eyebrow: "Trusted", title: "Specialty\nsellers in\none place." },
-] as const;
-
-/** Full-height auth-side carousel — soft fades into canvas like the homepage hero */
+/** Left atmosphere — full-bleed product photography with quiet type */
 export default function AuthCarousel() {
   const slidesRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
@@ -50,8 +44,8 @@ export default function AuthCarousel() {
     gsap.killTweensOf([prevSlide, nextSlide]);
     gsap
       .timeline()
-      .to(prevSlide, { autoAlpha: 0, duration: 1.3, ease: "power2.inOut" })
-      .to(nextSlide, { autoAlpha: 1, duration: 1.3, ease: "power2.inOut" }, 0);
+      .to(prevSlide, { autoAlpha: 0, duration: 1.5, ease: "power2.inOut" })
+      .to(nextSlide, { autoAlpha: 1, duration: 1.5, ease: "power2.inOut" }, 0);
 
     prevActive.current = active;
   }, [active]);
@@ -64,11 +58,9 @@ export default function AuthCarousel() {
     return () => clearInterval(id);
   }, []);
 
-  const copy = SLIDE_COPY[active % SLIDE_COPY.length];
-
   return (
     <div
-      className="relative h-full min-h-[42svh] w-full overflow-hidden bg-[#f7f7f5] lg:min-h-screen"
+      className="relative h-[34svh] w-full overflow-hidden bg-[#e8e8e4] lg:h-[100svh]"
       onMouseEnter={() => {
         paused.current = true;
       }}
@@ -84,64 +76,68 @@ export default function AuthCarousel() {
               alt=""
               fill
               priority={i < 2}
-              className="object-cover object-center"
+              className="object-cover object-center scale-[1.02]"
               sizes="(max-width: 1024px) 100vw, 58vw"
             />
           </div>
         ))}
       </div>
 
-      {/* Soft blend into page canvas on the right (toward the form) */}
+      {/* Soft top/left veil — keeps type readable, photo stays present */}
       <div
-        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[48%] max-w-none"
+        className="pointer-events-none absolute inset-0 z-[1]"
         style={{
           background:
-            "linear-gradient(to left, #f7f7f5 0%, rgba(247,247,245,0.92) 22%, rgba(247,247,245,0.4) 55%, transparent 100%)",
+            "linear-gradient(180deg, rgba(247,247,245,0.42) 0%, rgba(247,247,245,0.05) 38%, rgba(247,247,245,0.28) 72%, rgba(247,247,245,0.55) 100%)",
         }}
       />
-      {/* Bottom fade on mobile before form */}
+
+      {/* Desktop fade into form column */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 lg:hidden"
+        className="pointer-events-none absolute inset-y-0 right-0 z-[2] hidden w-[28%] lg:block"
+        style={{
+          background:
+            "linear-gradient(to left, #f7f7f5 0%, rgba(247,247,245,0.7) 40%, transparent 100%)",
+        }}
+      />
+
+      {/* Mobile fade into form */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-16 lg:hidden"
         style={{
           background: "linear-gradient(to top, #f7f7f5 0%, transparent 100%)",
         }}
       />
-      {/* Soft left edge so it never feels like a hard panel */}
-      <div
-        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16"
-        style={{
-          background: "linear-gradient(to right, #f7f7f5 0%, transparent 100%)",
-        }}
-      />
 
-      <div className="absolute inset-0 z-20 flex flex-col justify-end px-6 pb-10 pt-20 sm:px-10 lg:justify-between lg:px-12 lg:pb-14 lg:pt-12 xl:px-16">
+      <div className="absolute inset-0 z-10 flex flex-col justify-between px-6 py-5 sm:px-8 lg:px-10 lg:py-9 xl:px-12">
         <Link
           href="/"
-          className="hidden text-[15px] font-medium uppercase tracking-[0.14em] text-black lg:inline-block"
+          className="w-fit text-[13px] font-medium uppercase tracking-[0.16em] text-black transition-opacity hover:opacity-50"
         >
           KLIKCOLLECT®
         </Link>
-        <div className="max-w-md">
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-black/40">
-            {copy.eyebrow}
-          </p>
-          <p className="mt-4 whitespace-pre-line text-[clamp(1.75rem,3.5vw,2.75rem)] font-medium leading-[1.05] tracking-tight text-black">
-            {copy.title}
-          </p>
-        </div>
 
-        <div className="mt-8 flex items-center gap-2.5 lg:mt-0">
-          {HERO_ASSETS.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              aria-label={`Go to slide ${i + 1}`}
-              onClick={() => goTo(i)}
-              className={`h-px transition-all duration-500 ${
-                i === active ? "w-10 bg-black" : "w-4 bg-black/20 hover:bg-black/40"
-              }`}
-            />
-          ))}
+        <div className="max-w-[17.5rem] lg:pb-1">
+          <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/45">
+            Nairobi · KES
+          </p>
+          <p className="mt-2.5 text-[clamp(1.25rem,2.2vw,1.75rem)] font-medium leading-[1.18] tracking-tight text-black">
+            Fresh picks from vendors near you.
+          </p>
+
+          <div className="mt-5 flex items-center gap-1.5 lg:mt-6">
+            {HERO_ASSETS.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Go to slide ${i + 1}`}
+                onClick={() => goTo(i)}
+                className={`h-px transition-all duration-500 ${
+                  i === active ? "w-7 bg-black" : "w-2.5 bg-black/20 hover:bg-black/40"
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>
