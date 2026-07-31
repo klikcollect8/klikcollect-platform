@@ -218,7 +218,7 @@ export default function AdminNav({ initialRole }: { initialRole?: string | null 
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <Show when="signed-out">
-            <SignInButton mode="modal" forceRedirectUrl="/admin">
+            <SignInButton mode="redirect" forceRedirectUrl="/admin">
               <button type="button" className={ui.btnPrimary}>
                 Sign in
               </button>

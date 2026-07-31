@@ -144,7 +144,7 @@ export default function PosPage() {
       <Show when="signed-out">
         <div className="mb-4 flex items-center justify-between rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white px-4 py-3 text-[13px]">
           <span className="text-[var(--kc-mute)]">Sign in as a vendor operator to sell</span>
-          <SignInButton mode="modal">
+          <SignInButton mode="redirect">
             <button
               type="button"
               className="rounded-[var(--kc-radius-sm)] bg-[var(--kc-ink)] px-3 py-1.5 text-[12px] font-medium text-white"

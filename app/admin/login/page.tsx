@@ -26,7 +26,7 @@ export default function AdminLogin() {
               </Link>
             }
           >
-            <SignInButton mode="modal" forceRedirectUrl="/admin">
+            <SignInButton mode="redirect" forceRedirectUrl="/admin">
               <button type="button" className={`w-full ${ui.btnPrimary}`}>
                 Sign in
               </button>

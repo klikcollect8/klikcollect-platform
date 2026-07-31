@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SignInButton, Show } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
 import { useCart } from "@/lib/hooks/useCart";
 import { useWishlist } from "@/lib/hooks/useWishlist";
 import { useEffect, useState } from "react";
@@ -80,14 +80,12 @@ export default function BottomNav() {
           </Link>
         </Show>
         <Show when="signed-out">
-          <SignInButton mode="modal">
-            <button
-              type="button"
-              className="flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-black/40"
-            >
-              Sign in
-            </button>
-          </SignInButton>
+          <Link
+            href="/sign-in"
+            className="flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-black/40"
+          >
+            Sign in
+          </Link>
         </Show>
       </div>
     </nav>

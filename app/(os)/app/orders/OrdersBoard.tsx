@@ -229,7 +229,7 @@ export function OrdersBoard() {
             ) : null}
 
             <Show when="signed-out">
-              <SignInButton mode="modal">
+              <SignInButton mode="redirect">
                 <button
                   type="button"
                   className="w-full rounded-[var(--kc-radius-sm)] border border-[var(--kc-line)] px-3 py-2 text-[13px] font-medium hover:bg-[var(--kc-canvas)]"

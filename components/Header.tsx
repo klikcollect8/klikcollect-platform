@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, Search, ShoppingBag, X } from "lucide-react";
-import { SignInButton, Show, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 import Cart from "./Cart";
 import WishlistSidebar from "./WishlistSidebar";
 import MobileSearch from "./MobileSearch";
@@ -102,14 +102,12 @@ export default function Header() {
               <Search className="h-4 w-4" strokeWidth={1.75} />
             </button>
             <Show when="signed-out">
-              <SignInButton mode="modal">
-                <button
-                  type="button"
-                  className="hidden text-[13px] font-medium underline underline-offset-4 decoration-black/30 hover:decoration-black sm:inline"
-                >
-                  Sign in
-                </button>
-              </SignInButton>
+              <Link
+                href="/sign-in"
+                className="hidden text-[13px] font-medium underline underline-offset-4 decoration-black/30 hover:decoration-black sm:inline"
+              >
+                Sign in
+              </Link>
             </Show>
             <Show when="signed-in">
               <Link

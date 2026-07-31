@@ -89,7 +89,7 @@ export function InventoryBoard({ vendors }: { vendors?: Record<string, string> }
       <Show when="signed-out">
         <div className="flex items-center justify-between gap-3 rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white px-4 py-3 text-[13px]">
           <span className="text-[var(--kc-mute)]">Sign in to adjust stock</span>
-          <SignInButton mode="modal">
+          <SignInButton mode="redirect">
             <button
               type="button"
               className="rounded-[var(--kc-radius-sm)] bg-[var(--kc-ink)] px-3 py-1.5 text-[12px] font-medium text-white"

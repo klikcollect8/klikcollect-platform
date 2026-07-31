@@ -1,5 +1,4 @@
 import { ClerkProvider } from "@clerk/nextjs";
-import { shadcn } from "@clerk/ui/themes";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -17,6 +16,7 @@ import { cn } from "@/lib/utils";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
+import { clerkAppearance } from "@/lib/clerk-appearance";
 
 const montreal = localFont({
   src: "../public/obscura/fonts/NeueMontreal-Medium.otf",
@@ -64,7 +64,7 @@ export default function RootLayout({
   return (
     <html lang="en-KE" className={cn(montreal.variable)} suppressHydrationWarning>
       <body className="antialiased font-[family-name:var(--font-montreal)]">
-        <ClerkProvider appearance={{ theme: shadcn }}>
+        <ClerkProvider appearance={clerkAppearance}>
           <PostHogProvider>
             <QueryProvider>
               <CapacitorInit />

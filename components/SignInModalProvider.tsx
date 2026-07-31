@@ -1,33 +1,33 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, ReactNode } from 'react';
-import SignInModal from './SignInModal';
+import { createContext, useContext, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 interface SignInModalContextType {
   showSignInModal: (message?: string) => void;
   hideSignInModal: () => void;
 }
 
-const SignInModalContext = createContext<SignInModalContextType | undefined>(undefined);
+const SignInModalContext = createContext<SignInModalContextType | undefined>(
+  undefined,
+);
 
+/** Sends users to the branded /sign-in page (no modal). */
 export function SignInModalProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [message, setMessage] = useState<string>('');
+  const router = useRouter();
 
   const showSignInModal = (customMessage?: string) => {
-    setMessage(customMessage || 'Please sign in to continue');
-    setIsOpen(true);
-  };
-
-  const hideSignInModal = () => {
-    setIsOpen(false);
-    setMessage('');
+    const params = new URLSearchParams();
+    if (customMessage?.trim()) params.set("notice", customMessage.trim());
+    const qs = params.toString();
+    router.push(qs ? `/sign-in?${qs}` : "/sign-in");
   };
 
   return (
-    <SignInModalContext.Provider value={{ showSignInModal, hideSignInModal }}>
+    <SignInModalContext.Provider
+      value={{ showSignInModal, hideSignInModal: () => undefined }}
+    >
       {children}
-      <SignInModal isOpen={isOpen} onClose={hideSignInModal} message={message} />
     </SignInModalContext.Provider>
   );
 }
@@ -35,7 +35,7 @@ export function SignInModalProvider({ children }: { children: ReactNode }) {
 export function useSignInModal() {
   const context = useContext(SignInModalContext);
   if (context === undefined) {
-    throw new Error('useSignInModal must be used within a SignInModalProvider');
+    throw new Error("useSignInModal must be used within a SignInModalProvider");
   }
   return context;
 }

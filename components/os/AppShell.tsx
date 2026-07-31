@@ -198,12 +198,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {messages.market}
             </span>
             <Show when="signed-out">
-              <SignInButton mode="modal">
+              <SignInButton mode="redirect">
                 <button type="button" className={ui.btnPrimary}>
                   {messages.nav.signIn}
                 </button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton mode="redirect">
                 <button
                   type="button"
                   className={cn(ui.btnSecondary, "hidden sm:inline-flex")}
