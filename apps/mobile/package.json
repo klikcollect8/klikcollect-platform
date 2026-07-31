@@ -1,0 +1,22 @@
+{
+  "name": "mobile",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.0",
+    "expo": "^56.0.12",
+    "expo-status-bar": "~56.0.4",
+    "lucide-react-native": "^1.21.0",
+    "nativewind": "^4.2.5",
+    "react": "19.2.3",
+    "react-native": "^0.86.0",
+    "zustand": "^5.0.14"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "private": true
+}

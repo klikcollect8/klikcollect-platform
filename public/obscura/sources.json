@@ -1,0 +1,21 @@
+{
+  "reference": "https://obscurastudio.webflow.io/",
+  "images": {
+    "l1": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69c005fd1e74c9159c55e709_l1.avif",
+    "l3": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69bdaa4e6256c4eca62016c4_l3.avif",
+    "l4": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69e7c0970e6de79d928e3561_l4.avif",
+    "l5": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69c0066b0f9a530ad3424477_l5.avif",
+    "cg4": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69bd87dc5c8d246750f1abe4_cg4.avif",
+    "cg5": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69e7c2f12654786e7a3c99b0_cg5.avif",
+    "modular2": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69bc5e38d0ad6f33c1076b90_modular2.avif",
+    "modular3": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69c0062caee58e61480c58e5_modular3.avif",
+    "sig1": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69c0065ee0beb870f28343d3_%20sig1.avif",
+    "va4": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69dbe52adc756bfef07c5142_va4.avif",
+    "m1": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69e7c212eff25cb0cd030a0b_m1.avif",
+    "aboutimage": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/69c045ebfcbd5385929a8dff_aboutimage.avif"
+  },
+  "fonts": {
+    "NeueMontreal-Medium": "https://cdn.prod.website-files.com/692f53da90a5f4498d0dc837/6963a3085b7c07db39165448_NeueMontreal-Medium.otf",
+    "display": "https://use.typekit.net/ays3tjm.js"
+  }
+}

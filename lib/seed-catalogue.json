@@ -1,0 +1,902 @@
+[
+  {
+    "id": "prd_baby_spinach",
+    "name": "Baby spinach bunch",
+    "description": "Tender baby spinach leaves, washed and tied for salads and sautés.",
+    "category": "Fresh Produce",
+    "priceMajor": 180,
+    "image": "/products/baby-spinach.jpeg",
+    "slug": "baby-spinach"
+  },
+  {
+    "id": "prd_butterhead_lettuce",
+    "name": "Butterhead lettuce",
+    "description": "Crisp butterhead lettuce with soft, sweet leaves.",
+    "category": "Fresh Produce",
+    "priceMajor": 160,
+    "image": "/products/butterhead-lettuce.jpeg",
+    "slug": "butterhead-lettuce"
+  },
+  {
+    "id": "prd_broccoli",
+    "name": "Organic broccoli",
+    "description": "Fresh organic broccoli crown, ideal for steaming or roasting.",
+    "category": "Fresh Produce",
+    "priceMajor": 220,
+    "image": "/products/organic-broccoli.jpeg",
+    "slug": "organic-broccoli"
+  },
+  {
+    "id": "prd_avocado",
+    "name": "Ripe Hass avocado",
+    "description": "Creamy ripe avocado, ready to slice.",
+    "category": "Fresh Produce",
+    "priceMajor": 120,
+    "image": "/products/ripe-avocado.jpeg",
+    "slug": "ripe-avocado"
+  },
+  {
+    "id": "prd_apple",
+    "name": "Fresh red apple",
+    "description": "Crisp red apple for snacking or lunchboxes.",
+    "category": "Fresh Produce",
+    "priceMajor": 80,
+    "image": "/products/red-apple.jpeg",
+    "slug": "red-apple"
+  },
+  {
+    "id": "prd_carrots",
+    "name": "Orange carrots (bunch)",
+    "description": "Sweet orange carrots with leafy tops.",
+    "category": "Fresh Produce",
+    "priceMajor": 140,
+    "image": "/products/orange-carrots.jpeg",
+    "slug": "orange-carrots"
+  },
+  {
+    "id": "prd_potatoes",
+    "name": "Organic russet potatoes",
+    "description": "Earth-grown russet potatoes for roasting and mashing.",
+    "category": "Fresh Produce",
+    "priceMajor": 250,
+    "image": "/products/russet-potatoes.jpeg",
+    "slug": "russet-potatoes"
+  },
+  {
+    "id": "prd_tomatoes",
+    "name": "Vine tomatoes",
+    "description": "Ripe vine tomatoes with rich flavour.",
+    "category": "Fresh Produce",
+    "priceMajor": 200,
+    "image": "/products/vine-tomatoes.jpeg",
+    "slug": "vine-tomatoes"
+  },
+  {
+    "id": "prd_bell_peppers",
+    "name": "Bell peppers (pair)",
+    "description": "Fresh red and yellow bell peppers.",
+    "category": "Fresh Produce",
+    "priceMajor": 190,
+    "image": "/products/bell-peppers.jpeg",
+    "slug": "bell-peppers"
+  },
+  {
+    "id": "prd_cucumbers",
+    "name": "Green cucumbers",
+    "description": "Cool, crisp cucumbers for salads.",
+    "category": "Fresh Produce",
+    "priceMajor": 130,
+    "image": "/products/green-cucumbers.jpeg",
+    "slug": "green-cucumbers"
+  },
+  {
+    "id": "prd_mozzarella",
+    "name": "Organic mozzarella",
+    "description": "Soft organic mozzarella ball, perfect for salads and pizza.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 480,
+    "image": "/products/organic-mozzarella.jpeg",
+    "slug": "organic-mozzarella"
+  },
+  {
+    "id": "prd_oat_milk",
+    "name": "Oat milk carton",
+    "description": "Creamy plant-based oat milk for coffee and cereal.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 320,
+    "image": "/products/oat-milk.jpeg",
+    "slug": "oat-milk"
+  },
+  {
+    "id": "prd_greek_yogurt",
+    "name": "Greek yogurt",
+    "description": "Thick strained Greek yogurt.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 280,
+    "image": "/products/greek-yogurt.jpeg",
+    "slug": "greek-yogurt"
+  },
+  {
+    "id": "prd_cottage_cheese",
+    "name": "Cottage cheese",
+    "description": "Fresh cottage cheese tub for breakfast bowls.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 350,
+    "image": "/products/cottage-cheese.jpeg",
+    "slug": "cottage-cheese"
+  },
+  {
+    "id": "prd_cheddar",
+    "name": "Mature cheddar wedge",
+    "description": "Aged cheddar with a sharp, creamy bite.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 520,
+    "image": "/products/cheddar-cheese.jpeg",
+    "slug": "cheddar-cheese"
+  },
+  {
+    "id": "prd_cream",
+    "name": "Fresh pouring cream",
+    "description": "Rich fresh cream in a glass bottle.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 390,
+    "image": "/products/fresh-cream.jpeg",
+    "slug": "fresh-cream"
+  },
+  {
+    "id": "prd_organic_milk",
+    "name": "Organic milk",
+    "description": "Full-cream organic milk in glass.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 240,
+    "image": "/products/organic-milk.jpeg",
+    "slug": "organic-milk"
+  },
+  {
+    "id": "prd_yogurt_jar",
+    "name": "Organic yogurt jar",
+    "description": "Live-culture organic yogurt.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 260,
+    "image": "/products/organic-yogurt.jpeg",
+    "slug": "organic-yogurt"
+  },
+  {
+    "id": "prd_butter",
+    "name": "Organic butter",
+    "description": "Cultured organic butter wrapped in parchment.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 420,
+    "image": "/products/organic-butter.jpeg",
+    "slug": "organic-butter"
+  },
+  {
+    "id": "prd_eggs",
+    "name": "Farm-fresh eggs (3)",
+    "description": "Free-range farm eggs with rich yolks.",
+    "category": "Dairy & Eggs",
+    "priceMajor": 150,
+    "image": "/products/farm-eggs.jpeg",
+    "slug": "farm-eggs"
+  },
+  {
+    "id": "prd_green_tea",
+    "name": "Green tea",
+    "description": "Freshly steeped green tea, light and clean.",
+    "category": "Beverages",
+    "priceMajor": 180,
+    "image": "/products/green-tea.jpeg",
+    "slug": "green-tea"
+  },
+  {
+    "id": "prd_hot_chocolate",
+    "name": "Hot chocolate",
+    "description": "Rich hot chocolate with a frothy finish.",
+    "category": "Beverages",
+    "priceMajor": 220,
+    "image": "/products/hot-chocolate.jpeg",
+    "slug": "hot-chocolate"
+  },
+  {
+    "id": "prd_espresso",
+    "name": "Black espresso",
+    "description": "Bold single-origin espresso shot.",
+    "category": "Beverages",
+    "priceMajor": 200,
+    "image": "/products/black-espresso.jpeg",
+    "slug": "black-espresso"
+  },
+  {
+    "id": "prd_lemonade",
+    "name": "Fresh lemonade",
+    "description": "House lemonade with real lemon.",
+    "category": "Beverages",
+    "priceMajor": 250,
+    "image": "/products/fresh-lemonade.jpeg",
+    "slug": "fresh-lemonade"
+  },
+  {
+    "id": "prd_orange_juice",
+    "name": "Fresh orange juice",
+    "description": "Cold-pressed orange juice, no additives.",
+    "category": "Beverages",
+    "priceMajor": 280,
+    "image": "/products/orange-juice.jpeg",
+    "slug": "orange-juice"
+  },
+  {
+    "id": "prd_coconut_water",
+    "name": "Coconut water",
+    "description": "Naturally refreshing coconut water.",
+    "category": "Beverages",
+    "priceMajor": 300,
+    "image": "/products/coconut-water.jpeg",
+    "slug": "coconut-water"
+  },
+  {
+    "id": "prd_mineral_water",
+    "name": "Mineral water",
+    "description": "Still mineral water in glass.",
+    "category": "Beverages",
+    "priceMajor": 120,
+    "image": "/products/mineral-water.jpeg",
+    "slug": "mineral-water"
+  },
+  {
+    "id": "prd_apple_juice",
+    "name": "Organic apple juice",
+    "description": "Pressed organic apple juice.",
+    "category": "Beverages",
+    "priceMajor": 270,
+    "image": "/products/apple-juice.jpeg",
+    "slug": "apple-juice"
+  },
+  {
+    "id": "prd_sparkling_water",
+    "name": "Sparkling water",
+    "description": "Crisp sparkling mineral water.",
+    "category": "Beverages",
+    "priceMajor": 140,
+    "image": "/products/sparkling-water.jpeg",
+    "slug": "sparkling-water"
+  },
+  {
+    "id": "prd_chamomile",
+    "name": "Chamomile tea",
+    "description": "Calming chamomile infusion.",
+    "category": "Beverages",
+    "priceMajor": 190,
+    "image": "/products/chamomile-tea.jpeg",
+    "slug": "chamomile-tea"
+  },
+  {
+    "id": "prd_olive_oil",
+    "name": "Extra virgin olive oil",
+    "description": "Cold-pressed olive oil in dark glass.",
+    "category": "Pantry",
+    "priceMajor": 890,
+    "image": "/products/olive-oil.jpeg",
+    "slug": "olive-oil"
+  },
+  {
+    "id": "prd_spaghetti",
+    "name": "Spaghetti",
+    "description": "Durum wheat spaghetti in glass storage.",
+    "category": "Pantry",
+    "priceMajor": 280,
+    "image": "/products/spaghetti.jpeg",
+    "slug": "spaghetti"
+  },
+  {
+    "id": "prd_chickpeas",
+    "name": "Dried chickpeas",
+    "description": "Dried chickpeas for stews and hummus.",
+    "category": "Pantry",
+    "priceMajor": 320,
+    "image": "/products/chickpeas.jpeg",
+    "slug": "chickpeas"
+  },
+  {
+    "id": "prd_lentils",
+    "name": "Red lentils",
+    "description": "Quick-cooking red lentils.",
+    "category": "Pantry",
+    "priceMajor": 300,
+    "image": "/products/red-lentils.jpeg",
+    "slug": "red-lentils"
+  },
+  {
+    "id": "prd_oats",
+    "name": "Rolled oats",
+    "description": "Whole rolled oats for porridge and baking.",
+    "category": "Pantry",
+    "priceMajor": 350,
+    "image": "/products/rolled-oats.jpeg",
+    "slug": "rolled-oats"
+  },
+  {
+    "id": "prd_penne",
+    "name": "Penne pasta",
+    "description": "Bronze-cut penne pasta.",
+    "category": "Pantry",
+    "priceMajor": 290,
+    "image": "/products/penne.jpeg",
+    "slug": "penne"
+  },
+  {
+    "id": "prd_quinoa",
+    "name": "Quinoa",
+    "description": "Protein-rich white quinoa.",
+    "category": "Pantry",
+    "priceMajor": 480,
+    "image": "/products/quinoa.jpeg",
+    "slug": "quinoa"
+  },
+  {
+    "id": "prd_rice",
+    "name": "White rice",
+    "description": "Long-grain white rice.",
+    "category": "Pantry",
+    "priceMajor": 340,
+    "image": "/products/white-rice.jpeg",
+    "slug": "white-rice"
+  },
+  {
+    "id": "prd_sugar",
+    "name": "Cane sugar",
+    "description": "Fine cane sugar for baking and tea.",
+    "category": "Pantry",
+    "priceMajor": 220,
+    "image": "/products/cane-sugar.jpeg",
+    "slug": "cane-sugar"
+  },
+  {
+    "id": "prd_honey",
+    "name": "Raw honey",
+    "description": "Raw honey with wooden dipper.",
+    "category": "Pantry",
+    "priceMajor": 650,
+    "image": "/products/raw-honey.jpeg",
+    "slug": "raw-honey"
+  },
+  {
+    "id": "prd_cashews",
+    "name": "Cashew nuts",
+    "description": "Roasted cashew nuts, lightly salted.",
+    "category": "Snacks",
+    "priceMajor": 450,
+    "image": "/products/cashew-nuts.jpeg",
+    "slug": "cashew-nuts"
+  },
+  {
+    "id": "prd_popcorn",
+    "name": "Butter popcorn",
+    "description": "Freshly popped butter popcorn.",
+    "category": "Snacks",
+    "priceMajor": 180,
+    "image": "/products/popcorn.jpeg",
+    "slug": "popcorn"
+  },
+  {
+    "id": "prd_mixed_nuts",
+    "name": "Mixed nuts",
+    "description": "Assorted mixed nuts for snacking.",
+    "category": "Snacks",
+    "priceMajor": 520,
+    "image": "/products/mixed-nuts.jpeg",
+    "slug": "mixed-nuts"
+  },
+  {
+    "id": "prd_almonds",
+    "name": "Raw almonds",
+    "description": "Whole raw almonds.",
+    "category": "Snacks",
+    "priceMajor": 480,
+    "image": "/products/raw-almonds.jpeg",
+    "slug": "raw-almonds"
+  },
+  {
+    "id": "prd_granola_bar",
+    "name": "Oats & honey granola bar",
+    "description": "Chewy granola bar with oats and honey.",
+    "category": "Snacks",
+    "priceMajor": 160,
+    "image": "/products/granola-bar.jpeg",
+    "slug": "granola-bar"
+  },
+  {
+    "id": "prd_chocolate",
+    "name": "Dark chocolate bar",
+    "description": "Premium dark chocolate bar.",
+    "category": "Snacks",
+    "priceMajor": 350,
+    "image": "/products/chocolate-bar.jpeg",
+    "slug": "chocolate-bar"
+  },
+  {
+    "id": "prd_dried_mango",
+    "name": "Sun-dried mango",
+    "description": "Chewy sun-dried mango slices.",
+    "category": "Snacks",
+    "priceMajor": 380,
+    "image": "/products/dried-mango.jpeg",
+    "slug": "dried-mango"
+  },
+  {
+    "id": "prd_crackers",
+    "name": "Whole grain crackers",
+    "description": "Crisp whole-grain crackers.",
+    "category": "Snacks",
+    "priceMajor": 290,
+    "image": "/products/whole-grain-crackers.jpeg",
+    "slug": "whole-grain-crackers"
+  },
+  {
+    "id": "prd_pretzels",
+    "name": "Salted pretzels",
+    "description": "Classic salted pretzels.",
+    "category": "Snacks",
+    "priceMajor": 200,
+    "image": "/products/salted-pretzels.jpeg",
+    "slug": "salted-pretzels"
+  },
+  {
+    "id": "prd_trail_mix",
+    "name": "Trail mix",
+    "description": "Nuts, seeds, and dried fruit trail mix.",
+    "category": "Snacks",
+    "priceMajor": 420,
+    "image": "/products/trail-mix.jpeg",
+    "slug": "trail-mix"
+  },
+  {
+    "id": "prd_cast_iron",
+    "name": "Cast iron cooking pot",
+    "description": "Heavy cast iron pot for slow cooking.",
+    "category": "Home & Kitchen",
+    "priceMajor": 4500,
+    "image": "/products/cast-iron-pot.jpeg",
+    "slug": "cast-iron-pot"
+  },
+  {
+    "id": "prd_cereal_bowl",
+    "name": "Ceramic cereal bowl",
+    "description": "Minimal ceramic bowl with clean lines.",
+    "category": "Home & Kitchen",
+    "priceMajor": 850,
+    "image": "/products/cereal-bowl.jpeg",
+    "slug": "cereal-bowl"
+  },
+  {
+    "id": "prd_dinner_plate",
+    "name": "Ceramic dinner plate",
+    "description": "Textured-glaze ceramic dinner plate.",
+    "category": "Home & Kitchen",
+    "priceMajor": 980,
+    "image": "/products/dinner-plate.jpeg",
+    "slug": "dinner-plate"
+  },
+  {
+    "id": "prd_chef_knife",
+    "name": "Chef knife",
+    "description": "Sharp chef knife with wooden handle.",
+    "category": "Home & Kitchen",
+    "priceMajor": 3200,
+    "image": "/products/chef-knife.jpeg",
+    "slug": "chef-knife"
+  },
+  {
+    "id": "prd_measuring_cups",
+    "name": "Measuring cups set",
+    "description": "Four stainless steel measuring cups.",
+    "category": "Home & Kitchen",
+    "priceMajor": 1400,
+    "image": "/products/measuring-cups.jpeg",
+    "slug": "measuring-cups"
+  },
+  {
+    "id": "prd_storage_jar",
+    "name": "Glass storage jar",
+    "description": "Glass storage jar with wooden lid.",
+    "category": "Home & Kitchen",
+    "priceMajor": 1100,
+    "image": "/products/storage-jar.jpeg",
+    "slug": "storage-jar"
+  },
+  {
+    "id": "prd_chopping_board",
+    "name": "Oak chopping board",
+    "description": "Solid oak wooden chopping board.",
+    "category": "Home & Kitchen",
+    "priceMajor": 2800,
+    "image": "/products/chopping-board.jpeg",
+    "slug": "chopping-board"
+  },
+  {
+    "id": "prd_frying_pan",
+    "name": "Stainless steel frying pan",
+    "description": "Durable stainless steel frying pan.",
+    "category": "Home & Kitchen",
+    "priceMajor": 3600,
+    "image": "/products/frying-pan.jpeg",
+    "slug": "frying-pan"
+  },
+  {
+    "id": "prd_cooking_spoon",
+    "name": "Wooden cooking spoon",
+    "description": "Hand-finished wooden cooking spoon.",
+    "category": "Home & Kitchen",
+    "priceMajor": 650,
+    "image": "/products/cooking-spoon.jpeg",
+    "slug": "cooking-spoon"
+  },
+  {
+    "id": "prd_kitchen_towel",
+    "name": "Linen kitchen towel",
+    "description": "Soft linen kitchen towel.",
+    "category": "Home & Kitchen",
+    "priceMajor": 900,
+    "image": "/products/kitchen-towel.jpeg",
+    "slug": "kitchen-towel"
+  },
+  {
+    "id": "prd_dish_brush",
+    "name": "Bamboo dish brush",
+    "description": "Eco bamboo dish brush for the sink.",
+    "category": "Household Essentials",
+    "priceMajor": 450,
+    "image": "/products/dish-brush.jpeg",
+    "slug": "dish-brush"
+  },
+  {
+    "id": "prd_cleaning_spray",
+    "name": "Glass cleaning spray",
+    "description": "All-purpose glass cleaning spray.",
+    "category": "Household Essentials",
+    "priceMajor": 380,
+    "image": "/products/cleaning-spray.jpeg",
+    "slug": "cleaning-spray"
+  },
+  {
+    "id": "prd_dish_soap",
+    "name": "Dish soap",
+    "description": "Gentle dish soap in a glass dispenser.",
+    "category": "Household Essentials",
+    "priceMajor": 420,
+    "image": "/products/dish-soap.jpeg",
+    "slug": "dish-soap"
+  },
+  {
+    "id": "prd_bin_bags",
+    "name": "Bin bags",
+    "description": "Sturdy grey bin bags roll.",
+    "category": "Household Essentials",
+    "priceMajor": 280,
+    "image": "/products/bin-bags.jpeg",
+    "slug": "bin-bags"
+  },
+  {
+    "id": "prd_microfiber",
+    "name": "Microfiber cleaning cloth",
+    "description": "Reusable microfiber cleaning cloth.",
+    "category": "Household Essentials",
+    "priceMajor": 220,
+    "image": "/products/microfiber-cloth.jpeg",
+    "slug": "microfiber-cloth"
+  },
+  {
+    "id": "prd_detergent",
+    "name": "Eco laundry detergent",
+    "description": "Plant-based laundry detergent.",
+    "category": "Household Essentials",
+    "priceMajor": 680,
+    "image": "/products/laundry-detergent.jpeg",
+    "slug": "laundry-detergent"
+  },
+  {
+    "id": "prd_detergent_pods",
+    "name": "Laundry detergent pods",
+    "description": "Concentrated laundry detergent pods.",
+    "category": "Household Essentials",
+    "priceMajor": 750,
+    "image": "/products/detergent-pods.jpeg",
+    "slug": "detergent-pods"
+  },
+  {
+    "id": "prd_sponges",
+    "name": "Kitchen sponges",
+    "description": "Dual kitchen sponges for dishes.",
+    "category": "Household Essentials",
+    "priceMajor": 180,
+    "image": "/products/kitchen-sponges.jpeg",
+    "slug": "kitchen-sponges"
+  },
+  {
+    "id": "prd_bucket",
+    "name": "Cleaning bucket",
+    "description": "Sturdy bucket with wooden handle.",
+    "category": "Household Essentials",
+    "priceMajor": 550,
+    "image": "/products/cleaning-bucket.jpeg",
+    "slug": "cleaning-bucket"
+  },
+  {
+    "id": "prd_mop",
+    "name": "Floor mop",
+    "description": "Wooden-handle mop for hard floors.",
+    "category": "Household Essentials",
+    "priceMajor": 980,
+    "image": "/products/floor-mop.jpeg",
+    "slug": "floor-mop"
+  },
+  {
+    "id": "prd_lip_balm",
+    "name": "Lip balm",
+    "description": "Nourishing lip balm in an aluminum tube.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 320,
+    "image": "/products/lip-balm.jpeg",
+    "slug": "lip-balm"
+  },
+  {
+    "id": "prd_vitamin_c",
+    "name": "Vitamin C capsules",
+    "description": "Vitamin C supplement in amber glass.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 1200,
+    "image": "/products/vitamin-c.jpeg",
+    "slug": "vitamin-c"
+  },
+  {
+    "id": "prd_multivitamin",
+    "name": "Daily multivitamin",
+    "description": "Daily multivitamin capsules.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 1450,
+    "image": "/products/multivitamin.jpeg",
+    "slug": "multivitamin"
+  },
+  {
+    "id": "prd_hand_sanitizer",
+    "name": "Hand sanitizer",
+    "description": "Alcohol-based hand sanitizer.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 350,
+    "image": "/products/hand-sanitizer.jpeg",
+    "slug": "hand-sanitizer"
+  },
+  {
+    "id": "prd_moisturizer",
+    "name": "Facial moisturizer",
+    "description": "Daily facial moisturizer in frosted glass.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 1600,
+    "image": "/products/facial-moisturizer.jpeg",
+    "slug": "facial-moisturizer"
+  },
+  {
+    "id": "prd_craft_soap",
+    "name": "Handcrafted soap",
+    "description": "Botanical handcrafted soap on a stone dish.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 480,
+    "image": "/products/handcrafted-soap.jpeg",
+    "slug": "handcrafted-soap"
+  },
+  {
+    "id": "prd_first_aid",
+    "name": "First aid kit",
+    "description": "Compact metal first aid kit.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 2200,
+    "image": "/products/first-aid-kit.jpeg",
+    "slug": "first-aid-kit"
+  },
+  {
+    "id": "prd_thermometer",
+    "name": "Digital thermometer",
+    "description": "Fast-read digital thermometer.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 980,
+    "image": "/products/digital-thermometer.jpeg",
+    "slug": "digital-thermometer"
+  },
+  {
+    "id": "prd_sunscreen",
+    "name": "Daily sunscreen",
+    "description": "Broad-spectrum daily sunscreen.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 1350,
+    "image": "/products/sunscreen.jpeg",
+    "slug": "sunscreen"
+  },
+  {
+    "id": "prd_bandages",
+    "name": "Fabric bandages",
+    "description": "Soft fabric adhesive bandages.",
+    "category": "Health & Wellness (non-prescription)",
+    "priceMajor": 280,
+    "image": "/products/fabric-bandages.jpeg",
+    "slug": "fabric-bandages"
+  },
+  {
+    "id": "prd_sourdough",
+    "name": "Artisan sourdough loaf",
+    "description": "Freshly baked artisan sourdough loaf.",
+    "category": "Groceries",
+    "priceMajor": 450,
+    "image": "/products/sourdough-loaf.jpeg",
+    "slug": "sourdough-loaf"
+  },
+  {
+    "id": "prd_peanut_butter",
+    "name": "Peanut butter",
+    "description": "Smooth natural peanut butter.",
+    "category": "Groceries",
+    "priceMajor": 520,
+    "image": "/products/peanut-butter.jpeg",
+    "slug": "peanut-butter"
+  },
+  {
+    "id": "prd_strawberry_jam",
+    "name": "Strawberry jam",
+    "description": "Small-batch strawberry jam.",
+    "category": "Groceries",
+    "priceMajor": 480,
+    "image": "/products/strawberry-jam.jpeg",
+    "slug": "strawberry-jam"
+  },
+  {
+    "id": "prd_coffee_beans",
+    "name": "Coffee beans",
+    "description": "Roasted coffee beans in dark glass.",
+    "category": "Groceries",
+    "priceMajor": 950,
+    "image": "/products/coffee-beans.jpeg",
+    "slug": "coffee-beans"
+  },
+  {
+    "id": "prd_black_tea",
+    "name": "Black tea tin",
+    "description": "Loose-leaf black tea in a metal tin.",
+    "category": "Groceries",
+    "priceMajor": 680,
+    "image": "/products/black-tea.jpeg",
+    "slug": "black-tea"
+  },
+  {
+    "id": "prd_flour",
+    "name": "Baking flour",
+    "description": "All-purpose flour in a linen bag.",
+    "category": "Groceries",
+    "priceMajor": 380,
+    "image": "/products/flour-bag.jpeg",
+    "slug": "flour-bag"
+  },
+  {
+    "id": "prd_sea_salt",
+    "name": "Sea salt",
+    "description": "Flaky sea salt in a ceramic jar.",
+    "category": "Groceries",
+    "priceMajor": 420,
+    "image": "/products/sea-salt.jpeg",
+    "slug": "sea-salt"
+  },
+  {
+    "id": "prd_lemons",
+    "name": "Fresh lemons",
+    "description": "Bright lemons for cooking and drinks.",
+    "category": "Groceries",
+    "priceMajor": 100,
+    "image": "/products/lemons.jpeg",
+    "slug": "lemons"
+  },
+  {
+    "id": "prd_oranges",
+    "name": "Ripe oranges",
+    "description": "Juicy ripe oranges.",
+    "category": "Groceries",
+    "priceMajor": 160,
+    "image": "/products/oranges.jpeg",
+    "slug": "oranges"
+  },
+  {
+    "id": "prd_bananas",
+    "name": "Yellow bananas",
+    "description": "Ripe yellow bananas.",
+    "category": "Groceries",
+    "priceMajor": 140,
+    "image": "/products/bananas.jpeg",
+    "slug": "bananas"
+  },
+  {
+    "id": "prd_shopping_tote",
+    "name": "Canvas shopping tote",
+    "description": "Reusable cotton canvas shopping tote.",
+    "category": "General Essentials",
+    "priceMajor": 750,
+    "image": "/products/shopping-tote.jpeg",
+    "slug": "shopping-tote"
+  },
+  {
+    "id": "prd_tissue_box",
+    "name": "Tissue box",
+    "description": "Soft facial tissues in a cardboard box.",
+    "category": "General Essentials",
+    "priceMajor": 280,
+    "image": "/products/tissue-box.jpeg",
+    "slug": "tissue-box"
+  },
+  {
+    "id": "prd_paper_towels",
+    "name": "Recycled paper towels",
+    "description": "Recycled paper towel roll.",
+    "category": "General Essentials",
+    "priceMajor": 320,
+    "image": "/products/paper-towels.jpeg",
+    "slug": "paper-towels"
+  },
+  {
+    "id": "prd_toilet_paper",
+    "name": "Recycled toilet paper",
+    "description": "Soft recycled toilet paper.",
+    "category": "General Essentials",
+    "priceMajor": 450,
+    "image": "/products/toilet-paper.jpeg",
+    "slug": "toilet-paper"
+  },
+  {
+    "id": "prd_water_bottle",
+    "name": "Reusable water bottle",
+    "description": "Reusable glass bottle for pure water.",
+    "category": "General Essentials",
+    "priceMajor": 890,
+    "image": "/products/water-bottle.jpeg",
+    "slug": "water-bottle"
+  },
+  {
+    "id": "prd_bamboo_toothbrush",
+    "name": "Bamboo toothbrush",
+    "description": "Sustainable bamboo toothbrush.",
+    "category": "General Essentials",
+    "priceMajor": 250,
+    "image": "/products/bamboo-toothbrush.jpeg",
+    "slug": "bamboo-toothbrush"
+  },
+  {
+    "id": "prd_toothpaste",
+    "name": "Toothpaste",
+    "description": "Mint toothpaste in aluminum tube.",
+    "category": "General Essentials",
+    "priceMajor": 380,
+    "image": "/products/toothpaste.jpeg",
+    "slug": "toothpaste"
+  },
+  {
+    "id": "prd_herbal_soap",
+    "name": "Herbal soap bar",
+    "description": "Herbal soap bar wrapped in paper.",
+    "category": "General Essentials",
+    "priceMajor": 320,
+    "image": "/products/herbal-soap.jpeg",
+    "slug": "herbal-soap"
+  },
+  {
+    "id": "prd_reed_diffuser",
+    "name": "Reed diffuser",
+    "description": "Matte white reed diffuser for the home.",
+    "category": "General Essentials",
+    "priceMajor": 1800,
+    "image": "/products/reed-diffuser.jpeg",
+    "slug": "reed-diffuser"
+  },
+  {
+    "id": "prd_rubber_gloves",
+    "name": "Rubber gloves",
+    "description": "Durable yellow rubber cleaning gloves.",
+    "category": "General Essentials",
+    "priceMajor": 280,
+    "image": "/products/rubber-gloves.jpeg",
+    "slug": "rubber-gloves"
+  }
+]
