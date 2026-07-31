@@ -41,7 +41,7 @@ export default function AuthShell({
             </Link>
           </header>
 
-          <div className="flex flex-1 flex-col justify-center px-6 pb-12 pt-6 sm:px-10 lg:px-12 lg:pb-14 lg:pt-0 xl:px-16">
+          <div className="flex flex-1 flex-col justify-start px-6 pb-12 pt-2 sm:px-10 lg:px-12 lg:pb-14 lg:pt-4 xl:px-16">
             <div className="mx-auto w-full max-w-[340px]">
               <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-black/35">
                 {eyebrow}
@@ -51,7 +51,7 @@ export default function AuthShell({
                 {title}
               </h1>
 
-              <p className="mt-3.5 max-w-[28ch] text-[15px] leading-[1.5] text-black/45">
+              <p className="mt-3 max-w-[28ch] text-[15px] leading-[1.5] text-black/45">
                 {description}
               </p>
 
@@ -61,9 +61,9 @@ export default function AuthShell({
                 </p>
               ) : null}
 
-              <div className="mt-8">{children}</div>
+              <div className="mt-7">{children}</div>
 
-              <p className="mt-8 text-[13px] leading-relaxed text-black/40">
+              <p className="mt-7 text-[13px] leading-relaxed text-black/40">
                 {alternateLabel}{" "}
                 <Link
                   href={alternateHref}

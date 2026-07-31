@@ -109,7 +109,7 @@ export default function AuthCarousel() {
         }}
       />
 
-      <div className="absolute inset-0 z-10 flex flex-col justify-between px-6 py-5 sm:px-8 lg:px-10 lg:py-9 xl:px-12">
+      <div className="absolute inset-0 z-10 flex flex-col px-6 py-5 sm:px-8 lg:px-10 lg:py-9 xl:px-12">
         <Link
           href="/"
           className="w-fit text-[13px] font-medium uppercase tracking-[0.16em] text-black transition-opacity hover:opacity-50"
@@ -117,7 +117,7 @@ export default function AuthCarousel() {
           KLIKCOLLECT®
         </Link>
 
-        <div className="max-w-[17.5rem] lg:pb-1">
+        <div className="mt-8 max-w-[17.5rem] lg:mt-12">
           <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/45">
             Nairobi · KES
           </p>
