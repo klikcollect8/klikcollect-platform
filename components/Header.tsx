@@ -78,9 +78,10 @@ export default function Header() {
         <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 sm:h-[72px] sm:px-10 lg:px-14 xl:px-20">
           <Link
             href="/"
-            className="min-h-11 min-w-0 truncate pr-2 text-[14px] font-medium uppercase tracking-[0.12em] text-black sm:text-[16px] sm:tracking-[0.14em]"
+            className="min-h-11 min-w-0 truncate pr-2 text-[17px] font-medium uppercase tracking-[0.12em] text-black sm:text-[20px] sm:tracking-[0.14em]"
           >
-            KLIKCOLLECT®
+            KLIKCOLLECT
+            <span className="align-super text-[0.55em] tracking-normal">™</span>
           </Link>
 
           <nav className="hidden items-center gap-10 md:flex">
@@ -144,8 +145,9 @@ export default function Header() {
       {menuOpen ? (
         <div className="fixed inset-0 z-[100] flex flex-col bg-[#f7f7f5]">
           <div className="flex h-16 shrink-0 items-center justify-between px-4 sm:px-5">
-            <span className="text-[14px] font-medium uppercase tracking-[0.12em] sm:text-[15px]">
-              KLIKCOLLECT®
+            <span className="text-[17px] font-medium uppercase tracking-[0.12em] sm:text-[19px]">
+              KLIKCOLLECT
+              <span className="align-super text-[0.55em] tracking-normal">™</span>
             </span>
             <button
               type="button"

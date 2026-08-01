@@ -86,10 +86,11 @@ export default function ObscuraLoader() {
         {progress}%
       </p>
       <p
-        className="mt-8 text-[13px] font-medium uppercase tracking-[0.22em]"
+        className="mt-8 text-[15px] font-medium uppercase tracking-[0.22em]"
         style={{ fontFamily: "var(--font-montreal), sans-serif" }}
       >
-        KLIKCOLLECT®
+        KLIKCOLLECT
+        <span className="align-super text-[0.55em] tracking-normal">™</span>
       </p>
     </div>
   );
