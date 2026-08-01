@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidGtin, normaliseBarcode } from "@/lib/barcode";
 import { findByBarcode } from "@/lib/inventory";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { requireVendorActor } from "@/lib/auth/require-vendor";
 import { availableOf } from "@/lib/inventory";
 import { setProductBarcode, listCatalogue } from "@/lib/catalogue-store";
@@ -11,7 +10,6 @@ import { setProductBarcode, listCatalogue } from "@/lib/catalogue-store";
  * GET ?code=...  or POST { code }
  */
 export async function GET(request: NextRequest) {
-  await ensureNairobiSeed();
   const code = request.nextUrl.searchParams.get("code") || "";
   return lookup(code);
 }

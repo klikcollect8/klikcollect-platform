@@ -7,7 +7,7 @@ import path from "path";
 import type { User } from "@clerk/nextjs/server";
 import { clerkEmail, resolveAdminRole } from "@/lib/admin-auth";
 import { DEMO_VENDOR_ID } from "@/lib/tenancy";
-import { VENDORS } from "@/lib/seed-nairobi";
+import { getAdmittedVendors } from "@/lib/admitted-vendors";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const FILE = "vendor-memberships.json";
@@ -77,8 +77,8 @@ export async function ensureDemoMemberships(): Promise<void> {
       });
       changed = true;
     }
-    // Also grant ownership on first founding vendor for OS demos
-    const founding = VENDORS[0]?.id;
+    const admitted = await getAdmittedVendors();
+    const founding = admitted[0]?.id;
     if (founding && !rows.some((r) => r.email === email && r.vendorId === founding)) {
       rows.push({
         clerkUserId: `email:${email}`,
@@ -141,8 +141,9 @@ export async function resolveVendorAccess(user: User): Promise<{
 } | null> {
   const adminRole = await resolveAdminRole(user);
   if (adminRole) {
+    const admitted = await getAdmittedVendors();
     return {
-      vendorIds: [DEMO_VENDOR_ID, ...VENDORS.map((v) => v.id)],
+      vendorIds: [DEMO_VENDOR_ID, ...admitted.map((v) => v.id)],
       role: "platform_admin",
       isPlatformAdmin: true,
     };

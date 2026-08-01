@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { listApplications } from "@/lib/m1-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { StatusBadge } from "@/components/os/StatusBadge";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminVendorsPage() {
-  await ensureNairobiSeed();
   const apps = await listApplications();
   const pending = apps.filter((a) => a.status === "pending");
   const admitted = apps.filter((a) => a.status === "admitted");

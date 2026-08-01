@@ -1,4 +1,8 @@
-/** Shared founding-cohort vendor directory for storefront + seed. */
+/**
+ * Seed-input founding cohort only.
+ * Runtime storefront/OS reads vendors from Supabase (`getAdmittedVendors`).
+ * Consumed by `scripts/seed-supabase-catalogue.ts`.
+ */
 
 export type FoundingVendor = {
   id: string;

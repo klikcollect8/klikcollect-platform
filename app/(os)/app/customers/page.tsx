@@ -3,11 +3,9 @@ import { ModuleShell } from "@/components/os/ModuleShell";
 import { OsEmpty, OsPanel, OsStat } from "@/components/os/OsPanel";
 import { messages } from "@/messages/en-KE";
 import { listApplications } from "@/lib/m1-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { ensureOrderSeed, listOsOrders } from "@/lib/orders-store";
 
 export default async function OsCustomersPage() {
-  await ensureNairobiSeed();
   await ensureOrderSeed();
 
   const [applications, orders] = await Promise.all([

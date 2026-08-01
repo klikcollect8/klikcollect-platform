@@ -1,11 +1,6 @@
-import { ensureNairobiSeed } from "../lib/seed-nairobi";
-
-async function main() {
-  const result = await ensureNairobiSeed();
-  console.log("Reseeded:", result);
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+/**
+ * @deprecated Local reseed retired.
+ * Run: npm run seed:supabase
+ */
+console.error("scripts/reseed.ts is retired. Use: npm run seed:supabase");
+process.exit(1);

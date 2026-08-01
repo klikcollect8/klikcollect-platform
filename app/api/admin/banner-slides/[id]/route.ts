@@ -5,17 +5,15 @@ import { requireAdmin, handleRequireAdminError } from "@/lib/auth/require-admin"
 function mapSlide(data: Record<string, unknown>) {
   return {
     id: data.id,
-    title: data.title,
-    subtitle: data.subtitle,
-    ctaText: data.cta_text,
-    ctaLink: data.cta_link,
+    title: data.headline || data.title || "",
+    subtitle: data.sub || data.subtitle || null,
+    ctaText: data.cta_label || data.cta_text || "Shop now",
+    ctaLink: data.cta_href || data.cta_link || "/shop",
     imageUrl: data.image_url,
-    bgColor: data.bg_color,
-    textColor: data.text_color,
-    enabled: data.enabled,
-    displayOrder: data.display_order,
+    eyebrow: data.eyebrow,
+    enabled: data.is_active ?? data.enabled ?? true,
+    displayOrder: data.sort_order ?? data.display_order ?? 0,
     createdAt: data.created_at,
-    updatedAt: data.updated_at,
   };
 }
 
@@ -38,7 +36,7 @@ export async function GET(
       return NextResponse.json({ error: "Banner slide not found" }, { status: 404 });
     }
 
-    return NextResponse.json(mapSlide(data));
+    return NextResponse.json(mapSlide(data as Record<string, unknown>));
   } catch (error) {
     return handleRequireAdminError(error);
   }
@@ -59,15 +57,14 @@ export async function PATCH(
     const body = await request.json();
     const updateData: Record<string, unknown> = {};
 
-    if (body.title !== undefined) updateData.title = body.title;
-    if (body.subtitle !== undefined) updateData.subtitle = body.subtitle || null;
-    if (body.ctaText !== undefined) updateData.cta_text = body.ctaText;
-    if (body.ctaLink !== undefined) updateData.cta_link = body.ctaLink;
+    if (body.title !== undefined) updateData.headline = body.title;
+    if (body.subtitle !== undefined) updateData.sub = body.subtitle || null;
+    if (body.eyebrow !== undefined) updateData.eyebrow = body.eyebrow;
+    if (body.ctaText !== undefined) updateData.cta_label = body.ctaText;
+    if (body.ctaLink !== undefined) updateData.cta_href = body.ctaLink;
     if (body.imageUrl !== undefined) updateData.image_url = body.imageUrl || null;
-    if (body.bgColor !== undefined) updateData.bg_color = body.bgColor;
-    if (body.textColor !== undefined) updateData.text_color = body.textColor;
-    if (body.enabled !== undefined) updateData.enabled = body.enabled;
-    if (body.displayOrder !== undefined) updateData.display_order = body.displayOrder;
+    if (body.enabled !== undefined) updateData.is_active = body.enabled;
+    if (body.displayOrder !== undefined) updateData.sort_order = body.displayOrder;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
@@ -92,7 +89,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Slide not found" }, { status: 404 });
     }
 
-    return NextResponse.json(mapSlide(data));
+    return NextResponse.json(mapSlide(data as Record<string, unknown>));
   } catch (error) {
     return handleRequireAdminError(error);
   }

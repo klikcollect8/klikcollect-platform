@@ -1,5 +1,3 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { publicId } from "./ids";
 import {
   getCatalogueProduct,
@@ -7,18 +5,14 @@ import {
   mutateCatalogueProduct,
   type CatalogueProduct,
 } from "./catalogue-store";
-
-const DATA_DIR = path.join(process.cwd(), ".data");
-const MOVEMENTS_FILE = "inventory-movements.jsonl";
+import { getServiceSupabase } from "@/lib/supabase/admin";
 
 export type InventoryMovement = {
   id: string;
   productId: string;
   vendorId: string;
   type: "adjust" | "reserve" | "release" | "commit" | "sale";
-  /** Delta to on_hand (negative = decrement). */
   onHandDelta: number;
-  /** Delta to reserved (positive = more reserved). */
   reservedDelta: number;
   reason: string;
   refType?: "order" | "pos" | "manual";
@@ -27,46 +21,76 @@ export type InventoryMovement = {
   actorUserId?: string;
 };
 
-export function availableOf(p: Pick<CatalogueProduct, "onHand" | "reserved" | "stock">): number {
+export function availableOf(
+  p: Pick<CatalogueProduct, "onHand" | "reserved" | "stock">,
+): number {
   const onHand = p.onHand ?? p.stock ?? 0;
   const reserved = p.reserved ?? 0;
   return Math.max(0, onHand - reserved);
 }
 
 async function appendMovement(m: InventoryMovement) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.appendFile(path.join(DATA_DIR, MOVEMENTS_FILE), JSON.stringify(m) + "\n", "utf8");
+  const sb = getServiceSupabase();
+  await sb.from("inventory_movements").insert({
+    offer_public_id: m.productId,
+    product_public_id: m.productId,
+    vendor_public_id: m.vendorId,
+    kind: m.type,
+    quantity: m.onHandDelta || m.reservedDelta,
+    meta: {
+      onHandDelta: m.onHandDelta,
+      reservedDelta: m.reservedDelta,
+      reason: m.reason,
+      refType: m.refType,
+      refId: m.refId,
+      actorUserId: m.actorUserId,
+    },
+  });
 }
 
 export async function listMovements(limit = 100): Promise<InventoryMovement[]> {
-  try {
-    const raw = await fs.readFile(path.join(DATA_DIR, MOVEMENTS_FILE), "utf8");
-    const lines = raw.split("\n").filter(Boolean);
-    return lines
-      .slice(-limit)
-      .map((l) => JSON.parse(l) as InventoryMovement)
-      .reverse();
-  } catch {
-    return [];
-  }
+  const sb = getServiceSupabase();
+  const { data, error } = await sb
+    .from("inventory_movements")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data || []).map((r) => {
+    const meta = (r.meta || {}) as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      productId: r.offer_public_id || r.product_public_id || "",
+      vendorId: r.vendor_public_id || "",
+      type: r.kind as InventoryMovement["type"],
+      onHandDelta: Number(meta.onHandDelta || 0),
+      reservedDelta: Number(meta.reservedDelta || 0),
+      reason: String(meta.reason || r.kind),
+      refType: meta.refType as InventoryMovement["refType"],
+      refId: meta.refId ? String(meta.refId) : undefined,
+      createdAt: r.created_at,
+      actorUserId: meta.actorUserId ? String(meta.actorUserId) : undefined,
+    };
+  });
 }
 
-/**
- * INV-7: atomic conditional reserve.
- * available = on_hand − reserved; fails if qty > available.
- */
 export async function reserveStock(input: {
   productId: string;
   quantity: number;
   refType: "order" | "pos";
   refId: string;
   actorUserId?: string;
-}): Promise<{ ok: true; product: CatalogueProduct } | { ok: false; code: string; message: string }> {
+}): Promise<
+  | { ok: true; product: CatalogueProduct }
+  | { ok: false; code: string; message: string }
+> {
   const qty = Math.round(input.quantity);
-  if (qty <= 0) return { ok: false, code: "INVALID", message: "quantity must be positive" };
+  if (qty <= 0)
+    return { ok: false, code: "INVALID", message: "quantity must be positive" };
 
   const product = await getCatalogueProduct(input.productId);
-  if (!product) return { ok: false, code: "NOT_FOUND", message: "Product not found" };
+  if (!product)
+    return { ok: false, code: "NOT_FOUND", message: "Product not found" };
 
   const available = availableOf(product);
   if (qty > available) {
@@ -84,12 +108,13 @@ export async function reserveStock(input: {
     reserved,
     stock: onHand - reserved,
   });
-  if (!updated) return { ok: false, code: "NOT_FOUND", message: "Product not found" };
+  if (!updated)
+    return { ok: false, code: "NOT_FOUND", message: "Product not found" };
 
   await appendMovement({
     id: publicId("mov"),
     productId: input.productId,
-    vendorId: updated.vendorId,
+    vendorId: updated.vendorId || "",
     type: "reserve",
     onHandDelta: 0,
     reservedDelta: qty,
@@ -103,19 +128,23 @@ export async function reserveStock(input: {
   return { ok: true, product: updated };
 }
 
-/** Release a prior reservation (cancel / expiry). */
 export async function releaseStock(input: {
   productId: string;
   quantity: number;
   refType: "order" | "pos" | "manual";
   refId: string;
   actorUserId?: string;
-}): Promise<{ ok: true; product: CatalogueProduct } | { ok: false; code: string; message: string }> {
+}): Promise<
+  | { ok: true; product: CatalogueProduct }
+  | { ok: false; code: string; message: string }
+> {
   const qty = Math.round(input.quantity);
-  if (qty <= 0) return { ok: false, code: "INVALID", message: "quantity must be positive" };
+  if (qty <= 0)
+    return { ok: false, code: "INVALID", message: "quantity must be positive" };
 
   const product = await getCatalogueProduct(input.productId);
-  if (!product) return { ok: false, code: "NOT_FOUND", message: "Product not found" };
+  if (!product)
+    return { ok: false, code: "NOT_FOUND", message: "Product not found" };
 
   const onHand = product.onHand ?? product.stock ?? 0;
   const reserved = Math.max(0, (product.reserved ?? 0) - qty);
@@ -124,12 +153,13 @@ export async function releaseStock(input: {
     reserved,
     stock: onHand - reserved,
   });
-  if (!updated) return { ok: false, code: "NOT_FOUND", message: "Product not found" };
+  if (!updated)
+    return { ok: false, code: "NOT_FOUND", message: "Product not found" };
 
   await appendMovement({
     id: publicId("mov"),
     productId: input.productId,
-    vendorId: updated.vendorId,
+    vendorId: updated.vendorId || "",
     type: "release",
     onHandDelta: 0,
     reservedDelta: -qty,
@@ -143,24 +173,24 @@ export async function releaseStock(input: {
   return { ok: true, product: updated };
 }
 
-/**
- * Commit reserved stock (order collected / POS sale):
- * on_hand -= qty, reserved -= qty.
- */
 export async function commitStock(input: {
   productId: string;
   quantity: number;
   refType: "order" | "pos";
   refId: string;
   actorUserId?: string;
-  /** If true, decrement on_hand without requiring a prior reserve (POS path). */
   directSale?: boolean;
-}): Promise<{ ok: true; product: CatalogueProduct } | { ok: false; code: string; message: string }> {
+}): Promise<
+  | { ok: true; product: CatalogueProduct }
+  | { ok: false; code: string; message: string }
+> {
   const qty = Math.round(input.quantity);
-  if (qty <= 0) return { ok: false, code: "INVALID", message: "quantity must be positive" };
+  if (qty <= 0)
+    return { ok: false, code: "INVALID", message: "quantity must be positive" };
 
   const product = await getCatalogueProduct(input.productId);
-  if (!product) return { ok: false, code: "NOT_FOUND", message: "Product not found" };
+  if (!product)
+    return { ok: false, code: "NOT_FOUND", message: "Product not found" };
 
   let onHand = product.onHand ?? product.stock ?? 0;
   let reserved = product.reserved ?? 0;
@@ -175,24 +205,20 @@ export async function commitStock(input: {
       };
     }
     onHand -= qty;
-  } else {
-    if (qty > reserved) {
-      // Allow commit up to reserved; if under-reserved, treat remainder as direct
-      const fromReserved = reserved;
-      const remainder = qty - fromReserved;
-      if (remainder > onHand - reserved) {
-        return {
-          ok: false,
-          code: "INSUFFICIENT",
-          message: `Cannot commit ${qty} for ${product.name}`,
-        };
-      }
-      reserved = 0;
-      onHand -= qty;
-    } else {
-      reserved -= qty;
-      onHand -= qty;
+  } else if (qty > reserved) {
+    const remainder = qty - reserved;
+    if (remainder > onHand - reserved) {
+      return {
+        ok: false,
+        code: "INSUFFICIENT",
+        message: `Cannot commit ${qty} for ${product.name}`,
+      };
     }
+    reserved = 0;
+    onHand -= qty;
+  } else {
+    reserved -= qty;
+    onHand -= qty;
   }
 
   const updated = await mutateCatalogueProduct(input.productId, {
@@ -200,16 +226,19 @@ export async function commitStock(input: {
     reserved: Math.max(0, reserved),
     stock: Math.max(0, onHand - reserved),
   });
-  if (!updated) return { ok: false, code: "NOT_FOUND", message: "Product not found" };
+  if (!updated)
+    return { ok: false, code: "NOT_FOUND", message: "Product not found" };
 
   await appendMovement({
     id: publicId("mov"),
     productId: input.productId,
-    vendorId: updated.vendorId,
+    vendorId: updated.vendorId || "",
     type: input.directSale ? "sale" : "commit",
     onHandDelta: -qty,
     reservedDelta: input.directSale ? 0 : -Math.min(qty, product.reserved ?? 0),
-    reason: input.directSale ? "POS sale (money-free)" : `Commit for ${input.refType}`,
+    reason: input.directSale
+      ? "POS sale (money-free)"
+      : `Commit for ${input.refType}`,
     refType: input.refType,
     refId: input.refId,
     createdAt: new Date().toISOString(),
@@ -219,7 +248,6 @@ export async function commitStock(input: {
   return { ok: true, product: updated };
 }
 
-/** Manual on-hand adjustment (vendor inventory board). */
 export async function adjustOnHand(input: {
   productId: string;
   onHand: number;
@@ -239,7 +267,7 @@ export async function adjustOnHand(input: {
   await appendMovement({
     id: publicId("mov"),
     productId: input.productId,
-    vendorId: updated.vendorId,
+    vendorId: updated.vendorId || "",
     type: "adjust",
     onHandDelta: onHand - prev,
     reservedDelta: reserved - (product.reserved ?? 0),
@@ -251,7 +279,9 @@ export async function adjustOnHand(input: {
   return updated;
 }
 
-export async function findByBarcode(raw: string): Promise<CatalogueProduct | null> {
+export async function findByBarcode(
+  raw: string,
+): Promise<CatalogueProduct | null> {
   const { normaliseBarcode } = await import("./barcode");
   const gtin = normaliseBarcode(raw);
   if (!gtin) return null;

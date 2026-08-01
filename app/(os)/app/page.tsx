@@ -3,10 +3,10 @@ import { ArrowUpRight } from "lucide-react";
 import { OsPanel, OsPanelHeader } from "@/components/os/OsPanel";
 import { listCatalogue } from "@/lib/catalogue-store";
 import { countUsageEvents, listApplications, recentUsageEvents } from "@/lib/m1-store";
-import { ensureNairobiSeed, VENDORS } from "@/lib/seed-nairobi";
 import { ensureOrderSeed, listOsOrders } from "@/lib/orders-store";
 import { formatKesMajor } from "@/lib/money";
 import { ui } from "@/components/system/tokens";
+import { getAdmittedVendors } from "@/lib/admitted-vendors";
 
 function greeting() {
   const hour = Number(
@@ -22,20 +22,21 @@ function greeting() {
 }
 
 export default async function OsOverviewPage() {
-  await ensureNairobiSeed();
   await ensureOrderSeed();
 
-  const [catalogue, events, applications, recent, orders] = await Promise.all([
-    listCatalogue(),
-    countUsageEvents(),
-    listApplications(),
-    recentUsageEvents(5),
-    listOsOrders(),
-  ]);
+  const [catalogue, events, applications, recent, orders, vendors] =
+    await Promise.all([
+      listCatalogue(),
+      countUsageEvents(),
+      listApplications(),
+      recentUsageEvents(5),
+      listOsOrders(),
+      getAdmittedVendors(),
+    ]);
 
   const pendingCuration = applications.filter((a) => a.status === "pending").length;
   const onHand = catalogue.reduce((sum, p) => sum + (p.stock || 0), 0);
-  const lowStock = catalogue.filter((p) => p.stock > 0 && p.stock <= 5);
+  const lowStock = catalogue.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5);
   const toFulfill = orders.filter((o) =>
     ["pending", "confirmed", "ready"].includes(o.status),
   );
@@ -205,11 +206,11 @@ export default async function OsOverviewPage() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[14px] font-medium text-black">{p.name}</div>
                   <div className="mt-0.5 truncate text-[12px] text-black/35">
-                    {VENDORS.find((v) => v.id === p.vendorId)?.name || "Vendor"} · {p.stock}
+                    {vendors.find((v) => v.id === p.vendorId)?.name || "Vendor"} · {p.stock}
                   </div>
                 </div>
                 <div className="shrink-0 text-[14px] tabular-nums text-black">
-                  {formatKesMajor(p.price)}
+                  {formatKesMajor(p.price ?? 0)}
                 </div>
               </Link>
             ))}
@@ -220,7 +221,7 @@ export default async function OsOverviewPage() {
           <OsPanel padded={false}>
             <OsPanelHeader title="Founding vendors" />
             <div className="space-y-4">
-              {VENDORS.slice(0, 4).map((v) => (
+              {vendors.slice(0, 4).map((v) => (
                 <div key={v.id} className="flex items-center gap-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-black/[0.04] text-[11px] font-medium text-black/40">
                     {v.name

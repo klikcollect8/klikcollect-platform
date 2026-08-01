@@ -4,14 +4,21 @@ import { OsStat } from "@/components/os/OsPanel";
 import { ProductsTable } from "./ProductsTable";
 import { messages } from "@/messages/en-KE";
 import { listCatalogue } from "@/lib/catalogue-store";
-import { ensureNairobiSeed, VENDORS } from "@/lib/seed-nairobi";
+import { getAdmittedVendors } from "@/lib/admitted-vendors";
 
 export default async function OsProductsPage() {
-  await ensureNairobiSeed();
-  const products = await listCatalogue();
-  const vendorMap = Object.fromEntries(VENDORS.map((v) => [v.id, v.name]));
+  const [products, vendors] = await Promise.all([
+    listCatalogue(),
+    getAdmittedVendors(),
+  ]);
+  const vendorMap = Object.fromEntries(vendors.map((v) => [v.id, v.name]));
   const published = products.filter((p) => p.status === "published").length;
-  const low = products.filter((p) => p.stock <= 5).length;
+  const low = products.filter((p) => (p.stock ?? 0) <= 5).length;
+  const rows = products.map((p) => ({
+    ...p,
+    price: p.price ?? 0,
+    stock: p.stock ?? 0,
+  }));
 
   return (
     <ModuleShell
@@ -39,10 +46,10 @@ export default async function OsProductsPage() {
         <OsStat label="Products" value={products.length} />
         <OsStat label="Active" value={published} />
         <OsStat label="Low stock" value={low} />
-        <OsStat label="Vendors" value={VENDORS.length} />
+        <OsStat label="Vendors" value={vendors.length} />
       </div>
 
-      <ProductsTable products={products} vendors={vendorMap} />
+      <ProductsTable products={rows} vendors={vendorMap} />
     </ModuleShell>
   );
 }

@@ -10,11 +10,6 @@ import {
   MAPBOX_FLAT_STYLE,
   MAP_FLAT_ZOOM,
 } from "@/lib/mapbox";
-import {
-  resolveVendorAddress,
-  resolveVendorCoords,
-  vendorById,
-} from "@/lib/founding-vendors";
 import { resolveVendorSlug } from "@/lib/vendor-slug";
 import type { MapMarker } from "@/components/map/MapCanvas";
 
@@ -60,22 +55,13 @@ export default function MapPreview({
   const pins = useMemo(() => {
     return offers
       .map((o) => {
-        const resolved =
-          o.lng != null && o.lat != null
-            ? { lng: o.lng, lat: o.lat }
-            : resolveVendorCoords({
-                vendorId: o.vendorId,
-                neighbourhood: o.neighbourhood,
-              });
-        if (!resolved) return null;
-        const address =
-          o.address ||
-          resolveVendorAddress({
-            vendorId: o.vendorId,
-            neighbourhood: o.neighbourhood,
-          }) ||
-          undefined;
-        return { ...o, ...resolved, address };
+        if (o.lng == null || o.lat == null) return null;
+        return {
+          ...o,
+          lng: o.lng,
+          lat: o.lat,
+          address: o.address || undefined,
+        };
       })
       .filter(Boolean) as Array<
       PreviewOfferPin & { lng: number; lat: number; address?: string }
@@ -119,7 +105,6 @@ export default function MapPreview({
     ];
   }, [focus]);
 
-  const founding = focus ? vendorById(focus.vendorId) : null;
   const mapsDirections = focus
     ? `https://www.google.com/maps/dir/?api=1&destination=${focus.lat},${focus.lng}`
     : null;
@@ -249,9 +234,6 @@ export default function MapPreview({
                 label: "Coordinates",
                 value: `${focus.lat.toFixed(5)}, ${focus.lng.toFixed(5)}`,
               },
-              founding?.specialty
-                ? { label: "Specialty", value: founding.specialty }
-                : null,
               { label: "Fulfilment", value: "Click & collect" },
             ]
               .filter(Boolean)

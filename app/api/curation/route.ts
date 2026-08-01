@@ -7,8 +7,6 @@ import { appendUsageEvent } from "@/lib/m1-store";
 import { requireVendorActor } from "@/lib/auth/require-vendor";
 
 export async function GET() {
-  const { ensureNairobiSeed } = await import("@/lib/seed-nairobi");
-  await ensureNairobiSeed();
   const applications = await listApplications();
   return NextResponse.json({
     data: {

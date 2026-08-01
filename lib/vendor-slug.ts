@@ -1,5 +1,3 @@
-import { FOUNDING_VENDORS } from "@/lib/founding-vendors";
-
 /** URL-safe vendor slug */
 export function slugifyVendorName(name: string): string {
   return name
@@ -10,18 +8,13 @@ export function slugifyVendorName(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** Prefer founding-vendor slug when the name/id matches */
+/** Prefer explicit id slug when shaped as ven_*, else slugify name */
 export function resolveVendorSlug(opts: {
   id?: string;
   name: string;
 }): string {
-  const byId = opts.id
-    ? FOUNDING_VENDORS.find((v) => v.id === opts.id)
-    : undefined;
-  if (byId) return byId.slug;
-  const byName = FOUNDING_VENDORS.find(
-    (v) => v.name.toLowerCase() === opts.name.trim().toLowerCase(),
-  );
-  if (byName) return byName.slug;
+  if (opts.id?.startsWith("ven_")) {
+    return opts.id.replace(/^ven_/, "").replace(/_/g, "-");
+  }
   return slugifyVendorName(opts.name);
 }

@@ -4,15 +4,17 @@ import { OsStat } from "@/components/os/OsPanel";
 import { InventoryBoard } from "./InventoryBoard";
 import { messages } from "@/messages/en-KE";
 import { listCatalogue } from "@/lib/catalogue-store";
-import { ensureNairobiSeed, VENDORS } from "@/lib/seed-nairobi";
+import { getAdmittedVendors } from "@/lib/admitted-vendors";
 
 export default async function OsInventoryPage() {
-  await ensureNairobiSeed();
-  const catalogue = await listCatalogue();
+  const [catalogue, vendors] = await Promise.all([
+    listCatalogue(),
+    getAdmittedVendors(),
+  ]);
   const onHand = catalogue.reduce((sum, p) => sum + (p.stock || 0), 0);
-  const lowStock = catalogue.filter((p) => p.stock > 0 && p.stock <= 5).length;
-  const outOfStock = catalogue.filter((p) => p.stock <= 0).length;
-  const vendorMap = Object.fromEntries(VENDORS.map((v) => [v.id, v.name]));
+  const lowStock = catalogue.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5).length;
+  const outOfStock = catalogue.filter((p) => (p.stock ?? 0) <= 0).length;
+  const vendorMap = Object.fromEntries(vendors.map((v) => [v.id, v.name]));
 
   return (
     <ModuleShell

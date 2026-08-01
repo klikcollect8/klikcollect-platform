@@ -4,7 +4,6 @@ import {
   unauthorizedJson,
 } from "@/lib/auth/require-clerk-user";
 import { listCart } from "@/lib/customer-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { getOfferById } from "@/lib/offers-store";
 import { getProductById } from "@/lib/products-store";
 import { resolveProductImage } from "@/lib/product-image";
@@ -15,8 +14,7 @@ export async function GET() {
     const actor = await requireClerkUser();
     if (!actor) return unauthorizedJson();
 
-    await ensureNairobiSeed();
-    const cartData = await listCart(actor.userId);
+      const cartData = await listCart(actor.userId);
     if (!cartData.length) return NextResponse.json([]);
 
     const items: CartItem[] = [];

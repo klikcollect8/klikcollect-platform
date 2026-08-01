@@ -156,7 +156,7 @@ for (const item of CATALOGUE) {
 const unused = files.filter((f) => !used.has(f));
 
 // Write JSON consumed by TypeScript seed (optional runtime import via fs)
-const outJson = path.join(root, "lib", "seed-catalogue.json");
+const outJson = path.join(root, "scripts", "seed-catalogue.json");
 fs.writeFileSync(
   outJson,
   JSON.stringify(

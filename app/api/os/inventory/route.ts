@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listCatalogue } from "@/lib/catalogue-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { publicId } from "@/lib/ids";
 import { appendUsageEvent } from "@/lib/m1-store";
 import { requireVendorActor } from "@/lib/auth/require-vendor";
@@ -8,7 +7,6 @@ import { adjustOnHand, availableOf, listMovements } from "@/lib/inventory";
 import { withIdempotency, idempotencyKeyFrom } from "@/lib/idempotency";
 
 export async function GET(request: NextRequest) {
-  await ensureNairobiSeed();
   if (request.nextUrl.searchParams.get("movements") === "1") {
     const movements = await listMovements(50);
     return NextResponse.json({ data: movements });

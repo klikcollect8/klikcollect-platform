@@ -676,7 +676,9 @@ export async function incrementProductStock(
 
 export async function getReviews(productId: string): Promise<ProductReview[]> {
   try {
-    const supabase = await createClient();
+    const { createAdminClient } = await import("./supabase/server");
+    const adminClient = createAdminClient();
+    const supabase = adminClient || (await createClient());
     const { data, error } = await supabase
       .from("reviews")
       .select("*")
@@ -697,7 +699,9 @@ export async function getReviews(productId: string): Promise<ProductReview[]> {
 
 export async function getAllReviews(): Promise<ProductReview[]> {
   try {
-    const supabase = await createClient();
+    const { createAdminClient } = await import("./supabase/server");
+    const adminClient = createAdminClient();
+    const supabase = adminClient || (await createClient());
     const { data, error } = await supabase
       .from("reviews")
       .select("*")
@@ -719,7 +723,9 @@ export async function addReview(
   review: Omit<ProductReview, "id" | "createdAt">,
 ): Promise<ProductReview> {
   try {
-    const supabase = await createClient();
+    const { createAdminClient } = await import("./supabase/server");
+    const adminClient = createAdminClient();
+    const supabase = adminClient || (await createClient());
     const { data, error } = await supabase
       .from("reviews")
       .insert({
@@ -853,7 +859,9 @@ export async function getQuestions(
   productId: string,
 ): Promise<ProductQuestion[]> {
   try {
-    const supabase = await createClient();
+    const { createAdminClient } = await import("./supabase/server");
+    const adminClient = createAdminClient();
+    const supabase = adminClient || (await createClient());
     const { data, error } = await supabase
       .from("questions")
       .select("*")
@@ -874,7 +882,9 @@ export async function getQuestions(
 
 export async function getAllQuestions(): Promise<ProductQuestion[]> {
   try {
-    const supabase = await createClient();
+    const { createAdminClient } = await import("./supabase/server");
+    const adminClient = createAdminClient();
+    const supabase = adminClient || (await createClient());
     const { data, error } = await supabase
       .from("questions")
       .select("*")
@@ -896,7 +906,9 @@ export async function addQuestion(
   question: Omit<ProductQuestion, "id" | "createdAt">,
 ): Promise<ProductQuestion> {
   try {
-    const supabase = await createClient();
+    const { createAdminClient } = await import("./supabase/server");
+    const adminClient = createAdminClient();
+    const supabase = adminClient || (await createClient());
     const { data, error } = await supabase
       .from("questions")
       .insert({
@@ -904,7 +916,6 @@ export async function addQuestion(
         user_name: question.userName,
         question: question.question,
         answers: question.answers || [],
-        status: "pending",
       })
       .select()
       .single();

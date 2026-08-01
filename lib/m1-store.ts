@@ -1,7 +1,10 @@
+/**
+ * M1 usage events (local jsonl) + curation applications (Supabase).
+ */
 import { promises as fs } from "fs";
 import path from "path";
 import type { CurationApplication } from "./curation-policy";
-import { readJsonStore, writeJsonStore } from "./json-store";
+import { getServiceSupabase } from "@/lib/supabase/admin";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 
@@ -13,14 +16,6 @@ async function ensureDir() {
   }
 }
 
-async function readJson<T>(file: string, fallback: T): Promise<T> {
-  return readJsonStore<T>(file, fallback);
-}
-
-async function writeJson<T>(file: string, data: T): Promise<void> {
-  await writeJsonStore(file, data);
-}
-
 export type UsageEvent = {
   id: string;
   name: string;
@@ -29,12 +24,89 @@ export type UsageEvent = {
   createdAt: string;
 };
 
+function mapApplication(row: {
+  public_id: string;
+  status: string;
+  payload: Record<string, unknown> | null;
+  pitch?: string | null;
+  created_at: string;
+}): CurationApplication {
+  const p = row.payload || {};
+  const status =
+    row.status === "admitted" || row.status === "rejected"
+      ? row.status
+      : row.status === "decided"
+        ? "admitted"
+        : "pending";
+  return {
+    id: row.public_id,
+    businessName: String(p.businessName || row.public_id),
+    neighbourhood: String(p.neighbourhood || "Nairobi"),
+    contactEmail: String(p.contactEmail || ""),
+    contactPhone: String(p.contactPhone || ""),
+    categories: Array.isArray(p.categories) ? p.categories.map(String) : [],
+    notes: p.notes
+      ? String(p.notes)
+      : row.pitch
+        ? String(row.pitch)
+        : undefined,
+    status,
+    createdAt: row.created_at,
+    decision: p.decision as CurationApplication["decision"],
+  };
+}
+
 export async function listApplications(): Promise<CurationApplication[]> {
-  return readJson<CurationApplication[]>("curation-applications.json", []);
+  const sb = getServiceSupabase();
+  const { data, error } = await sb
+    .from("curation_applications")
+    .select("public_id, status, payload, pitch, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row) =>
+    mapApplication(row as Parameters<typeof mapApplication>[0]),
+  );
 }
 
 export async function saveApplications(apps: CurationApplication[]): Promise<void> {
-  await writeJson("curation-applications.json", apps);
+  const sb = getServiceSupabase();
+  const { data: existing } = await sb
+    .from("curation_applications")
+    .select("public_id");
+  const existingIds = new Set((existing || []).map((r) => r.public_id as string));
+  const nextIds = new Set(apps.map((a) => a.id));
+
+  for (const id of existingIds) {
+    if (!nextIds.has(id)) {
+      await sb.from("curation_applications").delete().eq("public_id", id);
+    }
+  }
+
+  for (const app of apps) {
+    const status =
+      app.status === "admitted" || app.status === "rejected"
+        ? app.status
+        : "pending";
+    const payload = {
+      businessName: app.businessName,
+      neighbourhood: app.neighbourhood,
+      contactEmail: app.contactEmail,
+      contactPhone: app.contactPhone,
+      categories: app.categories,
+      notes: app.notes,
+      decision: app.decision,
+    };
+    await sb.from("curation_applications").upsert(
+      {
+        public_id: app.id,
+        status,
+        pitch: app.notes || app.businessName,
+        payload,
+        created_at: app.createdAt,
+      },
+      { onConflict: "public_id" },
+    );
+  }
 }
 
 export async function appendUsageEvent(event: UsageEvent): Promise<void> {

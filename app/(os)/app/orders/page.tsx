@@ -3,11 +3,9 @@ import { ModuleShell } from "@/components/os/ModuleShell";
 import { OsStat } from "@/components/os/OsPanel";
 import { OrdersBoard } from "./OrdersBoard";
 import { messages } from "@/messages/en-KE";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { ensureOrderSeed, listOsOrders } from "@/lib/orders-store";
 
 export default async function OsOrdersPage() {
-  await ensureNairobiSeed();
   await ensureOrderSeed();
   const orders = await listOsOrders();
 

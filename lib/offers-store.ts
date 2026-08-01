@@ -1,8 +1,13 @@
+/**
+ * Product offers — Supabase-backed.
+ */
 import type { ProductOffer } from "@/types";
+import {
+  sbGetOfferByPublicId,
+  sbListPublishedOffers,
+} from "@/lib/supabase-catalogue";
+import { getServiceSupabase } from "@/lib/supabase/admin";
 import { majorToMinor } from "./money";
-import { readJsonStore, writeJsonStore } from "./json-store";
-
-const FILE = "offers.json";
 
 function normalise(o: ProductOffer): ProductOffer {
   const onHand = Math.max(0, Math.round(o.onHand ?? o.stock ?? 0));
@@ -19,56 +24,54 @@ function normalise(o: ProductOffer): ProductOffer {
   };
 }
 
-async function readAll(): Promise<ProductOffer[]> {
-  const data = await readJsonStore<ProductOffer[]>(FILE, []);
-  return Array.isArray(data) ? data.map(normalise) : [];
-}
-
-async function writeAll(offers: ProductOffer[]): Promise<void> {
-  await writeJsonStore(
-    FILE,
-    offers.map(normalise),
-  );
-}
-
 export async function listOffers(): Promise<ProductOffer[]> {
-  return readAll();
+  return (await sbListPublishedOffers()).map(normalise);
 }
 
 export async function listPublishedOffers(): Promise<ProductOffer[]> {
-  return (await readAll()).filter((o) => o.status === "published");
+  return listOffers();
 }
 
-export async function listOffersForProduct(productId: string): Promise<ProductOffer[]> {
+export async function listOffersForProduct(
+  productId: string,
+): Promise<ProductOffer[]> {
   return (await listPublishedOffers()).filter((o) => o.productId === productId);
 }
 
-export async function listOffersForVendor(vendorId: string): Promise<ProductOffer[]> {
+export async function listOffersForVendor(
+  vendorId: string,
+): Promise<ProductOffer[]> {
   return (await listPublishedOffers()).filter((o) => o.vendorId === vendorId);
 }
 
 export async function getOfferById(id: string): Promise<ProductOffer | null> {
-  const all = await readAll();
-  return all.find((o) => o.id === id) || null;
+  const offer = await sbGetOfferByPublicId(id);
+  return offer ? normalise(offer) : null;
 }
 
-export async function saveOffers(offers: ProductOffer[]): Promise<void> {
-  await writeAll(offers);
+export async function saveOffers(_offers: ProductOffer[]): Promise<void> {
+  throw new Error(
+    "saveOffers is retired — mutate offers via Supabase admin / seed script",
+  );
 }
 
 export async function updateOfferStock(
   offerId: string,
   patch: Partial<Pick<ProductOffer, "onHand" | "reserved">>,
 ): Promise<ProductOffer | null> {
-  const all = await readAll();
-  const idx = all.findIndex((o) => o.id === offerId);
-  if (idx < 0) return null;
-  const next = normalise({
-    ...all[idx],
-    ...patch,
-    updatedAt: new Date().toISOString(),
-  });
-  all[idx] = next;
-  await writeAll(all);
-  return next;
+  const sb = getServiceSupabase();
+  const updates: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (patch.onHand !== undefined) updates.on_hand = patch.onHand;
+  if (patch.reserved !== undefined) updates.reserved = patch.reserved;
+
+  const { data, error } = await sb
+    .from("product_offers")
+    .update(updates)
+    .eq("public_id", offerId)
+    .select("public_id")
+    .maybeSingle();
+  if (error || !data) return null;
+  return getOfferById(offerId);
 }

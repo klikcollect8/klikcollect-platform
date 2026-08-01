@@ -4,7 +4,6 @@ import { OsEmpty, OsPanel, OsStat } from "@/components/os/OsPanel";
 import { messages } from "@/messages/en-KE";
 import { countUsageEvents, recentUsageEvents } from "@/lib/m1-store";
 import { listCatalogue } from "@/lib/catalogue-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 
 async function loadOrderStats() {
   try {
@@ -22,7 +21,6 @@ async function loadOrderStats() {
 }
 
 export default async function OsAnalyticsPage() {
-  await ensureNairobiSeed();
   const [count, recent, catalogue, orderStats] = await Promise.all([
     countUsageEvents(),
     recentUsageEvents(40),

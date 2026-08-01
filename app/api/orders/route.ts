@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireClerkUser, unauthorizedJson } from "@/lib/auth/require-clerk-user";
 import { createOsOrder, listOsOrders, ensureOrderSeed } from "@/lib/orders-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { appendUsageEvent } from "@/lib/m1-store";
 import { publicId } from "@/lib/ids";
 import { getCatalogueProduct } from "@/lib/catalogue-store";
@@ -9,8 +8,7 @@ import { withIdempotency, idempotencyKeyFrom } from "@/lib/idempotency";
 
 export async function GET() {
   try {
-    await ensureNairobiSeed();
-    await ensureOrderSeed();
+      await ensureOrderSeed();
     const orders = await listOsOrders();
     return NextResponse.json({ data: orders });
   } catch {
@@ -58,8 +56,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await ensureNairobiSeed();
-
+  
     type Line = { productId: string; quantity: number; vendorId: string };
     const lines: Line[] = [];
     for (const item of items) {
@@ -78,7 +75,7 @@ export async function POST(request: NextRequest) {
       lines.push({
         productId: product.id,
         quantity,
-        vendorId: product.vendorId,
+        vendorId: product.vendorId || "ven_unknown",
       });
     }
 

@@ -1,49 +1,37 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-
-interface BannerSlideRow {
-  id: string;
-  title: string;
-  subtitle?: string | null;
-  cta_text: string;
-  cta_link: string;
-  image_url?: string | null;
-  bg_color: string;
-  text_color: string;
-  enabled: boolean;
-  display_order: number;
-}
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/banner-slides
- * Get all enabled banner slides for public display
+ * Active CMS banner slides (Supabase).
  */
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const admin = createAdminClient();
+    const supabase = admin || (await createClient());
     const { data, error } = await supabase
       .from("banner_slides")
       .select("*")
-      .eq("enabled", true)
-      .order("display_order", { ascending: true });
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
 
-    // Missing table / RLS — soft empty so homepage uses local defaults.
     if (error || !data) {
       return NextResponse.json([]);
     }
 
-    const rows = data as BannerSlideRow[];
-    const slides = rows.map((slide) => ({
+    const slides = data.map((slide: Record<string, unknown>) => ({
       id: slide.id,
-      title: slide.title,
-      subtitle: slide.subtitle,
-      ctaText: slide.cta_text,
-      ctaLink: slide.cta_link,
+      title: String(slide.headline || ""),
+      subtitle: slide.sub,
+      ctaText: String(slide.cta_label || "Shop now"),
+      ctaLink: String(slide.cta_href || "/shop"),
       imageUrl: slide.image_url,
-      bgColor: slide.bg_color,
-      textColor: slide.text_color,
-      enabled: slide.enabled,
-      displayOrder: slide.display_order,
+      eyebrow: slide.eyebrow,
+      headline: slide.headline,
+      sub: slide.sub,
+      enabled: slide.is_active,
+      displayOrder: slide.sort_order,
     }));
 
     return NextResponse.json(slides);

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireVendorActor } from "@/lib/auth/require-vendor";
 import { createPosSale } from "@/lib/orders-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { withIdempotency, idempotencyKeyFrom } from "@/lib/idempotency";
 import { appendUsageEvent } from "@/lib/m1-store";
 import { publicId } from "@/lib/ids";
@@ -15,7 +14,6 @@ export async function POST(request: NextRequest) {
   const gate = await requireVendorActor();
   if (!gate.ok) return gate.response;
 
-  await ensureNairobiSeed();
   const body = await request.json();
   const items = Array.isArray(body?.items) ? body.items : [];
   if (!items.length) {

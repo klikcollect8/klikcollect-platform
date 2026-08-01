@@ -8,19 +8,85 @@ import { HERO_ASSETS, HERO_COPY } from "@/lib/hero-assets";
 
 const INTERVAL_MS = 3500;
 
+type HeroCms = {
+  eyebrow: string;
+  headline: string;
+  sub: string;
+  cta: string;
+  ctaHref: string;
+  images: string[];
+};
+
 /** Full-bleed marketplace hero: 1/3 copy · 2/3 image, soft left fade */
 export default function HomepageBanner() {
   const slidesRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const prevActive = useRef(0);
   const paused = useRef(false);
+  const [cms, setCms] = useState<HeroCms>({
+    eyebrow: HERO_COPY.eyebrow,
+    headline: HERO_COPY.headline,
+    sub: HERO_COPY.sub,
+    cta: HERO_COPY.cta,
+    ctaHref: HERO_COPY.ctaHref,
+    images: [...HERO_ASSETS],
+  });
 
-  const goTo = useCallback((next: number) => {
-    setActive((cur) => {
-      const n = ((next % HERO_ASSETS.length) + HERO_ASSETS.length) % HERO_ASSETS.length;
-      return n === cur ? cur : n;
-    });
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [settingsRes, slidesRes] = await Promise.all([
+          fetch("/api/settings/homepage"),
+          fetch("/api/banner-slides"),
+        ]);
+        const settings = settingsRes.ok ? await settingsRes.json() : null;
+        const slides = slidesRes.ok ? await slidesRes.json() : [];
+        if (cancelled) return;
+
+        const fromSlides = Array.isArray(slides)
+          ? slides
+              .map((s: { imageUrl?: string }) => s.imageUrl)
+              .filter(Boolean)
+          : [];
+        const fromSettings = Array.isArray(settings?.heroImages)
+          ? settings.heroImages.filter(Boolean)
+          : [];
+        const images =
+          fromSlides.length > 0
+            ? fromSlides
+            : fromSettings.length > 0
+              ? fromSettings
+              : HERO_ASSETS;
+
+        setCms({
+          eyebrow: settings?.eyebrow || HERO_COPY.eyebrow,
+          headline: settings?.headline || HERO_COPY.headline,
+          sub: settings?.sub || HERO_COPY.sub,
+          cta: settings?.cta || HERO_COPY.cta,
+          ctaHref: settings?.ctaHref || HERO_COPY.ctaHref,
+          images,
+        });
+      } catch {
+        /* keep local defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const images = cms.images.length ? cms.images : HERO_ASSETS;
+
+  const goTo = useCallback(
+    (next: number) => {
+      setActive((cur) => {
+        const n = ((next % images.length) + images.length) % images.length;
+        return n === cur ? cur : n;
+      });
+    },
+    [images.length],
+  );
 
   useEffect(() => {
     const root = slidesRef.current;
@@ -28,7 +94,9 @@ export default function HomepageBanner() {
     const slides = root.querySelectorAll<HTMLElement>(".kc-hero-slide");
     gsap.set(slides, { autoAlpha: 0 });
     if (slides[0]) gsap.set(slides[0], { autoAlpha: 1 });
-  }, []);
+    prevActive.current = 0;
+    setActive(0);
+  }, [images]);
 
   useEffect(() => {
     const root = slidesRef.current;
@@ -51,12 +119,13 @@ export default function HomepageBanner() {
   }, [active]);
 
   useEffect(() => {
+    if (images.length < 2) return;
     const id = window.setInterval(() => {
       if (paused.current) return;
-      setActive((c) => (c + 1) % HERO_ASSETS.length);
+      setActive((c) => (c + 1) % images.length);
     }, INTERVAL_MS);
-    return () => clearInterval(id);
-  }, []);
+    return () => window.clearInterval(id);
+  }, [images.length]);
 
   return (
     <section
@@ -69,29 +138,28 @@ export default function HomepageBanner() {
       }}
     >
       <div className="grid min-h-0 w-full grid-cols-1 lg:min-h-[78svh] lg:grid-cols-12">
-        {/* Copy — ~1/3 */}
         <div className="relative z-20 flex flex-col justify-center px-4 py-10 sm:px-10 sm:py-16 lg:col-span-4 lg:px-14 lg:py-24 xl:px-20">
           <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.28em] text-black/40 sm:mb-5 sm:text-[12px]">
-            {HERO_COPY.eyebrow}
+            {cms.eyebrow}
           </p>
           <h1 className="max-w-[10ch] text-[clamp(2.15rem,9vw,4.5rem)] font-medium leading-[1.02] tracking-[-0.04em] text-black">
-            {HERO_COPY.headline}
+            {cms.headline}
           </h1>
           <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-black/50 sm:mt-6 sm:text-[18px]">
-            {HERO_COPY.sub}
+            {cms.sub}
           </p>
 
           <div className="mt-8 sm:mt-10">
             <Link
-              href={HERO_COPY.ctaHref}
+              href={cms.ctaHref}
               className="inline-flex min-h-12 items-center bg-black px-7 py-3.5 text-[12px] font-medium uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-80 sm:px-8 sm:py-4"
             >
-              {HERO_COPY.cta}
+              {cms.cta}
             </Link>
           </div>
 
           <div className="mt-8 flex items-center gap-1 sm:mt-12 sm:gap-2.5">
-            {HERO_ASSETS.map((_, i) => (
+            {images.map((_, i) => (
               <button
                 key={i}
                 type="button"
@@ -109,11 +177,10 @@ export default function HomepageBanner() {
           </div>
         </div>
 
-        {/* Image — ~2/3 full height, fades into canvas */}
         <div className="relative min-h-[36svh] w-full sm:min-h-[42svh] lg:col-span-8 lg:min-h-[78svh]">
           <div ref={slidesRef} className="absolute inset-0">
-            {HERO_ASSETS.map((src, i) => (
-              <div key={src} className="kc-hero-slide absolute inset-0">
+            {images.map((src, i) => (
+              <div key={`${src}-${i}`} className="kc-hero-slide absolute inset-0">
                 <Image
                   src={src}
                   alt=""
@@ -121,6 +188,7 @@ export default function HomepageBanner() {
                   priority={i < 2}
                   className="object-cover object-center"
                   sizes="(max-width: 1024px) 100vw, 70vw"
+                  unoptimized={src.startsWith("http")}
                 />
               </div>
             ))}

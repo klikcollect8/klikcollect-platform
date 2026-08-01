@@ -1,32 +1,33 @@
+/**
+ * Canonical products — Supabase-backed.
+ */
 import type { Product } from "@/types";
-import { readJsonStore, writeJsonStore } from "./json-store";
-
-const FILE = "products.json";
+import {
+  sbGetProductDetail,
+  sbGetUnifiedCatalogue,
+} from "@/lib/supabase-catalogue";
 
 export type CanonicalProduct = Product;
 
-async function readAll(): Promise<CanonicalProduct[]> {
-  const data = await readJsonStore<CanonicalProduct[]>(FILE, []);
-  return Array.isArray(data) ? data : [];
-}
-
-async function writeAll(products: CanonicalProduct[]): Promise<void> {
-  await writeJsonStore(FILE, products);
-}
-
 export async function listProducts(): Promise<CanonicalProduct[]> {
-  return (await readAll()).filter((p) => p.status === "published");
+  return sbGetUnifiedCatalogue();
 }
 
 export async function listAllProducts(): Promise<CanonicalProduct[]> {
-  return readAll();
+  return sbGetUnifiedCatalogue();
 }
 
-export async function getProductById(id: string): Promise<CanonicalProduct | null> {
-  const all = await readAll();
-  return all.find((p) => p.id === id) || null;
+export async function getProductById(
+  id: string,
+): Promise<CanonicalProduct | null> {
+  const detail = await sbGetProductDetail(id);
+  if (!detail) return null;
+  const { offers: _offers, ...product } = detail;
+  return product;
 }
 
-export async function saveProducts(products: CanonicalProduct[]): Promise<void> {
-  await writeAll(products);
+export async function saveProducts(_products: CanonicalProduct[]): Promise<void> {
+  throw new Error(
+    "saveProducts is retired — mutate products via Supabase admin / seed script",
+  );
 }

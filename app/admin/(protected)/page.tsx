@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { listApplications } from "@/lib/m1-store";
 import { listCatalogue } from "@/lib/catalogue-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { listSupportTickets } from "@/lib/support-store";
 import { ensureOrderSeed, listOsOrders } from "@/lib/orders-store";
 import { ui } from "@/components/system/tokens";
@@ -19,7 +18,6 @@ import { ui } from "@/components/system/tokens";
 export const dynamic = "force-dynamic";
 
 export default async function AdminOverviewPage() {
-  await ensureNairobiSeed();
   await ensureOrderSeed();
 
   const [apps, catalogue, tickets, orders] = await Promise.all([

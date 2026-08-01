@@ -6,19 +6,19 @@ import { messages } from "@/messages/en-KE";
 import { listApplications } from "@/lib/m1-store";
 import { listCatalogue } from "@/lib/catalogue-store";
 import { V1_CATEGORIES } from "@/lib/curation-policy";
-import { ensureNairobiSeed, VENDORS } from "@/lib/seed-nairobi";
 import { formatPrice } from "@/lib/currency";
+import { getAdmittedVendors } from "@/lib/admitted-vendors";
 
 export default async function OsMarketplacePage() {
-  await ensureNairobiSeed();
-  const [applications, catalogue] = await Promise.all([
+  const [applications, catalogue, vendors] = await Promise.all([
     listApplications(),
     listCatalogue(),
+    getAdmittedVendors(),
   ]);
   const admitted = applications.filter((a) => a.status === "admitted");
   const pending = applications.filter((a) => a.status === "pending");
 
-  const byVendor = VENDORS.map((v) => ({
+  const byVendor = vendors.map((v) => ({
     ...v,
     skus: catalogue.filter((p) => p.vendorId === v.id).length,
     sample: catalogue.find((p) => p.vendorId === v.id),

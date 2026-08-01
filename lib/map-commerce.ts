@@ -5,15 +5,7 @@
 import "server-only";
 
 import { getAdmittedVendors } from "@/lib/admitted-vendors";
-import { listPublishedOffers } from "@/lib/offers-store";
-import { listProducts } from "@/lib/products-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
-import { resolveProductImage } from "@/lib/product-image";
-import {
-  resolveVendorAddress,
-  resolveVendorCoords,
-  vendorById,
-} from "@/lib/founding-vendors";
+import { listPublishedOffers, getUnifiedCatalogue } from "@/lib/commerce-truth";
 import { colorForCategory } from "@/lib/mapbox";
 import type {
   MapCommerceProduct,
@@ -43,11 +35,10 @@ export async function getMapCommercePayload(): Promise<{
   vendors: MapCommerceVendor[];
   products: MapProductIndexEntry[];
 }> {
-  await ensureNairobiSeed();
   const [admitted, offers, products] = await Promise.all([
     getAdmittedVendors(),
     listPublishedOffers(),
-    listProducts(),
+    getUnifiedCatalogue(),
   ]);
 
   const productById = new Map(products.map((p) => [p.id, p]));
@@ -62,16 +53,8 @@ export async function getMapCommercePayload(): Promise<{
   const productIndex = new Map<string, MapProductIndexEntry>();
 
   for (const v of admitted) {
-    const coords =
-      v.lng != null && v.lat != null
-        ? { lng: v.lng, lat: v.lat }
-        : resolveVendorCoords({
-            vendorId: v.id,
-            neighbourhood: v.neighbourhood,
-          });
-    if (!coords) continue;
+    if (v.lng == null || v.lat == null) continue;
 
-    const founding = vendorById(v.id);
     const vendorOffers = offersByVendor.get(v.id) || [];
     const mappedProducts: MapCommerceProduct[] = vendorOffers
       .map((o) => {
@@ -83,7 +66,7 @@ export async function getMapCommercePayload(): Promise<{
           category: p.category,
           price: o.price,
           stock: o.stock,
-          image: resolveProductImage(p.image),
+          image: p.image,
         };
       })
       .filter(Boolean) as MapCommerceProduct[];
@@ -100,59 +83,50 @@ export async function getMapCommercePayload(): Promise<{
           name: mp.name,
           category: mp.category,
           image: mp.image,
-          vendorIds: [v.id],
           minPrice: mp.price,
           maxPrice: mp.price,
+          vendorIds: [v.id],
         });
       }
     }
 
-    const primaryCategory =
-      v.categories[0] || founding?.specialty || "Groceries";
-    const rating = stableRating(v.id);
-    const pickupMinutes = pickupEta(v.id);
-
+    const topCategory = mappedProducts[0]?.category || "Groceries";
+    const categories = [
+      ...new Set(mappedProducts.map((p) => p.category).filter(Boolean)),
+    ];
     vendors.push({
       id: v.id,
       name: v.name,
       slug: v.slug,
       neighbourhood: v.neighbourhood,
-      address:
-        v.address ||
-        resolveVendorAddress({
-          vendorId: v.id,
-          neighbourhood: v.neighbourhood,
-        }) ||
-        `${v.neighbourhood}, Nairobi`,
+      address: v.address || v.neighbourhood,
       tagline: v.tagline,
-      categories: v.categories.length ? v.categories : [primaryCategory],
-      primaryCategory,
-      color: colorForCategory(primaryCategory),
-      productCount: mappedProducts.length || v.productCount,
-      coverImage: resolveProductImage(v.coverImage),
-      lng: coords.lng,
-      lat: coords.lat,
-      rating,
-      reviewCount: 18 + (Math.floor(stableRating(v.id) * 37) % 90),
+      categories: categories.length ? categories : v.categories,
+      primaryCategory: topCategory,
+      color: colorForCategory(topCategory),
+      productCount: mappedProducts.length,
+      coverImage: mappedProducts[0]?.image || v.coverImage,
+      lng: v.lng,
+      lat: v.lat,
+      rating: stableRating(v.id),
+      reviewCount: mappedProducts.length * 3,
       openNow: true,
-      hoursLabel: "Open · closes 9:00 PM",
-      pickupMinutes,
-      deliveryMinutes: pickupMinutes + 20,
-      deliveryFee: 150,
-      minOrder: 500,
+      hoursLabel: "Open · closes 8pm",
+      pickupMinutes: pickupEta(v.id),
+      deliveryMinutes: pickupEta(v.id) + 20,
+      deliveryFee: 0,
+      minOrder: 0,
       verified: true,
-      featured: mappedProducts.length >= 4,
-      hasOffer: mappedProducts.some((p) => p.stock > 0 && p.price < 300),
+      featured: mappedProducts.length >= 8,
+      hasOffer: mappedProducts.length > 0,
       acceptsCard: true,
       acceptsMpesa: true,
-      products: mappedProducts.slice(0, 8),
+      products: mappedProducts,
     });
   }
 
   return {
-    vendors: vendors.sort((a, b) => a.name.localeCompare(b.name)),
-    products: [...productIndex.values()].sort((a, b) =>
-      a.name.localeCompare(b.name),
-    ),
+    vendors,
+    products: [...productIndex.values()],
   };
 }

@@ -7,14 +7,12 @@ import {
   type OsOrderStatus,
   ORDER_TRANSITIONS,
 } from "@/lib/orders-store";
-import { ensureNairobiSeed } from "@/lib/seed-nairobi";
 import { publicId } from "@/lib/ids";
 import { appendUsageEvent } from "@/lib/m1-store";
 import { requireVendorActor } from "@/lib/auth/require-vendor";
 import { withIdempotency, idempotencyKeyFrom } from "@/lib/idempotency";
 
 export async function GET(request: NextRequest) {
-  await ensureNairobiSeed();
   await ensureOrderSeed();
   const orderId = request.nextUrl.searchParams.get("orderId") || undefined;
   if (request.nextUrl.searchParams.get("transitions") === "1") {

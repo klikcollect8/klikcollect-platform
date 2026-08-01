@@ -1,12 +1,7 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { publicId } from "./ids";
 import { listCatalogue, getCatalogueProduct } from "./catalogue-store";
 import { reserveStock, releaseStock, commitStock } from "./inventory";
-
-const DATA_DIR = path.join(process.cwd(), ".data");
-const FILE = "os-orders.json";
-const TRANSITIONS_FILE = "order-transitions.jsonl";
+import { getServiceSupabase } from "@/lib/supabase/admin";
 
 /**
  * Order lifecycle (Chapter 05 M2):
@@ -81,70 +76,180 @@ export type OsOrder = {
   };
 };
 
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-}
-
-async function readAll(): Promise<OsOrder[]> {
-  await ensureDir();
-  try {
-    const raw = await fs.readFile(path.join(DATA_DIR, FILE), "utf8");
-    const data = JSON.parse(raw) as OsOrder[];
-    return Array.isArray(data) ? data.map(migrateOrder) : [];
-  } catch {
-    return [];
-  }
-}
-
-function migrateOrder(o: OsOrder): OsOrder {
-  const items = (o.items || []).map((it) => ({
-    ...it,
-    moneyMinor: it.moneyMinor ?? Math.round((it.unitPrice || 0) * 100),
-    vendorId: it.vendorId || o.vendorId || (o.vendorIds && o.vendorIds[0]) || "ven_unknown",
-  }));
-  const vendorIds = o.vendorIds?.length
-    ? o.vendorIds
-    : [...new Set(items.map((i) => i.vendorId))];
+function mapDbOrder(row: Record<string, unknown>, items: OsOrderItem[]): OsOrder {
+  const vendorIds = Array.isArray(row.vendor_ids)
+    ? (row.vendor_ids as string[])
+    : [];
   return {
-    ...o,
-    channel: o.channel || "marketplace",
-    status: (o.status as OsOrderStatus) || "pending",
+    id: String(row.public_id),
+    orderNumber: String(row.order_number),
+    channel: (row.channel as OsOrder["channel"]) || "marketplace",
+    customerName: String(row.customer_name),
+    customerEmail: String(row.customer_email),
+    customerPhone: String(row.customer_phone || ""),
+    collectHub: (row.collect_hub as OsOrder["collectHub"]) || "Westlands",
+    status: (row.status as OsOrderStatus) || "pending",
     items,
+    total: Number(row.total_minor || 0) / 100,
+    totalMinor: Number(row.total_minor || 0),
     vendorIds,
-    vendorId: o.vendorId || vendorIds[0] || "ven_unknown",
-    totalMinor: o.totalMinor ?? Math.round((o.total || 0) * 100),
+    vendorId: vendorIds[0] || "ven_unknown",
+    notes: row.notes ? String(row.notes) : undefined,
+    receiptCode: row.receipt_code ? String(row.receipt_code) : undefined,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    snapshot: row.snapshot as OsOrder["snapshot"],
   };
 }
 
-async function writeAll(orders: OsOrder[]): Promise<void> {
-  await ensureDir();
-  await fs.writeFile(path.join(DATA_DIR, FILE), JSON.stringify(orders, null, 2), "utf8");
+async function loadItems(orderUuid: string): Promise<OsOrderItem[]> {
+  const sb = getServiceSupabase();
+  const { data } = await sb
+    .from("order_items")
+    .select("*")
+    .eq("order_id", orderUuid);
+  return (data || []).map((it) => ({
+    productId: it.offer_public_id || it.product_public_id,
+    name: it.name,
+    quantity: it.quantity,
+    unitPrice: Number(it.unit_price_minor || 0) / 100,
+    moneyMinor: Number(it.unit_price_minor || 0),
+    vendorId: it.vendor_public_id || "ven_unknown",
+    image: it.image_url || undefined,
+    barcode: it.barcode || undefined,
+  }));
+}
+
+async function readAll(): Promise<OsOrder[]> {
+  const sb = getServiceSupabase();
+  const { data, error } = await sb
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const out: OsOrder[] = [];
+  for (const row of data || []) {
+    out.push(mapDbOrder(row as Record<string, unknown>, await loadItems(row.id)));
+  }
+  return out;
+}
+
+async function persistOrder(order: OsOrder): Promise<void> {
+  const sb = getServiceSupabase();
+  const { data: vendor } = await sb
+    .from("vendors")
+    .select("id")
+    .eq("public_id", order.vendorId)
+    .maybeSingle();
+
+  const { data: existing } = await sb
+    .from("orders")
+    .select("id")
+    .eq("public_id", order.id)
+    .maybeSingle();
+
+  const payload = {
+    public_id: order.id,
+    order_number: order.orderNumber,
+    channel: order.channel,
+    customer_name: order.customerName,
+    customer_email: order.customerEmail,
+    customer_phone: order.customerPhone,
+    collect_hub: order.collectHub,
+    status: order.status,
+    total_minor: order.totalMinor,
+    vendor_id: vendor?.id || null,
+    vendor_ids: order.vendorIds,
+    notes: order.notes || null,
+    receipt_code: order.receiptCode || null,
+    snapshot: order.snapshot || null,
+    updated_at: order.updatedAt,
+  };
+
+  let orderUuid = existing?.id as string | undefined;
+  if (existing) {
+    await sb.from("orders").update(payload).eq("id", existing.id);
+  } else {
+    const { data, error } = await sb
+      .from("orders")
+      .insert({ ...payload, created_at: order.createdAt })
+      .select("id")
+      .single();
+    if (error) throw error;
+    orderUuid = data.id;
+    await sb.from("order_items").insert(
+      order.items.map((it) => ({
+        order_id: orderUuid,
+        product_public_id: it.productId,
+        offer_public_id: it.productId,
+        name: it.name,
+        quantity: it.quantity,
+        unit_price_minor: it.moneyMinor,
+        vendor_public_id: it.vendorId,
+        image_url: it.image || null,
+        barcode: it.barcode || null,
+      })),
+    );
+  }
 }
 
 async function appendTransition(t: OrderTransition) {
-  await ensureDir();
-  await fs.appendFile(path.join(DATA_DIR, TRANSITIONS_FILE), JSON.stringify(t) + "\n", "utf8");
+  const sb = getServiceSupabase();
+  const { data: order } = await sb
+    .from("orders")
+    .select("id")
+    .eq("public_id", t.orderId)
+    .maybeSingle();
+  if (!order) return;
+  await sb.from("order_transitions").insert({
+    order_id: order.id,
+    from_status: t.from,
+    to_status: t.to,
+    actor_user_id: t.actorUserId || null,
+    reason: t.reason || null,
+    illegal: t.illegal || false,
+    created_at: t.createdAt,
+  });
 }
 
-export async function listOrderTransitions(orderId?: string, limit = 100): Promise<OrderTransition[]> {
-  try {
-    const raw = await fs.readFile(path.join(DATA_DIR, TRANSITIONS_FILE), "utf8");
-    const rows = raw
-      .split("\n")
-      .filter(Boolean)
-      .map((l) => JSON.parse(l) as OrderTransition)
-      .reverse();
-    const filtered = orderId ? rows.filter((r) => r.orderId === orderId) : rows;
-    return filtered.slice(0, limit);
-  } catch {
-    return [];
+export async function listOrderTransitions(
+  orderId?: string,
+  limit = 100,
+): Promise<OrderTransition[]> {
+  const sb = getServiceSupabase();
+  let q = sb
+    .from("order_transitions")
+    .select("*, orders(public_id)")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (orderId) {
+    const { data: order } = await sb
+      .from("orders")
+      .select("id")
+      .or(`public_id.eq.${orderId},order_number.eq.${orderId}`)
+      .maybeSingle();
+    if (!order) return [];
+    q = q.eq("order_id", order.id);
   }
+  const { data } = await q;
+  return (data || []).map((r) => ({
+    id: r.id,
+    orderId: (r as { orders?: { public_id?: string } }).orders?.public_id || "",
+    from: r.from_status as OsOrderStatus,
+    to: r.to_status as OsOrderStatus,
+    actorUserId: r.actor_user_id || undefined,
+    reason: r.reason || undefined,
+    createdAt: r.created_at,
+    illegal: r.illegal || undefined,
+  }));
 }
 
 export async function listOsOrders(vendorId?: string): Promise<OsOrder[]> {
   const all = await readAll();
   if (!vendorId) return all;
-  return all.filter((o) => o.vendorId === vendorId || o.vendorIds.includes(vendorId));
+  return all.filter(
+    (o) => o.vendorId === vendorId || o.vendorIds.includes(vendorId),
+  );
 }
 
 export async function getOsOrder(id: string): Promise<OsOrder | null> {
@@ -166,11 +271,9 @@ export async function transitionOsOrder(input: {
   actorUserId?: string;
   reason?: string;
 }): Promise<TransitionResult> {
-  const all = await readAll();
-  const idx = all.findIndex((o) => o.id === input.id);
-  if (idx < 0) return { ok: false, code: "NOT_FOUND", message: "Order not found" };
+  const order = await getOsOrder(input.id);
+  if (!order) return { ok: false, code: "NOT_FOUND", message: "Order not found" };
 
-  const order = all[idx];
   const from = order.status;
   const allowed = ORDER_TRANSITIONS[from] || [];
   const now = new Date().toISOString();
@@ -230,9 +333,9 @@ export async function transitionOsOrder(input: {
   };
   await appendTransition(transition);
 
-  all[idx] = { ...order, status: input.to, updatedAt: now };
-  await writeAll(all);
-  return { ok: true, order: all[idx], transition };
+  const updated = { ...order, status: input.to, updatedAt: now };
+  await persistOrder(updated);
+  return { ok: true, order: updated, transition };
 }
 
 /** @deprecated Prefer transitionOsOrder — kept for seed demos. */
@@ -258,7 +361,7 @@ async function snapshotItems(
       quantity: line.quantity,
       unitPrice,
       moneyMinor: product.moneyMinor ?? Math.round(unitPrice * 100),
-      vendorId: product.vendorId,
+      vendorId: product.vendorId || "ven_unknown",
       image: product.image,
       barcode: product.barcode || product.gtin,
     });
@@ -346,9 +449,7 @@ export async function createOsOrder(input: {
     },
   };
 
-  const all = await readAll();
-  all.unshift(order);
-  await writeAll(all);
+  await persistOrder(order);
 
   await appendTransition({
     id: publicId("otr"),
@@ -419,9 +520,7 @@ export async function createPosSale(input: {
     },
   };
 
-  const all = await readAll();
-  all.unshift(order);
-  await writeAll(all);
+  await persistOrder(order);
   await appendTransition({
     id: publicId("otr"),
     orderId: order.id,
