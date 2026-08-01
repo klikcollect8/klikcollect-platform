@@ -244,7 +244,7 @@ export default function Cart({
                                   Math.max(0, item.quantity - 1),
                                 )
                               }
-                              className="flex h-9 w-9 items-center justify-center text-black/45 transition-colors hover:text-black disabled:opacity-25"
+                              className="flex h-11 w-11 items-center justify-center text-black/45 transition-colors hover:text-black disabled:opacity-25"
                               disabled={item.quantity <= 1}
                               aria-label="Decrease quantity"
                             >
@@ -258,7 +258,7 @@ export default function Cart({
                               onClick={() =>
                                 onUpdateQuantity(lineId(item), item.quantity + 1)
                               }
-                              className="flex h-9 w-9 items-center justify-center text-black/45 transition-colors hover:text-black"
+                              className="flex h-11 w-11 items-center justify-center text-black/45 transition-colors hover:text-black"
                               aria-label="Increase quantity"
                             >
                               <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />

@@ -123,7 +123,7 @@ export default function SellPage() {
                     key={c}
                     type="button"
                     onClick={() => toggleCategory(c)}
-                    className={`border px-3 py-1.5 text-[13px] ${
+                    className={`min-h-11 border px-3.5 py-2.5 text-[13px] ${
                       on
                         ? "border-black bg-black text-white"
                         : "border-black/12 text-black/60 hover:border-black/30"

@@ -129,7 +129,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-3 z-10 p-2 text-black/35 hover:text-black"
+              className="absolute right-2 top-2 z-10 inline-flex h-11 w-11 items-center justify-center text-black/35 hover:text-black"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
@@ -143,7 +143,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 bg-[#f7f7f5]/90 px-8 backdrop-blur-sm sm:px-12 lg:px-16 xl:px-20">
           <button
             type="button"
-            className="p-1.5 text-black lg:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center text-black lg:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
           >

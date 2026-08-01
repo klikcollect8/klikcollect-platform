@@ -32,18 +32,18 @@ export default function FoundingVendors() {
 
   return (
     <section className="w-full">
-      <div className="mb-10 flex items-end justify-between gap-6">
-        <div>
-          <h2 className="text-[clamp(1.5rem,2.5vw,2rem)] font-medium tracking-tight text-black">
+      <div className="mb-8 flex items-end justify-between gap-4 sm:mb-10 sm:gap-6">
+        <div className="min-w-0">
+          <h2 className="text-[clamp(1.35rem,5vw,2rem)] font-medium tracking-tight text-black">
             Vendors near you
           </h2>
-          <p className="mt-2 max-w-xl text-[15px] text-black/45">
+          <p className="mt-2 max-w-xl text-[14px] text-black/45 sm:text-[15px]">
             Approved shops ready for click &amp; collect.
           </p>
         </div>
         <Link
           href="/brands"
-          className="shrink-0 text-[14px] font-medium underline underline-offset-[6px] decoration-black/25 hover:decoration-black"
+          className="shrink-0 text-[13px] font-medium underline underline-offset-[6px] decoration-black/25 hover:decoration-black sm:text-[14px]"
         >
           View all →
         </Link>

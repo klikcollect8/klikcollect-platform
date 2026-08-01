@@ -80,7 +80,7 @@ export default function Toast({
           <button
             type="button"
             onClick={handleClose}
-            className="shrink-0 p-1 text-black/30 transition-colors hover:text-black"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center text-black/30 transition-colors hover:text-black"
             aria-label="Dismiss"
           >
             <X className="h-4 w-4" strokeWidth={1.5} />

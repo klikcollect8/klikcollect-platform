@@ -292,7 +292,7 @@ function ProductPageInner() {
             </section>
 
             {/* Vendors — 2 shown, rest in dropdown */}
-            <section className="mt-10">
+            <section className="mt-10" id="product-vendors">
               <div className="mb-3 flex items-end justify-between gap-4">
                 <h2 className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
                   Vendor
@@ -464,7 +464,7 @@ function ProductPageInner() {
                         <SizeGuide category={product.category} />
                       ) : null}
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    <div className="flex flex-wrap gap-x-2 gap-y-1">
                       {variation.options.map((option) => {
                         const on = selectedVariations[variation.name] === option;
                         return (
@@ -477,7 +477,7 @@ function ProductPageInner() {
                                 [variation.name]: option,
                               })
                             }
-                            className={`text-[14px] transition-colors ${
+                            className={`min-h-11 px-2 text-[14px] transition-colors ${
                               on
                                 ? "font-medium text-black underline underline-offset-[5px]"
                                 : "text-black/40 hover:text-black"
@@ -554,8 +554,12 @@ function ProductPageInner() {
               <div className="mt-8 space-y-5">
                 <button
                   type="button"
-                  disabled
-                  className="hidden w-full border border-black/10 py-4 text-[13px] font-medium uppercase tracking-[0.16em] text-black/30 sm:block"
+                  onClick={() =>
+                    document
+                      .getElementById("product-vendors")
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                  }
+                  className="hidden w-full border border-black/20 py-4 text-[13px] font-medium uppercase tracking-[0.16em] transition-colors hover:border-black hover:bg-black hover:text-white sm:block"
                 >
                   Select a vendor
                 </button>
@@ -586,6 +590,20 @@ function ProductPageInner() {
                 Buy now
               </button>
             </div>
+          </div>
+        ) : !selectedOffer ? (
+          <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[85] border-t border-black/10 bg-[#f7f7f5]/95 px-4 py-3 backdrop-blur-md sm:hidden">
+            <button
+              type="button"
+              onClick={() =>
+                document
+                  .getElementById("product-vendors")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }
+              className="mx-auto flex min-h-12 w-full max-w-[1600px] items-center justify-center bg-black text-[11px] font-medium uppercase tracking-[0.12em] text-white"
+            >
+              Select a vendor
+            </button>
           </div>
         ) : null}
 

@@ -155,16 +155,17 @@ export default function ProductReviews({
           </div>
           <div>
             <label className="mb-2 block text-[12px] text-black/40">Rating</label>
-            <div className="flex gap-1.5">
+            <div className="flex gap-0.5">
               {[1, 2, 3, 4, 5].map((rating) => (
                 <button
                   key={rating}
                   type="button"
                   onClick={() => setFormData({ ...formData, rating })}
                   aria-label={`${rating} stars`}
+                  className="inline-flex h-11 w-11 items-center justify-center"
                 >
                   <Star
-                    className={`h-5 w-5 transition-colors ${
+                    className={`h-6 w-6 transition-colors ${
                       formData.rating >= rating
                         ? "fill-black text-black"
                         : "text-black/15 hover:text-black/40"

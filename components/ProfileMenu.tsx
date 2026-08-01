@@ -133,7 +133,7 @@ export default function ProfileMenu() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-8 w-8 items-center justify-center text-[12px] font-medium text-black/70 transition-opacity hover:opacity-50"
+        className="flex h-11 w-11 items-center justify-center text-[13px] font-medium text-black/70 transition-opacity hover:opacity-50"
         aria-label="Open account"
       >
         {user.imageUrl ? (
@@ -141,7 +141,7 @@ export default function ProfileMenu() {
           <img
             src={user.imageUrl}
             alt=""
-            className="h-8 w-8 object-cover"
+            className="h-9 w-9 object-cover"
           />
         ) : (
           <span>{initial}</span>

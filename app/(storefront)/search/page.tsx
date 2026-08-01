@@ -166,7 +166,7 @@ function SearchContent() {
             <button
               type="button"
               onClick={() => setShowFilters(true)}
-              className="flex items-center gap-2 border border-black/12 px-4 py-2.5 text-[13px] font-medium lg:hidden"
+              className="flex min-h-11 items-center gap-2 border border-black/12 px-4 py-2.5 text-[13px] font-medium lg:hidden"
             >
               <Filter className="h-4 w-4" />
               Filters
@@ -230,17 +230,22 @@ function SearchContent() {
       </div>
 
       {showFilters ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-[100] lg:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-black/40"
             onClick={() => setShowFilters(false)}
             aria-label="Close"
           />
-          <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto bg-[#f7f7f5] px-6 py-8">
-            <div className="mb-8 flex items-center justify-between">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto bg-[#f7f7f5] px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-6 sm:px-6">
+            <div className="mb-6 flex items-center justify-between">
               <h3 className="text-[20px] font-medium">Filters</h3>
-              <button type="button" onClick={() => setShowFilters(false)} aria-label="Close">
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                aria-label="Close"
+                className="inline-flex h-11 w-11 items-center justify-center"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -248,7 +253,7 @@ function SearchContent() {
             <button
               type="button"
               onClick={() => setShowFilters(false)}
-              className="mt-10 w-full bg-black py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-white"
+              className="mt-8 w-full min-h-12 bg-black py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-white"
             >
               Show {filteredProducts.length} results
             </button>

@@ -1,10 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { showsMobileBottomNav } from "@/lib/mobile-nav";
+import { cn } from "@/lib/utils";
 
 export default function Footer() {
+  const pathname = usePathname();
   return (
-    <footer className="kc-mobile-nav-pad border-t border-black/[0.06] bg-[#f7f7f5]">
+    <footer
+      className={cn(
+        "border-t border-black/[0.06] bg-[#f7f7f5]",
+        showsMobileBottomNav(pathname) && "kc-mobile-nav-pad",
+      )}
+    >
       <div className="mx-auto w-full max-w-[1600px] px-5 py-14 sm:px-10 sm:py-20 lg:px-14 xl:px-20">
         <div className="grid gap-12 md:grid-cols-12 md:gap-16">
           <div className="md:col-span-5">

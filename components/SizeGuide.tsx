@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Ruler, X } from 'lucide-react';
+import { useState } from "react";
+import { Ruler, X } from "lucide-react";
 
 interface SizeGuideProps {
   category: string;
@@ -11,34 +11,34 @@ export default function SizeGuide({ category }: SizeGuideProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const getSizeChart = () => {
-    if (category === 'Electronics') {
+    if (category === "Electronics") {
       return {
-        title: 'Device Size Guide',
+        title: "Device Size Guide",
         sizes: [
-          { size: 'Small', dimensions: '4-5 inches', description: 'Compact devices' },
-          { size: 'Medium', dimensions: '5-6 inches', description: 'Standard devices' },
-          { size: 'Large', dimensions: '6+ inches', description: 'Large devices' },
+          { size: "Small", dimensions: "4-5 inches", description: "Compact devices" },
+          { size: "Medium", dimensions: "5-6 inches", description: "Standard devices" },
+          { size: "Large", dimensions: "6+ inches", description: "Large devices" },
         ],
       };
     }
 
-    if (category === 'Sports & Outdoors') {
+    if (category === "Sports & Outdoors") {
       return {
-        title: 'Clothing Size Guide',
+        title: "Clothing Size Guide",
         sizes: [
-          { size: 'XS', dimensions: 'Chest: 32-34"', description: 'Extra Small' },
-          { size: 'S', dimensions: 'Chest: 36-38"', description: 'Small' },
-          { size: 'M', dimensions: 'Chest: 40-42"', description: 'Medium' },
-          { size: 'L', dimensions: 'Chest: 44-46"', description: 'Large' },
-          { size: 'XL', dimensions: 'Chest: 48-50"', description: 'Extra Large' },
+          { size: "XS", dimensions: 'Chest: 32-34"', description: "Extra Small" },
+          { size: "S", dimensions: 'Chest: 36-38"', description: "Small" },
+          { size: "M", dimensions: 'Chest: 40-42"', description: "Medium" },
+          { size: "L", dimensions: 'Chest: 44-46"', description: "Large" },
+          { size: "XL", dimensions: 'Chest: 48-50"', description: "Extra Large" },
         ],
       };
     }
 
     return {
-      title: 'Size Guide',
+      title: "Size Guide",
       sizes: [
-        { size: 'One Size', dimensions: 'Fits All', description: 'Universal fit' },
+        { size: "One Size", dimensions: "Fits All", description: "Universal fit" },
       ],
     };
   };
@@ -48,67 +48,81 @@ export default function SizeGuide({ category }: SizeGuideProps) {
   return (
     <>
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 text-sm text-gray-600 hover:text-black transition-colors"
+        className="inline-flex min-h-11 items-center gap-2 text-[13px] text-black/50 transition-colors hover:text-black"
       >
-        <Ruler className="w-4 h-4" />
+        <Ruler className="h-4 w-4" />
         Size Guide
       </button>
 
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+      {isOpen ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 p-0 backdrop-blur-sm sm:items-center sm:p-4"
           onClick={() => setIsOpen(false)}
         >
-          <div 
-            className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-auto shadow-2xl animate-in zoom-in-95 duration-200"
+          <div
+            className="max-h-[90vh] w-full max-w-3xl overflow-auto bg-[#f7f7f5] pb-[env(safe-area-inset-bottom)] sm:max-h-[85vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
-              <h2 className="text-2xl font-light text-gray-900 flex items-center gap-3">
-                <Ruler className="w-6 h-6 text-gray-400" />
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-black/[0.08] bg-[#f7f7f5] px-5 py-4 sm:px-6">
+              <h2 className="flex items-center gap-2.5 text-[18px] font-medium tracking-tight sm:text-[20px]">
+                <Ruler className="h-5 w-5 text-black/35" />
                 {chart.title}
               </h2>
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center text-black/40 hover:text-black"
                 aria-label="Close size guide"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6">
-              <div className="overflow-hidden rounded-xl border border-gray-100">
-                <table className="w-full">
+            <div className="px-5 py-5 sm:px-6 sm:py-6">
+              <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:overflow-visible sm:px-0">
+                <table className="w-full min-w-[480px] border border-black/[0.08] sm:min-w-0">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="p-4 text-left text-sm font-medium text-gray-900">Size</th>
-                      <th className="p-4 text-left text-sm font-medium text-gray-900">Dimensions</th>
-                      <th className="p-4 text-left text-sm font-medium text-gray-900">Description</th>
+                    <tr className="border-b border-black/[0.08] bg-black/[0.03]">
+                      <th className="p-3 text-left text-[12px] font-medium uppercase tracking-[0.12em] text-black/50 sm:p-4">
+                        Size
+                      </th>
+                      <th className="p-3 text-left text-[12px] font-medium uppercase tracking-[0.12em] text-black/50 sm:p-4">
+                        Dimensions
+                      </th>
+                      <th className="p-3 text-left text-[12px] font-medium uppercase tracking-[0.12em] text-black/50 sm:p-4">
+                        Description
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {chart.sizes.map((item, idx) => (
-                      <tr key={idx} className={`border-b border-gray-100 last:border-b-0 ${
-                        idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                      }`}>
-                        <td className="p-4 font-medium text-gray-900">{item.size}</td>
-                        <td className="p-4 text-gray-600">{item.dimensions}</td>
-                        <td className="p-4 text-gray-600">{item.description}</td>
+                      <tr
+                        key={item.size}
+                        className={`border-b border-black/[0.06] last:border-b-0 ${
+                          idx % 2 === 0 ? "bg-transparent" : "bg-black/[0.02]"
+                        }`}
+                      >
+                        <td className="p-3 text-[14px] font-medium sm:p-4">{item.size}</td>
+                        <td className="p-3 text-[14px] text-black/55 sm:p-4">
+                          {item.dimensions}
+                        </td>
+                        <td className="p-3 text-[14px] text-black/55 sm:p-4">
+                          {item.description}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <p className="text-sm text-gray-600">
-                  <strong className="font-medium text-gray-900">Note:</strong> Sizes may vary by manufacturer. Please refer to the product description for specific measurements.
-                </p>
-              </div>
+              <p className="mt-5 text-[13px] leading-relaxed text-black/45">
+                <span className="font-medium text-black/70">Note:</span> Sizes may
+                vary by manufacturer. Check the product description for specifics.
+              </p>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

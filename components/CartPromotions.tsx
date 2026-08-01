@@ -174,17 +174,21 @@ export default function CartPromotions({ items }: { items: CartItem[] }) {
           ) : null}
 
           {slides.length > 1 ? (
-            <div className="mt-8 flex items-center gap-2">
+            <div className="mt-8 flex items-center gap-1">
               {slides.map((s, i) => (
                 <button
                   key={s.id}
                   type="button"
                   aria-label={`Go to slide ${i + 1}`}
                   onClick={() => goTo(i)}
-                  className={`h-px transition-all duration-500 ${
-                    i === active ? "w-8 bg-black" : "w-3 bg-black/20 hover:bg-black/40"
-                  }`}
-                />
+                  className="flex h-11 items-center px-1.5"
+                >
+                  <span
+                    className={`block h-px transition-all duration-500 ${
+                      i === active ? "w-8 bg-black" : "w-3 bg-black/20"
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           ) : null}
