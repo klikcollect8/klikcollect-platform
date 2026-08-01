@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { X, Search, ArrowRight } from "lucide-react";
+import { ArrowRight } from "@phosphor-icons/react";
+import { CloseIcon, SearchIcon } from "@/components/NavIcons";
 import { Product } from "@/types";
 import { resolveProductImage } from "@/lib/product-image";
 import { V1_CATEGORIES } from "@/lib/curation-policy";
@@ -177,7 +178,7 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
             aria-label="Close search"
           >
             <span className="hidden sm:inline">Esc</span>
-            <X className="h-5 w-5" strokeWidth={1.5} />
+            <CloseIcon size={20} />
           </button>
         </header>
 
@@ -192,10 +193,9 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
             Search products
           </label>
           <div className="group relative flex items-center border-b border-black/15 transition-colors focus-within:border-black/50">
-            <Search
-              className="pointer-events-none absolute left-0 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-black/30 transition-colors group-focus-within:text-black/55"
-              strokeWidth={1.5}
-            />
+            <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-black/30 transition-colors group-focus-within:text-black/55">
+              <SearchIcon size={18} />
+            </span>
             <input
               id="kc-search-input"
               ref={inputRef}
@@ -226,7 +226,7 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                 className="ml-1 inline-flex h-9 items-center gap-1.5 bg-black px-3.5 text-[12px] font-medium text-white transition-opacity disabled:cursor-default disabled:opacity-20"
               >
                 Go
-                <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+                <ArrowRight size={14} weight="bold" />
               </button>
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                         className="flex items-center justify-between border-b border-black/[0.06] py-3.5 text-[15px] font-medium tracking-tight text-black/80 transition-opacity hover:opacity-50"
                       >
                         {cat}
-                        <ArrowRight className="h-4 w-4 text-black/25" strokeWidth={1.5} />
+                        <ArrowRight size={16} weight="regular" className="text-black/25" />
                       </Link>
                     ))}
                   </div>
@@ -366,7 +366,7 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                         <span className="text-[16px] font-medium tracking-tight text-black">
                           {term}
                         </span>
-                        <ArrowRight className="h-4 w-4 text-black/20" strokeWidth={1.5} />
+                        <ArrowRight size={16} weight="regular" className="text-black/20" />
                       </button>
                     </li>
                   ))}
@@ -407,7 +407,7 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                         className="flex w-full items-center justify-between border-b border-black/[0.06] py-3.5 transition-opacity hover:opacity-45"
                       >
                         <span className="text-[15px] tracking-tight text-black/75">{cat}</span>
-                        <ArrowRight className="h-4 w-4 text-black/20" strokeWidth={1.5} />
+                        <ArrowRight size={16} weight="regular" className="text-black/20" />
                       </Link>
                     </li>
                   ))}

@@ -3,12 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, Search, ShoppingBag, X } from "lucide-react";
 import { Show } from "@clerk/nextjs";
 import Cart from "./Cart";
 import WishlistSidebar from "./WishlistSidebar";
 import MobileSearch from "./MobileSearch";
 import ProfileMenu from "./ProfileMenu";
+import {
+  BagIcon,
+  CloseIcon,
+  MenuIcon,
+  SearchIcon,
+} from "@/components/NavIcons";
 import { useSignInModal } from "./SignInModalProvider";
 import { useCart } from "@/lib/hooks/useCart";
 import { useWishlist } from "@/lib/hooks/useWishlist";
@@ -103,7 +108,7 @@ export default function Header() {
               className="inline-flex h-11 w-11 items-center justify-center text-black/80 transition-opacity hover:opacity-50"
               aria-label="Search"
             >
-              <Search className="h-5 w-5" strokeWidth={1.75} />
+              <SearchIcon size={20} />
             </button>
             <Show when="signed-out">
               <button
@@ -123,7 +128,7 @@ export default function Header() {
               className="relative inline-flex h-11 w-11 items-center justify-center text-black/80 transition-opacity hover:opacity-50"
               aria-label={`Bag ${cartCount}`}
             >
-              <ShoppingBag className="h-5 w-5" strokeWidth={1.75} />
+              <BagIcon size={20} />
               {cartCount > 0 ? (
                 <span className="absolute right-1.5 top-1.5 text-[10px] font-medium tabular-nums">
                   {cartCount}
@@ -136,7 +141,7 @@ export default function Header() {
               onClick={() => setMenuOpen(true)}
               aria-label="Menu"
             >
-              <Menu className="h-5 w-5" strokeWidth={1.5} />
+              <MenuIcon size={20} />
             </button>
           </div>
         </div>
@@ -155,7 +160,7 @@ export default function Header() {
               aria-label="Close"
               className="inline-flex h-11 w-11 items-center justify-center"
             >
-              <X className="h-5 w-5" />
+              <CloseIcon size={20} />
             </button>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-5 sm:pt-10">

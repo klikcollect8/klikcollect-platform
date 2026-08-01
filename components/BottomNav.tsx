@@ -41,7 +41,11 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[90] border-t border-black/10 bg-[#f7f7f5]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
       <div className="flex h-14 items-stretch justify-around px-0.5">
-        <Link href="/" className={tabClass(homeActive)} aria-current={homeActive ? "page" : undefined}>
+        <Link
+          href="/"
+          className={tabClass(homeActive)}
+          aria-current={homeActive ? "page" : undefined}
+        >
           <HomeIcon active={homeActive} />
           <span>Home</span>
         </Link>
