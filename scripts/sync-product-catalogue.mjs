@@ -1,5 +1,5 @@
 /**
- * Copies assets/products → public/products with clean slugs,
+ * Copies assets/products → scripts/seed-assets/products with clean slugs,
  * and prints a verification summary for the seed catalogue.
  */
 import fs from "fs";
@@ -9,7 +9,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const srcDir = path.join(root, "assets", "products");
-const dstDir = path.join(root, "public", "products");
+const dstDir = path.join(root, "scripts", "seed-assets", "products");
 
 /** matchPrefix is matched against the start of the asset filename */
 const CATALOGUE = [
@@ -175,7 +175,9 @@ fs.writeFileSync(
   "utf8",
 );
 
-console.log(`Copied ${copied.length}/${CATALOGUE.length} products → public/products`);
+console.log(
+  `Copied ${copied.length}/${CATALOGUE.length} products → scripts/seed-assets/products`,
+);
 console.log(`Wrote ${outJson}`);
 if (missing.length) {
   console.error("MISSING matches:", missing.map((m) => m.match));

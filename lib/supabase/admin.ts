@@ -14,7 +14,4 @@ export function getServiceSupabase(): SupabaseClient {
   });
 }
 
-export function storagePublicUrl(bucket: string, path: string): string {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
-  return `${url}/storage/v1/object/public/${bucket}/${path}`;
-}
+export { storagePublicUrl } from "@/lib/storage-urls";

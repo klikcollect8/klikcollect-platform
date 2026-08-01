@@ -5,6 +5,7 @@ import {
   sbGetVendorStorefrontProducts,
   sbListAdmittedVendorsDetailed,
 } from "@/lib/supabase-catalogue";
+import { productImageUrl } from "@/lib/storage-urls";
 
 export type AdmittedVendor = {
   id: string;
@@ -33,7 +34,7 @@ export async function getAdmittedVendors(): Promise<AdmittedVendor[]> {
     tagline: v.tagline,
     categories: v.categories,
     productCount: v.productCount,
-    coverImage: v.coverImage || "/products/sourdough-loaf.jpeg",
+    coverImage: v.coverImage || productImageUrl("sourdough-loaf.jpeg"),
     status: "admitted" as const,
     lng: v.lng,
     lat: v.lat,

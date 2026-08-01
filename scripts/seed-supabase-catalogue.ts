@@ -8,8 +8,10 @@ import { createClient } from "@supabase/supabase-js";
 import { V1_CATEGORIES } from "../lib/curation-policy";
 import { FOUNDING_VENDORS, vendorForCategory } from "../lib/founding-vendors";
 import { majorToMinor } from "../lib/money";
-import { HERO_ASSETS, HERO_COPY } from "../lib/hero-assets";
+import { HERO_COPY, HERO_SEED_FILES } from "../lib/hero-assets";
 import catalogue from "./seed-catalogue.json";
+
+const SEED_ASSETS = path.join(process.cwd(), "scripts", "seed-assets");
 
 async function loadEnvFiles() {
   for (const file of [".env.local", ".env"]) {
@@ -139,7 +141,7 @@ async function main() {
   for (const name of V1_CATEGORIES) {
     const file = CATEGORY_FILES[name];
     if (!file) continue;
-    const fp = path.join(root, "public", "categories", file);
+    const fp = path.join(SEED_ASSETS, "categories", file);
     try {
       categoryImageUrls[name] = await uploadFile(
         sb,
@@ -239,7 +241,7 @@ async function main() {
     const fileName = path.basename(p.image);
     let imageUrl = productImageCache.get(fileName);
     if (!imageUrl) {
-      const fp = path.join(root, "public", "products", fileName);
+      const fp = path.join(SEED_ASSETS, "products", fileName);
       try {
         imageUrl = await uploadFile(sb, "product-images", fileName, fp, "image/jpeg");
         productImageCache.set(fileName, imageUrl);
@@ -332,13 +334,14 @@ async function main() {
 
   console.log("Seeding homepage CMS…");
   const heroUrls: string[] = [];
-  for (const asset of HERO_ASSETS) {
-    const fileName = path.basename(asset);
-    const fp = path.join(root, "public", "hero", fileName);
+  for (const fileName of HERO_SEED_FILES) {
+    const fp = path.join(SEED_ASSETS, "hero", fileName);
     try {
-      heroUrls.push(await uploadFile(sb, "cms-images", `hero/${fileName}`, fp, "image/jpeg"));
-    } catch {
-      heroUrls.push(asset);
+      heroUrls.push(
+        await uploadFile(sb, "cms-images", `hero/${fileName}`, fp, "image/jpeg"),
+      );
+    } catch (e) {
+      console.warn(`Hero image skip ${fileName}:`, e);
     }
   }
 

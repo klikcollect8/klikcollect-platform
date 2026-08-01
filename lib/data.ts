@@ -17,6 +17,7 @@ import {
 } from "@/types";
 import { createClient } from "./supabase/server";
 import { PRODUCT_IMAGE_FALLBACK } from "./product-image";
+import { productImageUrl } from "@/lib/storage-urls";
 
 // Basic fallback catalog used when Supabase isn't available so the site still works.
 const fallbackProducts: Product[] = [
@@ -26,8 +27,8 @@ const fallbackProducts: Product[] = [
     description: "Tender baby spinach leaves for salads and sautés.",
     longDescription: "Tender baby spinach leaves for salads and sautés.",
     price: 180,
-    image: "/products/baby-spinach.jpeg",
-    images: ["/products/baby-spinach.jpeg"],
+    image: productImageUrl("baby-spinach.jpeg"),
+    images: [productImageUrl("baby-spinach.jpeg")],
     category: "Fresh Produce",
     stock: 25,
     status: "published",
@@ -44,8 +45,8 @@ const fallbackProducts: Product[] = [
     description: "Full-cream organic milk in glass.",
     longDescription: "Full-cream organic milk in glass.",
     price: 240,
-    image: "/products/organic-milk.jpeg",
-    images: ["/products/organic-milk.jpeg"],
+    image: productImageUrl("organic-milk.jpeg"),
+    images: [productImageUrl("organic-milk.jpeg")],
     category: "Dairy & Eggs",
     stock: 15,
     status: "published",
@@ -62,8 +63,8 @@ const fallbackProducts: Product[] = [
     description: "Cold-pressed olive oil in dark glass.",
     longDescription: "Cold-pressed olive oil in dark glass.",
     price: 890,
-    image: "/products/olive-oil.jpeg",
-    images: ["/products/olive-oil.jpeg"],
+    image: productImageUrl("olive-oil.jpeg"),
+    images: [productImageUrl("olive-oil.jpeg")],
     category: "Pantry",
     stock: 30,
     status: "published",
@@ -80,8 +81,8 @@ const fallbackProducts: Product[] = [
     description: "Freshly baked artisan sourdough loaf.",
     longDescription: "Freshly baked artisan sourdough loaf.",
     price: 450,
-    image: "/products/sourdough-loaf.jpeg",
-    images: ["/products/sourdough-loaf.jpeg"],
+    image: productImageUrl("sourdough-loaf.jpeg"),
+    images: [productImageUrl("sourdough-loaf.jpeg")],
     category: "Groceries",
     stock: 20,
     status: "published",
