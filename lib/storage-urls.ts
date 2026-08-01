@@ -1,6 +1,6 @@
 /**
  * Public Supabase Storage URL helpers (client + server safe).
- * Images live in Storage; local files are seed-only under scripts/seed-assets.
+ * Catalogue imagery lives only in Supabase Storage — not in this repo.
  */
 
 function supabaseOrigin(): string {

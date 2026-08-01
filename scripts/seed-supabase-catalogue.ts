@@ -11,8 +11,6 @@ import { majorToMinor } from "../lib/money";
 import { HERO_COPY, HERO_SEED_FILES } from "../lib/hero-assets";
 import catalogue from "./seed-catalogue.json";
 
-const SEED_ASSETS = path.join(process.cwd(), "scripts", "seed-assets");
-
 async function loadEnvFiles() {
   for (const file of [".env.local", ".env"]) {
     try {
@@ -97,22 +95,15 @@ function requireEnv(name: string): string {
   return v;
 }
 
-async function uploadFile(
+/** Images already live in Supabase Storage — seed rows point at public URLs. */
+function publicObjectUrl(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sb: any,
   bucket: string,
   objectPath: string,
-  filePath: string,
-  contentType: string,
-): Promise<string> {
-  const body = await fs.readFile(filePath);
-  const { error } = await sb.storage.from(bucket).upload(objectPath, body, {
-    contentType,
-    upsert: true,
-  });
-  if (error) throw new Error(`Upload ${bucket}/${objectPath}: ${error.message}`);
+): string {
   const { data } = sb.storage.from(bucket).getPublicUrl(objectPath);
-  return data.publicUrl;
+  return data.publicUrl as string;
 }
 
 async function main() {
@@ -122,7 +113,6 @@ async function main() {
   const sb = createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const root = process.cwd();
   const products = catalogue as CatalogueRow[];
 
   console.log("Clearing previous commerce seed…");
@@ -136,23 +126,12 @@ async function main() {
   await sb.from("categories").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("banner_slides").delete().neq("id", "00000000-0000-0000-0000-000000000000");
 
-  console.log("Uploading category images…");
+  console.log("Linking category images from Storage…");
   const categoryImageUrls: Record<string, string> = {};
   for (const name of V1_CATEGORIES) {
     const file = CATEGORY_FILES[name];
     if (!file) continue;
-    const fp = path.join(SEED_ASSETS, "categories", file);
-    try {
-      categoryImageUrls[name] = await uploadFile(
-        sb,
-        "category-images",
-        file,
-        fp,
-        "image/jpeg",
-      );
-    } catch (e) {
-      console.warn(`Category image skip ${name}:`, e);
-    }
+    categoryImageUrls[name] = publicObjectUrl(sb, "category-images", file);
   }
 
   console.log("Upserting categories…");
@@ -232,7 +211,7 @@ async function main() {
     });
   }
 
-  console.log("Uploading product images + upserting products…");
+  console.log("Upserting products (images from Storage)…");
   const productUuidByPublicId = new Map<string, string>();
   const productImageCache = new Map<string, string>();
 
@@ -241,13 +220,8 @@ async function main() {
     const fileName = path.basename(p.image);
     let imageUrl = productImageCache.get(fileName);
     if (!imageUrl) {
-      const fp = path.join(SEED_ASSETS, "products", fileName);
-      try {
-        imageUrl = await uploadFile(sb, "product-images", fileName, fp, "image/jpeg");
-        productImageCache.set(fileName, imageUrl);
-      } catch {
-        imageUrl = p.image; // fallback to relative path if missing
-      }
+      imageUrl = publicObjectUrl(sb, "product-images", fileName);
+      productImageCache.set(fileName, imageUrl);
     }
 
     const { data, error } = await sb
@@ -332,18 +306,10 @@ async function main() {
     if (error) throw error;
   }
 
-  console.log("Seeding homepage CMS…");
-  const heroUrls: string[] = [];
-  for (const fileName of HERO_SEED_FILES) {
-    const fp = path.join(SEED_ASSETS, "hero", fileName);
-    try {
-      heroUrls.push(
-        await uploadFile(sb, "cms-images", `hero/${fileName}`, fp, "image/jpeg"),
-      );
-    } catch (e) {
-      console.warn(`Hero image skip ${fileName}:`, e);
-    }
-  }
+  console.log("Seeding homepage CMS (hero images from Storage)…");
+  const heroUrls = HERO_SEED_FILES.map((fileName) =>
+    publicObjectUrl(sb, "cms-images", `hero/${fileName}`),
+  );
 
   await sb.from("homepage_settings").upsert({
     id: 1,
