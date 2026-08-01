@@ -193,7 +193,7 @@ function ProductPageInner() {
 
   return (
     <div className="min-h-screen w-full bg-[#f7f7f5] text-black">
-      <div className="mx-auto w-full max-w-[1600px] px-6 pb-20 pt-8 sm:px-10 sm:pt-10 lg:px-14 xl:px-20">
+      <div className="mx-auto w-full max-w-[1600px] px-4 pb-32 pt-6 sm:px-6 sm:pb-20 sm:pt-10 md:px-10 lg:px-14 xl:px-20">
         <Breadcrumbs
           items={[
             {
@@ -244,14 +244,14 @@ function ProductPageInner() {
                 How you get it
               </h2>
               <div
-                className="grid grid-cols-2 border border-black/[0.1]"
+                className="grid grid-cols-1 border border-black/[0.1] min-[400px]:grid-cols-2"
                 role="group"
                 aria-label="Fulfilment method"
               >
                 <button
                   type="button"
                   onClick={() => setFulfilment("pickup")}
-                  className={`px-3 py-3.5 text-left transition-colors ${
+                  className={`min-h-14 px-4 py-3.5 text-left transition-colors ${
                     fulfilment === "pickup"
                       ? "bg-black text-white"
                       : "bg-transparent text-black/55 hover:text-black"
@@ -271,7 +271,7 @@ function ProductPageInner() {
                 <button
                   type="button"
                   onClick={() => setFulfilment("delivery")}
-                  className={`border-l border-black/[0.1] px-3 py-3.5 text-left transition-colors ${
+                  className={`min-h-14 border-t border-black/[0.1] px-4 py-3.5 text-left transition-colors min-[400px]:border-l min-[400px]:border-t-0 ${
                     fulfilment === "delivery"
                       ? "bg-black text-white"
                       : "bg-transparent text-black/55 hover:text-black"
@@ -500,7 +500,7 @@ function ProductPageInner() {
                     <button
                       type="button"
                       onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                      className="flex h-10 w-10 items-center justify-center text-black/45 hover:text-black"
+                      className="flex h-11 w-11 items-center justify-center text-black/45 hover:text-black"
                       aria-label="Decrease quantity"
                     >
                       <Minus className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -513,7 +513,7 @@ function ProductPageInner() {
                       onClick={() =>
                         setQuantity((q) => Math.min(Math.min(stock, 10), q + 1))
                       }
-                      className="flex h-10 w-10 items-center justify-center text-black/45 hover:text-black"
+                      className="flex h-11 w-11 items-center justify-center text-black/45 hover:text-black"
                       aria-label="Increase quantity"
                     >
                       <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -524,7 +524,7 @@ function ProductPageInner() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="hidden grid-cols-2 gap-3 sm:grid">
                   <button
                     type="button"
                     onClick={addToCart}
@@ -555,7 +555,7 @@ function ProductPageInner() {
                 <button
                   type="button"
                   disabled
-                  className="w-full border border-black/10 py-4 text-[13px] font-medium uppercase tracking-[0.16em] text-black/30"
+                  className="hidden w-full border border-black/10 py-4 text-[13px] font-medium uppercase tracking-[0.16em] text-black/30 sm:block"
                 >
                   Select a vendor
                 </button>
@@ -564,6 +564,30 @@ function ProductPageInner() {
             )}
           </div>
         </div>
+
+        {/* Mobile sticky buy bar — sits above bottom nav */}
+        {selectedOffer && stock > 0 ? (
+          <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[85] border-t border-black/10 bg-[#f7f7f5]/95 px-4 py-3 backdrop-blur-md sm:hidden">
+            <div className="mx-auto grid max-w-[1600px] grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={addToCart}
+                disabled={isAddingToCart}
+                className="min-h-12 bg-black text-[11px] font-medium uppercase tracking-[0.12em] text-white disabled:opacity-50"
+              >
+                {isAddingToCart ? "Adding…" : "Add to bag"}
+              </button>
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                disabled={isAddingToCart}
+                className="min-h-12 border border-black/20 text-[11px] font-medium uppercase tracking-[0.12em] disabled:opacity-50"
+              >
+                Buy now
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* Vendor-specific: Details / Location / Reviews / Questions */}
         <section className="mt-24 lg:mt-32" id="product-info">

@@ -32,36 +32,40 @@ export default function BottomNav() {
   const item = (active: boolean) =>
     active ? "text-black" : "text-black/40";
 
+  const tabClass = (active: boolean) =>
+    `relative flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium uppercase tracking-[0.1em] ${item(active)}`;
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[90] border-t border-black/10 bg-[#f7f7f5]/92 pb-safe backdrop-blur-md lg:hidden">
-      <div className="flex h-14 items-center justify-around px-1">
-        <Link
-          href="/"
-          className={`flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] ${item(pathname === "/")}`}
-        >
+    <nav className="fixed bottom-0 left-0 right-0 z-[90] border-t border-black/10 bg-[#f7f7f5]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
+      <div className="flex h-14 items-stretch justify-around px-0.5">
+        <Link href="/" className={tabClass(pathname === "/")}>
           Home
         </Link>
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent("toggleSearch"))}
-          className="flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-black/40"
+          className={tabClass(false)}
         >
           Search
         </button>
         <Link
           href="/brands"
-          className={`flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] ${item(pathname?.startsWith("/brands") || pathname?.startsWith("/vendors"))}`}
+          className={tabClass(
+            Boolean(
+              pathname?.startsWith("/brands") || pathname?.startsWith("/vendors"),
+            ),
+          )}
         >
           Vendors
         </Link>
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent("toggleCart"))}
-          className="relative flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-black/40"
+          className={tabClass(false)}
         >
           Bag
           {cartCount > 0 ? (
-            <span className="absolute right-[28%] top-0 text-[9px] tabular-nums text-black">
+            <span className="absolute right-[18%] top-1 text-[10px] tabular-nums text-black">
               {cartCount}
             </span>
           ) : null}
@@ -69,7 +73,7 @@ export default function BottomNav() {
         <Show when="signed-in">
           <Link
             href="/account"
-            className={`flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] ${item(pathname?.startsWith("/account") || false)}`}
+            className={tabClass(Boolean(pathname?.startsWith("/account")))}
           >
             Account
           </Link>
@@ -78,7 +82,7 @@ export default function BottomNav() {
           <button
             type="button"
             onClick={() => showSignInModal()}
-            className="flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-black/40"
+            className={tabClass(false)}
           >
             Sign in
           </button>

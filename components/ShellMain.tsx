@@ -14,6 +14,6 @@ export default function ShellMain({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/sign-up");
 
   return (
-    <main className={cn(!isOsShell && "pb-24 lg:pb-0")}>{children}</main>
+    <main className={cn(!isOsShell && "kc-mobile-nav-pad")}>{children}</main>
   );
 }

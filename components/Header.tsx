@@ -75,10 +75,10 @@ export default function Header() {
           scrolled ? "bg-[#f7f7f5]/90 backdrop-blur-md" : "bg-transparent"
         }`}
       >
-        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between px-6 sm:px-10 lg:px-14 xl:px-20">
+        <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 sm:h-[72px] sm:px-10 lg:px-14 xl:px-20">
           <Link
             href="/"
-            className="text-[16px] font-medium uppercase tracking-[0.14em] text-black"
+            className="min-h-11 min-w-0 truncate pr-2 text-[14px] font-medium uppercase tracking-[0.12em] text-black sm:text-[16px] sm:tracking-[0.14em]"
           >
             KLIKCOLLECT®
           </Link>
@@ -95,20 +95,20 @@ export default function Header() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-4 sm:gap-5">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <button
               type="button"
               onClick={() => setIsMobileSearchOpen(true)}
-              className="text-black/80 transition-opacity hover:opacity-50"
+              className="inline-flex h-11 w-11 items-center justify-center text-black/80 transition-opacity hover:opacity-50"
               aria-label="Search"
             >
-              <Search className="h-4 w-4" strokeWidth={1.75} />
+              <Search className="h-5 w-5" strokeWidth={1.75} />
             </button>
             <Show when="signed-out">
               <button
                 type="button"
                 onClick={() => showSignInModal()}
-                className="hidden text-[13px] font-medium underline underline-offset-4 decoration-black/30 hover:decoration-black sm:inline"
+                className="hidden min-h-11 items-center px-2 text-[13px] font-medium underline underline-offset-4 decoration-black/30 hover:decoration-black sm:inline-flex"
               >
                 Sign in
               </button>
@@ -119,19 +119,19 @@ export default function Header() {
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="relative text-black/80 transition-opacity hover:opacity-50"
+              className="relative inline-flex h-11 w-11 items-center justify-center text-black/80 transition-opacity hover:opacity-50"
               aria-label={`Bag ${cartCount}`}
             >
-              <ShoppingBag className="h-4 w-4" strokeWidth={1.75} />
+              <ShoppingBag className="h-5 w-5" strokeWidth={1.75} />
               {cartCount > 0 ? (
-                <span className="absolute -right-2 -top-2 text-[10px] font-medium tabular-nums">
+                <span className="absolute right-1.5 top-1.5 text-[10px] font-medium tabular-nums">
                   {cartCount}
                 </span>
               ) : null}
             </button>
             <button
               type="button"
-              className="md:hidden"
+              className="inline-flex h-11 w-11 items-center justify-center md:hidden"
               onClick={() => setMenuOpen(true)}
               aria-label="Menu"
             >
@@ -142,37 +142,42 @@ export default function Header() {
       </header>
 
       {menuOpen ? (
-        <div className="fixed inset-0 z-50 bg-[#f7f7f5]">
-          <div className="flex h-[64px] items-center justify-between px-5">
-            <span className="text-[15px] font-medium uppercase tracking-[0.14em]">
+        <div className="fixed inset-0 z-[100] flex flex-col bg-[#f7f7f5]">
+          <div className="flex h-16 shrink-0 items-center justify-between px-4 sm:px-5">
+            <span className="text-[14px] font-medium uppercase tracking-[0.12em] sm:text-[15px]">
               KLIKCOLLECT®
             </span>
-            <button type="button" onClick={() => setMenuOpen(false)} aria-label="Close">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Close"
+              className="inline-flex h-11 w-11 items-center justify-center"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex flex-col gap-2 px-5 pt-10">
-            <p className="mb-4 text-[11px] uppercase tracking-[0.2em] text-black/40">Menu</p>
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-5 sm:pt-10">
+            <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-black/40">Menu</p>
             {[{ name: "Home", href: "/" }, ...NAV, { name: "Categories", href: "/categories" }].map(
               (l) => (
                 <Link
                   key={l.href}
                   href={l.href}
-                  className="border-b border-black/10 py-4 text-[28px] font-medium tracking-tight"
+                  className="border-b border-black/10 py-3.5 text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
                 >
                   {l.name}
                 </Link>
               ),
             )}
-            <p className="mt-10 text-[11px] uppercase tracking-[0.2em] text-black/40">
+            <p className="mt-8 text-[11px] uppercase tracking-[0.2em] text-black/40">
               Shop by department
             </p>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-3">
               {V1_CATEGORIES.slice(0, 8).map((c) => (
                 <Link
                   key={c}
                   href={`/shop?category=${encodeURIComponent(c)}`}
-                  className="text-[13px] text-black/70 underline-offset-4 hover:underline"
+                  className="min-h-10 inline-flex items-center text-[13px] text-black/70 underline-offset-4 hover:underline"
                 >
                   {c}
                 </Link>
@@ -184,7 +189,7 @@ export default function Header() {
                 setMenuOpen(false);
                 router.push("/sell");
               }}
-              className="mt-10 text-left text-[13px] font-medium underline underline-offset-4"
+              className="mt-8 min-h-11 text-left text-[13px] font-medium underline underline-offset-4"
             >
               Get in touch →
             </button>

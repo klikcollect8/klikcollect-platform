@@ -68,45 +68,49 @@ export default function HomepageBanner() {
         paused.current = false;
       }}
     >
-      <div className="grid min-h-[70svh] w-full grid-cols-1 lg:min-h-[78svh] lg:grid-cols-12">
+      <div className="grid min-h-0 w-full grid-cols-1 lg:min-h-[78svh] lg:grid-cols-12">
         {/* Copy — ~1/3 */}
-        <div className="relative z-20 flex flex-col justify-center px-6 py-16 sm:px-10 lg:col-span-4 lg:px-14 lg:py-24 xl:px-20">
-          <p className="mb-5 text-[12px] font-medium uppercase tracking-[0.28em] text-black/40">
+        <div className="relative z-20 flex flex-col justify-center px-4 py-10 sm:px-10 sm:py-16 lg:col-span-4 lg:px-14 lg:py-24 xl:px-20">
+          <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.28em] text-black/40 sm:mb-5 sm:text-[12px]">
             {HERO_COPY.eyebrow}
           </p>
-          <h1 className="max-w-[10ch] text-[clamp(2.5rem,5.5vw,4.5rem)] font-medium leading-[1.02] tracking-[-0.04em] text-black">
+          <h1 className="max-w-[10ch] text-[clamp(2.15rem,9vw,4.5rem)] font-medium leading-[1.02] tracking-[-0.04em] text-black">
             {HERO_COPY.headline}
           </h1>
-          <p className="mt-6 max-w-sm text-[17px] leading-relaxed text-black/50 sm:text-[18px]">
+          <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-black/50 sm:mt-6 sm:text-[18px]">
             {HERO_COPY.sub}
           </p>
 
-          <div className="mt-10">
+          <div className="mt-8 sm:mt-10">
             <Link
               href={HERO_COPY.ctaHref}
-              className="inline-flex bg-black px-8 py-4 text-[12px] font-medium uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-80"
+              className="inline-flex min-h-12 items-center bg-black px-7 py-3.5 text-[12px] font-medium uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-80 sm:px-8 sm:py-4"
             >
               {HERO_COPY.cta}
             </Link>
           </div>
 
-          <div className="mt-12 flex items-center gap-2.5">
+          <div className="mt-8 flex items-center gap-1 sm:mt-12 sm:gap-2.5">
             {HERO_ASSETS.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 aria-label={`Go to slide ${i + 1}`}
                 onClick={() => goTo(i)}
-                className={`h-px transition-all duration-500 ${
-                  i === active ? "w-10 bg-black" : "w-4 bg-black/20 hover:bg-black/40"
-                }`}
-              />
+                className="flex h-11 items-center px-1"
+              >
+                <span
+                  className={`block h-px transition-all duration-500 ${
+                    i === active ? "w-10 bg-black" : "w-4 bg-black/20"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </div>
 
         {/* Image — ~2/3 full height, fades into canvas */}
-        <div className="relative min-h-[42svh] w-full lg:col-span-8 lg:min-h-[78svh]">
+        <div className="relative min-h-[36svh] w-full sm:min-h-[42svh] lg:col-span-8 lg:min-h-[78svh]">
           <div ref={slidesRef} className="absolute inset-0">
             {HERO_ASSETS.map((src, i) => (
               <div key={src} className="kc-hero-slide absolute inset-0">

@@ -154,32 +154,35 @@
 
   main {
     margin: 0 !important;
-    padding: 0 !important;
+    /* Do not zero padding — ShellMain needs pb for the mobile bottom nav */
   }
 
-  /* Mobile-friendly touch targets - only apply to interactive elements */
-  @media (max-width: 768px) {
-    button:not([class*="min-h"]):not([class*="h-"]), 
-    a:not([class*="min-h"]):not([class*="h-"]), 
-    input[type="button"]:not([class*="min-h"]):not([class*="h-"]), 
-    input[type="submit"]:not([class*="min-h"]):not([class*="h-"]) {
-      min-height: 44px;
-    }
-  }
-
-  /* Ensure readable text on mobile */
+  /* Ensure readable text / no iOS input zoom on mobile */
   @media (max-width: 640px) {
     body {
-      font-size: 16px; /* Prevents zoom on iOS */
+      font-size: 16px;
+      overflow-x: hidden;
     }
 
     input[type="text"],
     input[type="email"],
     input[type="tel"],
     input[type="password"],
+    input[type="search"],
     textarea,
     select {
-      font-size: 16px; /* Prevents zoom on iOS when focusing inputs */
+      font-size: 16px;
+    }
+  }
+
+  /* Clearance helpers for fixed mobile bottom nav */
+  .kc-mobile-nav-pad {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (min-width: 1024px) {
+    .kc-mobile-nav-pad {
+      padding-bottom: 0;
     }
   }
   html {

@@ -145,7 +145,9 @@ export default function MapPreview({
   }
 
   const mapHeight =
-    variant === "tab" ? "h-[340px] sm:h-[400px] lg:h-[440px]" : "h-[220px]";
+    variant === "tab"
+      ? "h-[260px] sm:h-[360px] lg:h-[440px]"
+      : "h-[200px] sm:h-[220px]";
   const vendorHref = `/vendors/${resolveVendorSlug({
     id: focus.vendorId,
     name: focus.vendorName,

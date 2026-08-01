@@ -17,7 +17,7 @@ export default function CartWrapper({ isOpen, onClose }: CartWrapperProps) {
   // Otherwise, let the Cart component handle the UI
   if (loading && cartItems.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex justify-end">
+      <div className="fixed inset-0 z-[100] flex justify-end bg-black/30 backdrop-blur-sm">
         <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
           <p className="mt-4 text-gray-500 font-medium text-sm">Loading cart...</p>

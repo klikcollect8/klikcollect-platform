@@ -14,7 +14,7 @@ export function StorePage({
     <div className={cn("min-h-screen w-full bg-[#f7f7f5] text-black", className)}>
       <div
         className={cn(
-          "mx-auto w-full px-6 py-12 sm:px-10 sm:py-16 lg:px-14 xl:px-20",
+          "mx-auto w-full px-4 py-10 sm:px-10 sm:py-16 lg:px-14 xl:px-20",
           narrow ? "max-w-[960px]" : "max-w-[1600px]",
         )}
       >

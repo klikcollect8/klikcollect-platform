@@ -65,7 +65,7 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
             <button
               type="button"
               onClick={prevImage}
-              className="absolute left-0 top-1/2 z-10 -translate-y-1/2 p-2 text-black/35 transition-colors hover:text-black"
+              className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-black/35 transition-colors hover:text-black"
               aria-label="Previous image"
             >
               <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
@@ -73,23 +73,29 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
             <button
               type="button"
               onClick={nextImage}
-              className="absolute right-0 top-1/2 z-10 -translate-y-1/2 p-2 text-black/35 transition-colors hover:text-black"
+              className="absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-black/35 transition-colors hover:text-black"
               aria-label="Next image"
             >
               <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
             </button>
 
-            <div className="mt-6 flex justify-center gap-2">
+            <div className="mt-4 flex justify-center gap-0.5 sm:mt-6 sm:gap-1">
               {validImages.map((_, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => setCurrentIndex(index)}
                   aria-label={`Image ${index + 1}`}
-                  className={`h-px transition-all duration-500 ${
-                    index === currentIndex ? "w-8 bg-black" : "w-3 bg-black/20 hover:bg-black/40"
-                  }`}
-                />
+                  className="flex h-11 items-center px-1.5"
+                >
+                  <span
+                    className={`block h-px transition-all duration-500 ${
+                      index === currentIndex
+                        ? "w-8 bg-black"
+                        : "w-3 bg-black/20"
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           </>

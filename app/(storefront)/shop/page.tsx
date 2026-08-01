@@ -126,27 +126,34 @@ function ShopInner() {
         }
       />
 
-      <div className="mb-10 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-3 sm:mb-10 sm:gap-x-5">
         <button
           type="button"
           onClick={() => setShowFilters(true)}
-          className="flex items-center gap-2 border border-black/12 px-4 py-2.5 text-[13px] font-medium md:hidden"
+          className="flex min-h-11 items-center gap-2 border border-black/12 px-4 py-2.5 text-[13px] font-medium md:hidden"
         >
           <Filter className="h-4 w-4" />
           Filters
         </button>
-        <Chip active={selectedCategory === "all"} onClick={() => setSelectedCategory("all")}>
-          All ({products.length})
-        </Chip>
-        {categories.slice(0, 10).map((cat) => (
-          <Chip
-            key={cat}
-            active={selectedCategory === cat}
-            onClick={() => setSelectedCategory(cat)}
-          >
-            {cat}
+        <div className="hidden flex-wrap items-center gap-x-5 gap-y-3 md:flex">
+          <Chip active={selectedCategory === "all"} onClick={() => setSelectedCategory("all")}>
+            All ({products.length})
           </Chip>
-        ))}
+          {categories.slice(0, 10).map((cat) => (
+            <Chip
+              key={cat}
+              active={selectedCategory === cat}
+              onClick={() => setSelectedCategory(cat)}
+            >
+              {cat}
+            </Chip>
+          ))}
+        </div>
+        {selectedCategory !== "all" ? (
+          <span className="text-[13px] text-black/45 md:hidden">
+            {selectedCategory}
+          </span>
+        ) : null}
       </div>
 
       {selectedCategory !== "all" ? (
@@ -194,26 +201,31 @@ function ShopInner() {
       )}
 
       {showFilters ? (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-[100] md:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-black/40"
             onClick={() => setShowFilters(false)}
             aria-label="Close"
           />
-          <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto bg-[#f7f7f5] px-6 py-8">
-            <div className="mb-8 flex items-center justify-between">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto bg-[#f7f7f5] px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-6 sm:px-6">
+            <div className="mb-6 flex items-center justify-between">
               <h3 className="text-[20px] font-medium">Filters</h3>
-              <button type="button" onClick={() => setShowFilters(false)} aria-label="Close">
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                aria-label="Close"
+                className="inline-flex h-11 w-11 items-center justify-center"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="mb-8 space-y-8">
+            <div className="mb-6 space-y-8">
               <div>
                 <h4 className="mb-3 text-[12px] uppercase tracking-[0.18em] text-black/40">
                   Category
                 </h4>
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-wrap gap-3">
                   <Chip active={selectedCategory === "all"} onClick={() => setSelectedCategory("all")}>
                     All
                   </Chip>
@@ -232,7 +244,7 @@ function ShopInner() {
             <button
               type="button"
               onClick={() => setShowFilters(false)}
-              className="w-full bg-black py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-white"
+              className="w-full min-h-12 bg-black py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-white"
             >
               Show {filteredProducts.length} products
             </button>
