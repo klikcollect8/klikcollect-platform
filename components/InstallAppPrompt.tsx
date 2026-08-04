@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Capacitor } from "@capacitor/core";
 import { CloseIcon } from "@/components/NavIcons";
@@ -27,23 +27,31 @@ function isStandaloneDisplay() {
   return mq || iosStandalone;
 }
 
+function detectPlatform() {
+  if (typeof navigator === "undefined") {
+    return { ios: false, android: false };
+  }
+  const ua = navigator.userAgent || "";
+  const ios =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const android = /Android/i.test(ua);
+  return { ios, android };
+}
+
 function canNativeShare() {
   return typeof navigator !== "undefined" && typeof navigator.share === "function";
 }
 
 /** Open install UI from menus. */
-export function openInstallAppPrompt(opts?: OpenDetail) {
+export function openInstallAppPrompt(_opts?: OpenDetail) {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(
-    new CustomEvent(OPEN_INSTALL_APP_EVENT, {
-      detail: { autoShare: opts?.autoShare === true },
-    }),
-  );
+  window.dispatchEvent(new CustomEvent(OPEN_INSTALL_APP_EVENT));
 }
 
 /**
- * Full-screen install overlay — same chrome as Cart / Checkout.
- * QR + Install app only.
+ * Full-screen install overlay — Cart / Checkout chrome.
+ * Install app only (no QR).
  */
 export default function InstallAppPrompt() {
   const mounted = useIsClient();
@@ -53,17 +61,8 @@ export default function InstallAppPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     null,
   );
-  const [pageOrigin, setPageOrigin] = useState("");
   const deferredRef = useRef<BeforeInstallPromptEvent | null>(null);
-
-  const shareUrl = useMemo(
-    () => getPublicAppUrl(pageOrigin || undefined),
-    [pageOrigin],
-  );
-
-  const qrSrc = shareUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(shareUrl)}`
-    : "";
+  const platform = detectPlatform();
 
   useEffect(() => {
     deferredRef.current = deferred;
@@ -96,7 +95,6 @@ export default function InstallAppPrompt() {
   }, [open]);
 
   useEffect(() => {
-    setPageOrigin(window.location.origin);
     if (Capacitor.isNativePlatform()) return;
     if (isStandaloneDisplay()) return;
 
@@ -154,7 +152,7 @@ export default function InstallAppPrompt() {
       if (canNativeShare()) {
         await navigator.share({
           title: "KlikCollect",
-          text: "Install KlikCollect",
+          text: "Install KlikCollect on your home screen",
           url,
         });
         return;
@@ -169,6 +167,14 @@ export default function InstallAppPrompt() {
     }
   };
 
+  const supportLine = deferred
+    ? "Add KlikCollect to your home screen in one tap."
+    : platform.ios
+      ? "Opens Share — choose Add to Home Screen."
+      : platform.android
+        ? "Install to your home screen for faster checkout."
+        : "Install KlikCollect for a full-screen home screen app.";
+
   if (!mounted || !open || typeof document === "undefined") return null;
 
   const content = (
@@ -180,7 +186,7 @@ export default function InstallAppPrompt() {
         isVisible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <div className="relative mx-auto flex h-full w-full max-w-[720px] flex-col px-5 sm:px-8">
+      <div className="mx-auto flex h-full w-full max-w-[1200px] flex-col px-5 sm:px-8 lg:px-12">
         <header className="flex shrink-0 items-center justify-between pt-5 sm:pt-7">
           <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-black/40">
             Get the app
@@ -188,7 +194,7 @@ export default function InstallAppPrompt() {
           <button
             type="button"
             onClick={handleClose}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 text-[13px] text-black/45 transition-colors hover:text-black"
+            className="inline-flex items-center gap-2 text-[13px] text-black/45 transition-colors hover:text-black"
             aria-label="Close"
           >
             <span className="hidden sm:inline">Esc</span>
@@ -197,32 +203,34 @@ export default function InstallAppPrompt() {
         </header>
 
         <div
-          className={`scrollbar-hide min-h-0 flex-1 overflow-y-auto pb-8 pt-10 transition-all duration-500 ease-out sm:pt-14 ${
+          className={`mt-6 shrink-0 border-b border-black/15 pb-5 transition-all duration-500 ease-out sm:mt-8 sm:pb-6 ${
+            isVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+          }`}
+        >
+          <h1 className="text-[clamp(1.5rem,3vw,2rem)] font-medium tracking-tight text-black">
+            Install KlikCollect
+          </h1>
+          <p className="mt-2 max-w-md text-[14px] leading-relaxed text-black/45">
+            {supportLine}
+          </p>
+        </div>
+
+        <div
+          className={`scrollbar-hide flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto pb-8 pt-10 transition-all duration-500 ease-out sm:pt-12 ${
             isVisible ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
           }`}
         >
-          <h2 className="text-[clamp(1.5rem,4vw,2rem)] font-medium tracking-tight">
-            Install KlikCollect
-          </h2>
-          <p className="mt-3 text-[14px] text-black/45">
-            Scan on your phone, then tap Install app.
-          </p>
-
-          {qrSrc ? (
-            <div className="mt-10 flex justify-center border border-black/8 bg-white p-5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrSrc}
-                alt="QR code for KlikCollect"
-                width={220}
-                height={220}
-                className="h-[200px] w-[200px] sm:h-[220px] sm:w-[220px]"
-              />
-            </div>
-          ) : null}
-
-          <p className="mt-4 break-all text-center text-[12px] text-black/35">
-            {shareUrl}
+          <div
+            className="flex h-28 w-28 items-center justify-center bg-black sm:h-32 sm:w-32"
+            aria-hidden
+          >
+            <span className="text-[2.75rem] font-semibold tracking-tight text-[#f7f7f5] sm:text-[3.25rem]">
+              KC
+            </span>
+          </div>
+          <p className="mt-8 max-w-sm text-center text-[15px] leading-relaxed text-black/50">
+            Home screen access to shop, bag, and checkout — same account, same
+            orders.
           </p>
         </div>
 
