@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="viewport-fit=cover, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <meta name="color-scheme" content="light" />
+    <title>KlikCollect</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #f7f7f5;
+        color: #0a0a0a;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, sans-serif;
+      }
+      main {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        box-sizing: border-box;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0.75rem 0 0;
+        max-width: 22rem;
+        font-size: 0.95rem;
+        line-height: 1.45;
+        color: rgba(10, 10, 10, 0.5);
+      }
+      code {
+        font-size: 0.8em;
+        color: rgba(10, 10, 10, 0.7);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>KlikCollect</h1>
+      <p>
+        Opening the app… If this stays blank, set
+        <code>CAPACITOR_SERVER_URL</code> to your hosted Next.js URL and run
+        <code>npx cap sync</code>.
+      </p>
+    </main>
+    <script>
+      (function () {
+        // When server.url is configured, Capacitor loads that host instead.
+        // This page is only the offline / misconfigured fallback.
+        var params = new URLSearchParams(window.location.search);
+        var target = params.get("url");
+        if (target && /^https?:\/\//i.test(target)) {
+          window.location.replace(target);
+        }
+      })();
+    </script>
+  </body>
+</html>

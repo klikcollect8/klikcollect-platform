@@ -6,14 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 function PaymentCallbackInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const [status, setStatus] = useState("Verifying payment…");
+  const [status, setStatus] = useState("Confirming your order…");
 
   useEffect(() => {
     const reference = params.get("reference") || params.get("trxref") || "";
     const provider = params.get("provider") || undefined;
     const sessionId = params.get("session_id") || undefined;
     if (!reference) {
-      setStatus("Missing reference");
+      setStatus("Missing payment reference");
       router.replace("/account/orders");
       return;
     }
@@ -26,14 +26,12 @@ function PaymentCallbackInner() {
       .then((r) => r.json())
       .then((j) => {
         if (j.data?.receiptPublicId) {
-          setStatus("Payment confirmed");
+          setStatus("Order received");
           router.replace(`/account/receipts/${j.data.receiptPublicId}`);
           return;
         }
         setStatus(
-          j.data?.status === "success"
-            ? "Payment confirmed"
-            : "Payment recorded",
+          j.data?.status === "success" ? "Order received" : "Payment recorded",
         );
         router.replace("/account/orders");
       })
@@ -44,9 +42,11 @@ function PaymentCallbackInner() {
   }, [params, router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
-      <p className="text-[12px] uppercase tracking-[0.22em] text-black/40">
-        {status}
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#f7f7f5] px-6 text-center">
+      <p className="text-[22px] font-semibold tracking-tight">{status}</p>
+      <p className="mt-3 max-w-xs text-[14px] text-black/45">
+        Hang tight — we&apos;re confirming payment and preparing your pickup
+        details.
       </p>
     </div>
   );
@@ -56,9 +56,13 @@ export default function PaymentCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
-          <p className="text-[12px] uppercase tracking-[0.22em] text-black/40">
-            Verifying payment…
+        <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#f7f7f5] px-6 text-center">
+          <p className="text-[22px] font-semibold tracking-tight">
+            Confirming your order…
+          </p>
+          <p className="mt-3 max-w-xs text-[14px] text-black/45">
+            Hang tight — we&apos;re confirming payment and preparing your pickup
+            details.
           </p>
         </div>
       }

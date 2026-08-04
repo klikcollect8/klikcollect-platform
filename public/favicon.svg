@@ -1,14 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Circle background -->
-  <circle cx="256" cy="256" r="256" fill="#000000"/>
-  
-  <!-- KC Monogram - Extra large and centered -->
-  <text x="50%" y="52%" 
-        dominant-baseline="central"
-        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" 
-        font-size="440" 
-        font-weight="800" 
-        fill="#ffffff" 
-        text-anchor="middle"
-        letter-spacing="-25">KC</text>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#0a0a0a"/>
+  <text x="16" y="17" text-anchor="middle" dominant-baseline="middle"
+    font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700"
+    letter-spacing="-0.06em" fill="#f7f7f5">KC</text>
 </svg>

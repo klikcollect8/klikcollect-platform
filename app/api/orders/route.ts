@@ -42,7 +42,20 @@ export async function POST(request: NextRequest) {
       items,
       pickupDate,
       pickupTime,
+      fulfilment,
+      collectHub,
+      deliveryAddress,
+      areaKey,
+      collectorName,
+      pickupNote,
+      building,
+      street,
+      landmark,
+      gateCode,
+      deliveryNote,
     } = body;
+    const fulfilmentMethod =
+      fulfilment === "delivery" ? "delivery" : "pickup";
 
     if (
       !customerName ||
@@ -95,7 +108,35 @@ export async function POST(request: NextRequest) {
     }
 
     const notes = [
-      `Pickup ${pickupDate} ${pickupTime}`,
+      fulfilmentMethod === "delivery"
+        ? `Delivery ${pickupDate} ${pickupTime}`
+        : `Pickup ${pickupDate} ${pickupTime}`,
+      fulfilmentMethod === "delivery"
+        ? deliveryAddress
+          ? `Address: ${String(deliveryAddress).trim()}`
+          : [
+              building && `Building: ${String(building).trim()}`,
+              street && `Street: ${String(street).trim()}`,
+              landmark && `Landmark: ${String(landmark).trim()}`,
+            ]
+              .filter(Boolean)
+              .join(" · ") || null
+        : collectHub
+          ? `Hub: ${String(collectHub)}`
+          : null,
+      fulfilmentMethod === "pickup" && collectorName
+        ? `Collector: ${String(collectorName).trim()}`
+        : null,
+      fulfilmentMethod === "pickup" && pickupNote
+        ? `Pickup note: ${String(pickupNote).trim()}`
+        : null,
+      fulfilmentMethod === "delivery" && gateCode
+        ? `Gate: ${String(gateCode).trim()}`
+        : null,
+      fulfilmentMethod === "delivery" && deliveryNote
+        ? `Rider note: ${String(deliveryNote).trim()}`
+        : null,
+      areaKey ? `Area: ${String(areaKey)}` : null,
       `clerk:${actor.userId}`,
     ]
       .filter(Boolean)
@@ -117,6 +158,10 @@ export async function POST(request: NextRequest) {
           vendorId,
           actorUserId: actor.userId,
           channel: "marketplace",
+          collectHub:
+            fulfilmentMethod === "pickup"
+              ? String(collectHub || "Westlands")
+              : String(areaKey || deliveryAddress || "Delivery"),
         });
         if (!r.ok) {
           return {

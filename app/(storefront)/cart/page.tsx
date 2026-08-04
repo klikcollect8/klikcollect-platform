@@ -286,12 +286,15 @@ export default function CartPage() {
               <p className="mt-4 text-[13px] leading-relaxed text-black/40">
                 Display prices · checkout when ready
               </p>
-              <Link
-                href="/checkout"
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("openCheckout"))
+                }
                 className="mt-8 flex w-full items-center justify-center bg-black py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-white hover:opacity-80"
               >
                 Checkout
-              </Link>
+              </button>
               <Link
                 href="/shop"
                 className="mt-3 flex w-full items-center justify-center border border-black py-4 text-[12px] font-medium uppercase tracking-[0.16em] transition-colors hover:bg-black hover:text-white"

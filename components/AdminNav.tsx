@@ -24,6 +24,7 @@ import {
   Settings,
   Shield,
   ShoppingBag,
+  Smartphone,
   SlidersHorizontal,
   Store,
   Tag,
@@ -37,6 +38,7 @@ import { Show, SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/components/admin/admin-ui";
 import { ControlPanel } from "@/components/os/ControlPanel";
+import { openInstallAppPrompt } from "@/components/InstallAppPrompt";
 import {
   PLATFORM_ROLES,
   PLATFORM_ROLE_LABELS,
@@ -624,6 +626,15 @@ export default function AdminNav({
         </button>
 
         <div className="ml-auto flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={() => openInstallAppPrompt()}
+            className={adminUi.btnGhost}
+            title="Get the app — QR for iPhone"
+          >
+            <Smartphone className="h-4 w-4" strokeWidth={1.5} />
+            <span className="hidden sm:inline">Get app</span>
+          </button>
           <button
             type="button"
             onClick={() => setControlOpen(true)}

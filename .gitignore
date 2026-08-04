@@ -60,11 +60,16 @@ next-env.d.ts
 /public/fallback-*.js
 /public/fallback-*.js.map
 
-# Capacitor
-/android
-/ios
+# Capacitor — native projects are committed; keep secrets / local noise out
 /windows
 /.capacitor
+android/app/release/
+android/**/*.keystore
+android/**/*.jks
+android/local.properties
+ios/App/Pods/
+ios/DerivedData/
+*.mobileprovision
 
 # clerk configuration (can include secrets)
 /.clerk/

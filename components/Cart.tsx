@@ -325,14 +325,19 @@ export default function Cart({
               >
                 View bag
               </Link>
-              <Link
-                href="/checkout"
-                onClick={handleClose}
+              <button
+                type="button"
+                onClick={() => {
+                  handleClose();
+                  window.setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent("openCheckout"));
+                  }, 280);
+                }}
                 className="inline-flex items-center justify-center gap-2 bg-black px-4 py-3.5 text-[13px] font-medium text-white transition-opacity hover:opacity-80 sm:py-4"
               >
                 Checkout
                 <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-              </Link>
+              </button>
             </div>
           </footer>
         ) : (

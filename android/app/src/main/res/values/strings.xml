@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">KlikCollect</string>
+    <string name="title_activity_main">KlikCollect</string>
+    <string name="package_name">com.klikcollect.app</string>
+    <string name="custom_url_scheme">com.klikcollect.app</string>
+</resources>

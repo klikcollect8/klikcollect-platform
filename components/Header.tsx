@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Show } from "@clerk/nextjs";
 import Cart from "./Cart";
+import CheckoutPopup from "./checkout/CheckoutPopup";
 import WishlistSidebar from "./WishlistSidebar";
 import MobileSearch from "./MobileSearch";
 import NotificationsPanel from "./NotificationsPanel";
@@ -18,6 +19,7 @@ import {
   SearchIcon,
 } from "@/components/NavIcons";
 import { useSignInModal } from "./SignInModalProvider";
+import { openInstallAppPrompt } from "@/components/InstallAppPrompt";
 import { useCart } from "@/lib/hooks/useCart";
 import { useWishlist } from "@/lib/hooks/useWishlist";
 
@@ -48,6 +50,7 @@ export default function Header() {
   const { cartItems, updateQuantity, removeFromCart } = useCart();
   const { wishlist, removeFromWishlist } = useWishlist();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -64,17 +67,23 @@ export default function Header() {
   useEffect(() => {
     const onToggleSearch = () => setIsMobileSearchOpen(true);
     const onToggleCart = () => setIsCartOpen(true);
+    const onOpenCheckout = () => {
+      setIsCartOpen(false);
+      setIsCheckoutOpen(true);
+    };
     const onToggleWishlist = () => setIsWishlistOpen(true);
     const onToggleNotifications = () => setIsNotificationsOpen(true);
     const onToggleOrders = () => setIsOrdersOpen(true);
     window.addEventListener("toggleSearch", onToggleSearch);
     window.addEventListener("toggleCart", onToggleCart);
+    window.addEventListener("openCheckout", onOpenCheckout);
     window.addEventListener("toggleWishlist", onToggleWishlist);
     window.addEventListener("toggleNotifications", onToggleNotifications);
     window.addEventListener("toggleOrders", onToggleOrders);
     return () => {
       window.removeEventListener("toggleSearch", onToggleSearch);
       window.removeEventListener("toggleCart", onToggleCart);
+      window.removeEventListener("openCheckout", onOpenCheckout);
       window.removeEventListener("toggleWishlist", onToggleWishlist);
       window.removeEventListener("toggleNotifications", onToggleNotifications);
       window.removeEventListener("toggleOrders", onToggleOrders);
@@ -306,6 +315,16 @@ export default function Header() {
                 {l.name}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                openInstallAppPrompt();
+              }}
+              className="border-b border-black/10 py-3.5 text-left text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+            >
+              Get the app
+            </button>
           </div>
         </div>
       ) : null}
@@ -317,6 +336,9 @@ export default function Header() {
           onUpdateQuantity={updateQuantity}
           onRemoveItem={removeFromCart}
         />
+      ) : null}
+      {isCheckoutOpen ? (
+        <CheckoutPopup onClose={() => setIsCheckoutOpen(false)} />
       ) : null}
       {isWishlistOpen ? (
         <WishlistSidebar

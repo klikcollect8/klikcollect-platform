@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  // Enable static export for Capacitor
-  output: process.env.CAPACITOR === 'true' ? 'export' : undefined,
+  // Optional static export (native app uses remote CAPACITOR_SERVER_URL instead)
+  output: process.env.CAPACITOR === "true" ? "export" : undefined,
   // Ensure Turbopack uses this project root (avoids picking parent folder)
   turbopack: {
     root: path.resolve(__dirname),

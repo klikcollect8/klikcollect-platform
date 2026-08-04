@@ -1,17 +1,18 @@
 import { Capacitor } from "@capacitor/core";
 
 /**
- * Get the API base URL for the current environment
- * In native apps, API routes don't work, so we need to point to a hosted backend
+ * API base URL helper.
+ * Prefer remote-URL Capacitor (`CAPACITOR_SERVER_URL`): the WebView shares the
+ * hosted origin, so relative `/api/*` works and this helper is usually unused.
  */
 export function getApiUrl(): string {
-  // If running in Capacitor native app
   if (Capacitor.isNativePlatform()) {
-    // Use environment variable or fallback to your production API URL
-    return process.env.NEXT_PUBLIC_API_URL || "https://your-api-domain.com";
+    return (
+      process.env.NEXT_PUBLIC_API_URL ||
+      process.env.CAPACITOR_SERVER_URL ||
+      ""
+    );
   }
-
-  // If running in browser (web), use relative URLs for API routes
   return "";
 }
 

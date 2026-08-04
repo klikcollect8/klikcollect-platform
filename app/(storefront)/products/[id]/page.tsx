@@ -144,7 +144,9 @@ function ProductPageInner() {
 
   const handleBuyNow = async () => {
     await addToCart();
-    if (selectedOffer) router.push("/checkout");
+    if (selectedOffer) {
+      window.dispatchEvent(new CustomEvent("openCheckout"));
+    }
   };
 
   const availableOffers = useMemo(
