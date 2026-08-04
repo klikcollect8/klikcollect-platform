@@ -1,6 +1,5 @@
 "use client";
 
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Show } from "@clerk/nextjs";
@@ -37,8 +36,8 @@ export default function BottomNav() {
       active ? "text-black" : "text-black/35"
     }`;
 
-  return createPortal(
-    <nav className="kc-bottom-nav lg:hidden" aria-label="Primary">
+  return (
+    <nav className="kc-bottom-nav" aria-label="Primary">
       <div className="flex h-12 items-stretch justify-around px-1">
         <Link
           href="/"
@@ -117,7 +116,6 @@ export default function BottomNav() {
           </button>
         </Show>
       </div>
-    </nav>,
-    document.body,
+    </nav>
   );
 }

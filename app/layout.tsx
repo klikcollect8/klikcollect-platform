@@ -2,15 +2,12 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import ConditionalHeader from "@/components/ConditionalHeader";
-import { ConditionalFooter } from "@/components/ConditionalHeader";
 import MaintenanceCheck from "@/components/MaintenanceCheck";
 import { ToastProvider } from "@/components/ToastProvider";
 import { SignInModalProvider } from "@/components/SignInModalProvider";
 import CapacitorInit from "@/components/CapacitorInit";
 import AccountRestrictionCheck from "@/components/AccountRestrictionCheck";
-import BottomNav from "@/components/BottomNav";
-import ShellMain from "@/components/ShellMain";
+import AppChrome from "@/components/AppChrome";
 import ObscuraLoader from "@/components/obscura/ObscuraLoader";
 import { cn } from "@/lib/utils";
 import QueryProvider from "@/components/providers/QueryProvider";
@@ -79,10 +76,7 @@ export default function RootLayout({
                     <SignInModalProvider>
                       <AccountRestrictionCheck />
                       <ObscuraLoader />
-                      <ConditionalHeader />
-                      <ShellMain>{children}</ShellMain>
-                      <ConditionalFooter />
-                      <BottomNav />
+                      <AppChrome>{children}</AppChrome>
                     </SignInModalProvider>
                   </ToastProvider>
                 </MaintenanceCheck>
