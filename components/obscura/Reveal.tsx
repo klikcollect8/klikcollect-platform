@@ -25,6 +25,11 @@ export default function Reveal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    // Prefer the nearest scroll container (docked shells); fall back to window.
+    const scroller =
+      (el.closest(".kc-app-scroll") as HTMLElement | null) || undefined;
+
     const ctx = gsap.context(() => {
       gsap.fromTo(
         el,
@@ -38,13 +43,28 @@ export default function Reveal({
           ease: "power3.out",
           scrollTrigger: {
             trigger: el,
-            start: "top 90%",
+            scroller: scroller || undefined,
+            start: "top 92%",
             toggleActions: "play none none none",
+            // If already in view (or scroller mis-detected), still reveal.
+            once: true,
           },
         },
       );
     }, el);
-    return () => ctx.revert();
+
+    // Safety: never leave content permanently invisible.
+    const failsafe = window.setTimeout(() => {
+      const opacity = Number(getComputedStyle(el).opacity);
+      if (opacity < 0.05) {
+        gsap.set(el, { opacity: 1, y: 0, filter: "blur(0px)" });
+      }
+    }, 600);
+
+    return () => {
+      window.clearTimeout(failsafe);
+      ctx.revert();
+    };
   }, [delay, y]);
 
   return (

@@ -74,23 +74,6 @@
     padding: 0 !important;
   }
 
-  /* Lock document scroll when the mobile docked shell owns scrolling */
-  html:has(.kc-app-shell--docked),
-  html:has(.kc-app-shell--docked) body {
-    height: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
-  }
-
-  @media (min-width: 1024px) {
-    html:has(.kc-app-shell--docked),
-    html:has(.kc-app-shell--docked) body {
-      height: auto;
-      overflow: auto;
-      overscroll-behavior: auto;
-    }
-  }
-
   body {
     background: var(--kc-canvas);
     color: var(--kc-ink);
@@ -214,57 +197,7 @@
     }
   }
 
-  /*
-   Docked mobile shell: page scrolls in .kc-app-scroll; tab bar is a
-   non-scrolling sibling underneath. Avoids iOS position:fixed drift.
-  */
-  .kc-app-shell--docked {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
-    background: #f7f7f5;
-  }
-
-  .kc-app-shell--docked .kc-app-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
-  }
-
-  .kc-bottom-nav {
-    flex: 0 0 auto;
-    position: relative;
-    z-index: 90;
-    width: 100%;
-    border-top: 1px solid rgba(10, 10, 10, 0.1);
-    background: #f7f7f5;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
-  @media (min-width: 1024px) {
-    .kc-app-shell--docked {
-      display: contents;
-      height: auto;
-      max-height: none;
-      overflow: visible;
-    }
-
-    .kc-app-shell--docked .kc-app-scroll {
-      display: contents;
-      overflow: visible;
-    }
-
-    .kc-bottom-nav {
-      display: none;
-    }
-  }
-
-  /* Legacy helper kept for panels that still clear a fixed dock */
+  /* Clearance for fixed mobile tab bar */
   .kc-mobile-nav-pad {
     padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
   }

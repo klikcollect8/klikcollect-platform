@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Show } from "@clerk/nextjs";
@@ -14,6 +15,20 @@ import { useCart } from "@/lib/hooks/useCart";
 import { useSignInModal } from "@/components/SignInModalProvider";
 import { showsMobileBottomNav } from "@/lib/mobile-nav";
 import { useIsClient } from "@/lib/hooks/useIsClient";
+
+const dockStyle: React.CSSProperties = {
+  position: "fixed",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  top: "auto",
+  zIndex: 9999,
+  width: "100%",
+  margin: 0,
+  borderTop: "1px solid rgba(10, 10, 10, 0.1)",
+  background: "#f7f7f5",
+  paddingBottom: "env(safe-area-inset-bottom, 0px)",
+};
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -36,8 +51,13 @@ export default function BottomNav() {
       active ? "text-black" : "text-black/35"
     }`;
 
-  return (
-    <nav className="kc-bottom-nav" aria-label="Primary">
+  return createPortal(
+    <nav
+      className="lg:hidden"
+      aria-label="Primary"
+      style={dockStyle}
+      data-kc-bottom-nav=""
+    >
       <div className="flex h-12 items-stretch justify-around px-1">
         <Link
           href="/"
@@ -116,6 +136,7 @@ export default function BottomNav() {
           </button>
         </Show>
       </div>
-    </nav>
+    </nav>,
+    document.body,
   );
 }
