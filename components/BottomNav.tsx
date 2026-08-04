@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Show } from "@clerk/nextjs";
@@ -20,8 +21,39 @@ export default function BottomNav() {
   const { showSignInModal } = useSignInModal();
   const { cartItems } = useCart();
   const mounted = useIsClient();
+  const navRef = useRef<HTMLElement>(null);
 
-  if (!showsMobileBottomNav(pathname)) return null;
+  const visible = showsMobileBottomNav(pathname);
+
+  // Keep the bar glued to the visual viewport on iOS Safari (URL bar show/hide).
+  useEffect(() => {
+    if (!visible || !mounted) return;
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const vv = window.visualViewport;
+    const pin = () => {
+      if (!vv) {
+        nav.style.bottom = "0px";
+        return;
+      }
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      nav.style.bottom = `${inset}px`;
+    };
+
+    pin();
+    vv?.addEventListener("resize", pin);
+    vv?.addEventListener("scroll", pin);
+    window.addEventListener("orientationchange", pin);
+    return () => {
+      vv?.removeEventListener("resize", pin);
+      vv?.removeEventListener("scroll", pin);
+      window.removeEventListener("orientationchange", pin);
+      nav.style.bottom = "";
+    };
+  }, [visible, mounted]);
+
+  if (!visible) return null;
   if (!mounted) return null;
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -38,7 +70,8 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[90] border-t border-black/10 bg-[#f7f7f5]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+      ref={navRef}
+      className="kc-bottom-nav lg:hidden"
       aria-label="Primary"
     >
       <div className="flex h-12 items-stretch justify-around px-1">

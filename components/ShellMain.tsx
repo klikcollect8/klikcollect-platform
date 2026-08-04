@@ -1,6 +1,19 @@
 "use client";
 
-/** Root content wrapper - bottom-nav clearance lives on Footer only to avoid double pad. */
+import { usePathname } from "next/navigation";
+import { showsMobileBottomNav } from "@/lib/mobile-nav";
+import { cn } from "@/lib/utils";
+
+/** Root content wrapper — clears fixed mobile bottom nav without double-padding. */
 export default function ShellMain({ children }: { children: React.ReactNode }) {
-  return <main>{children}</main>;
+  const pathname = usePathname();
+  return (
+    <main
+      className={cn(
+        showsMobileBottomNav(pathname) && "kc-mobile-nav-pad",
+      )}
+    >
+      {children}
+    </main>
+  );
 }

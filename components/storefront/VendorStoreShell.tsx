@@ -59,7 +59,7 @@ export function VendorStoreShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-[1600px] px-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] pt-6 sm:px-10 sm:pb-16 sm:pt-12 lg:px-14 lg:pb-20 lg:pt-16 xl:px-20">
+      <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-6 sm:px-10 sm:pb-16 sm:pt-12 lg:px-14 lg:pb-20 lg:pt-16 xl:px-20">
         {children}
       </div>
     </div>

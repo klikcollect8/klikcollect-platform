@@ -207,6 +207,27 @@
       padding-bottom: 0;
     }
   }
+
+  /*
+   Fixed mobile tab bar — solid layer (no blur) so iOS Safari doesn’t
+   reflow the bar when the URL chrome shows/hides while scrolling.
+  */
+  .kc-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    border-top: 1px solid rgba(10, 10, 10, 0.1);
+    background: #f7f7f5;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* Keep above overscroll / rubber-band paint */
+    isolation: isolate;
+  }
   html {
     @apply font-sans;
   }
