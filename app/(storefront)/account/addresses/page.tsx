@@ -7,6 +7,7 @@ import {
   type SavedAddress,
 } from "@/lib/account-storage";
 import { useToast } from "@/components/ToastProvider";
+import { useIsClient } from "@/lib/hooks/useIsClient";
 
 const fieldClass =
   "h-auto w-full border-0 border-b border-black/15 bg-transparent px-0 py-3 text-[15px] text-black outline-none placeholder:text-black/30 focus:border-black/50";
@@ -27,11 +28,10 @@ const emptyAddress = (): SavedAddress => ({
 export default function AccountAddressesPage() {
   const { showToast } = useToast();
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
 
   useEffect(() => {
     setAddresses(loadAddresses());
-    setMounted(true);
   }, []);
 
   const persist = (next: SavedAddress[]) => {
@@ -40,7 +40,10 @@ export default function AccountAddressesPage() {
   };
 
   const add = () => {
-    const next = [...addresses, { ...emptyAddress(), isDefault: addresses.length === 0 }];
+    const next = [
+      ...addresses,
+      { ...emptyAddress(), isDefault: addresses.length === 0 },
+    ];
     persist(next);
     showToast("Address added", "success");
   };

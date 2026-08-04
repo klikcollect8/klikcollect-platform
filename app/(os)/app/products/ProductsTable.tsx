@@ -23,6 +23,7 @@ const TABS = [
   { id: "all", label: "All" },
   { id: "published", label: "Active" },
   { id: "draft", label: "Draft" },
+  { id: "archived", label: "Archived" },
   { id: "low", label: "Low stock" },
 ] as const;
 
@@ -40,9 +41,20 @@ export function ProductsTable({
   const [busy, setBusy] = useState(false);
 
   function byTab(id: (typeof TABS)[number]["id"], rows: ProductRow[]) {
-    if (id === "published") return rows.filter((p) => !p.status || p.status === "published");
-    if (id === "draft") return rows.filter((p) => p.status === "draft" || p.status === "pending_review");
-    if (id === "low") return rows.filter((p) => typeof p.stock === "number" && p.stock <= 5);
+    if (id === "published")
+      return rows.filter((p) => !p.status || p.status === "published");
+    if (id === "draft")
+      return rows.filter(
+        (p) => p.status === "draft" || p.status === "pending_review",
+      );
+    if (id === "archived") return rows.filter((p) => p.status === "archived");
+    if (id === "low")
+      return rows.filter(
+        (p) =>
+          typeof p.stock === "number" &&
+          p.stock <= 5 &&
+          p.status !== "archived",
+      );
     return rows;
   }
 
@@ -54,7 +66,9 @@ export function ProductsTable({
         (p) =>
           p.name.toLowerCase().includes(needle) ||
           (p.category || "").toLowerCase().includes(needle) ||
-          ((p.vendorId && vendors?.[p.vendorId]) || "").toLowerCase().includes(needle),
+          ((p.vendorId && vendors?.[p.vendorId]) || "")
+            .toLowerCase()
+            .includes(needle),
       );
     }
     return rows;
@@ -115,7 +129,9 @@ export function ProductsTable({
               )}
             >
               {t.label}
-              <span className="ml-1 text-[var(--kc-faint)]">{byTab(t.id, products).length}</span>
+              <span className="ml-1 text-[var(--kc-faint)]">
+                {byTab(t.id, products).length}
+              </span>
             </button>
           ))}
         </div>
@@ -159,6 +175,14 @@ export function ProductsTable({
           >
             Archive
           </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => bulkStatus("published")}
+            className="rounded-[var(--kc-radius-sm)] border border-[var(--kc-line)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--kc-ink)] disabled:opacity-50"
+          >
+            Restore
+          </button>
         </div>
       ) : null}
 
@@ -185,7 +209,18 @@ export function ProductsTable({
           <tbody className="divide-y divide-[var(--kc-line-soft)]">
             {filtered.map((p) => {
               const stock = typeof p.stock === "number" ? p.stock : null;
-              const active = !p.status || p.status === "published";
+              const statusLabel =
+                !p.status || p.status === "published"
+                  ? "Active"
+                  : p.status === "archived"
+                    ? "Archived"
+                    : p.status || "Draft";
+              const badgeStatus =
+                statusLabel === "Active"
+                  ? "active"
+                  : statusLabel === "Archived"
+                    ? "cancelled"
+                    : "draft";
               return (
                 <tr key={p.id} className="hover:bg-[var(--kc-canvas)]">
                   <td className="px-4 py-3">
@@ -197,32 +232,41 @@ export function ProductsTable({
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/products/${p.id}`} className="flex items-center gap-3">
-                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-[var(--kc-radius-sm)] bg-[var(--kc-canvas)]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={
-                            p.image ||
-                            "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200"
-                          }
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <span className="font-medium text-[var(--kc-ink)] hover:underline">
-                        {p.name}
-                      </span>
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={`/app/products/${p.id}`}
+                        className="flex min-w-0 flex-1 items-center gap-3"
+                      >
+                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-[var(--kc-radius-sm)] bg-[var(--kc-canvas)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={
+                              p.image ||
+                              "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200"
+                            }
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <span className="truncate font-medium text-[var(--kc-ink)] hover:underline">
+                          {p.name}
+                        </span>
+                      </Link>
+                      <Link
+                        href={`/products/${p.id}`}
+                        className="shrink-0 text-[11px] text-[var(--kc-faint)] hover:text-[var(--kc-ink)] hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Storefront
+                      </Link>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge
-                      status={active ? "active" : "draft"}
-                      label={active ? "Active" : p.status || "Draft"}
-                    />
+                    <StatusBadge status={badgeStatus} label={statusLabel} />
                   </td>
                   <td className="px-4 py-3 text-[var(--kc-mute)]">
                     {stock === null ? (
-                      "—"
+                      " - "
                     ) : stock === 0 ? (
                       <span className="text-[#8e1b0d]">Out of stock</span>
                     ) : (
@@ -231,9 +275,11 @@ export function ProductsTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-[var(--kc-mute)]">{p.category || "—"}</td>
                   <td className="px-4 py-3 text-[var(--kc-mute)]">
-                    {(p.vendorId && vendors?.[p.vendorId]) || "—"}
+                    {p.category || " - "}
+                  </td>
+                  <td className="px-4 py-3 text-[var(--kc-mute)]">
+                    {(p.vendorId && vendors?.[p.vendorId]) || " - "}
                   </td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums text-[var(--kc-ink)]">
                     {formatKesMajor(p.price)}

@@ -37,7 +37,10 @@ export default function TodaysDealsPage() {
       {loading ? (
         <div className="grid grid-cols-2 gap-x-6 gap-y-14 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {[...Array(10)].map((_, i) => (
-            <div key={i} className="aspect-[4/5] animate-pulse bg-black/[0.04]" />
+            <div
+              key={i}
+              className="aspect-[4/5] animate-pulse bg-black/[0.04]"
+            />
           ))}
         </div>
       ) : products.length === 0 ? (

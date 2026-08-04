@@ -20,7 +20,8 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    setMobileOpen(false);
+    const id = requestAnimationFrame(() => setMobileOpen(false));
+    return () => cancelAnimationFrame(id);
   }, [pathname]);
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => (
+  const renderSidebar = (onNavigate?: () => void) => (
     <div className="flex h-full flex-col bg-[#f7f7f5]">
       <div className="px-7 pb-6 pt-9">
         <Link href="/account" onClick={onNavigate} className="block">
@@ -113,8 +114,13 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#f7f7f5] text-black">
-      <aside className={cn("fixed inset-y-0 left-0 z-40 hidden lg:block", ui.shellAside)}>
-        <Sidebar />
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 hidden lg:block",
+          ui.shellAside,
+        )}
+      >
+        {renderSidebar()}
       </aside>
 
       {mobileOpen ? (
@@ -134,7 +140,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
             >
               <X className="h-5 w-5" />
             </button>
-            <Sidebar onNavigate={() => setMobileOpen(false)} />
+            {renderSidebar(() => setMobileOpen(false))}
           </aside>
         </div>
       ) : null}
@@ -160,7 +166,9 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
           </Link>
         </header>
 
-        <main className={ui.shellMain}>{children}</main>
+        <main className={`${ui.shellMain} kc-mobile-nav-pad lg:!pb-0`}>
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -11,7 +11,9 @@ export function StorePage({
   narrow?: boolean;
 }) {
   return (
-    <div className={cn("min-h-screen w-full bg-[#f7f7f5] text-black", className)}>
+    <div
+      className={cn("min-h-screen w-full bg-[#f7f7f5] text-black", className)}
+    >
       <div
         className={cn(
           "mx-auto w-full px-4 py-10 sm:px-10 sm:py-16 lg:px-14 xl:px-20",

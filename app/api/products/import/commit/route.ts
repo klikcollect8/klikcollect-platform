@@ -8,7 +8,7 @@ import { requireVendorActor } from "@/lib/auth/require-vendor";
 
 /**
  * Commit bulk import after dry-run (M1 DoD).
- * Tenant-scoped write to local catalogue store — INV-9 from first listing.
+ * Tenant-scoped write to local catalogue store - INV-9 from first listing.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const csv = String(body?.csv || "");
-    let vendorId = String(body?.vendorId || DEMO_VENDOR_ID).trim() || DEMO_VENDOR_ID;
+    let vendorId =
+      String(body?.vendorId || DEMO_VENDOR_ID).trim() || DEMO_VENDOR_ID;
     if (
       !gate.actor.isPlatformAdmin &&
       !gate.actor.vendorIds.includes(vendorId)
@@ -39,7 +40,12 @@ export async function POST(request: NextRequest) {
 
     if (lines.length < 2) {
       return NextResponse.json(
-        { error: { code: "INVALID", message: "CSV needs a header and at least one row" } },
+        {
+          error: {
+            code: "INVALID",
+            message: "CSV needs a header and at least one row",
+          },
+        },
         { status: 400 },
       );
     }
@@ -68,7 +74,9 @@ export async function POST(request: NextRequest) {
     };
 
     const allowed = new Set(V1_CATEGORIES.map((c) => c.toLowerCase()));
-    const excluded = new Set(V1_EXCLUDED_CATEGORIES.map((c) => c.toLowerCase()));
+    const excluded = new Set(
+      V1_EXCLUDED_CATEGORIES.map((c) => c.toLowerCase()),
+    );
     const validRows: Array<{
       name: string;
       category: string;
@@ -89,15 +97,19 @@ export async function POST(request: NextRequest) {
       if (!name || !category) continue;
       if (excluded.has(category.toLowerCase())) continue;
       if (!allowed.has(category.toLowerCase())) continue;
-      if (!Number.isFinite(price) || price < 0 || !Number.isInteger(price)) continue;
-      if (!Number.isFinite(stock) || stock < 0 || !Number.isInteger(stock)) continue;
+      if (!Number.isFinite(price) || price < 0 || !Number.isInteger(price))
+        continue;
+      if (!Number.isFinite(stock) || stock < 0 || !Number.isInteger(stock))
+        continue;
 
       validRows.push({ name, category, priceMajor: price, stock, description });
     }
 
     if (!validRows.length) {
       return NextResponse.json(
-        { error: { code: "NO_VALID_ROWS", message: "No valid rows to commit" } },
+        {
+          error: { code: "NO_VALID_ROWS", message: "No valid rows to commit" },
+        },
         { status: 400 },
       );
     }

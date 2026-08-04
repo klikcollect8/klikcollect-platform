@@ -1,5 +1,5 @@
 /**
- * Money helpers — INV-1 / ADR-0007 / ADR-0019.
+ * Money helpers - INV-1 / ADR-0007 / ADR-0019.
  * Store and compute as integer minor units (KES cents). Display via formatters.
  *
  * Legacy catalogue prices in this spike are still major-unit KES integers
@@ -18,9 +18,12 @@ export function minorToMajor(minor: MoneyMinor): number {
 }
 
 /** Format integer KES cents for en-KE display */
-export function formatMoneyMinor(minor: MoneyMinor, currency: "KES" = "KES"): string {
+export function formatMoneyMinor(
+  minor: MoneyMinor,
+  currency: "KES" = "KES",
+): string {
   if (!Number.isFinite(minor) || !Number.isInteger(minor)) {
-    return "—";
+    return " - ";
   }
   return new Intl.NumberFormat("en-KE", {
     style: "currency",
@@ -35,7 +38,7 @@ export const formatKesMinor = formatMoneyMinor;
 
 /** Format legacy major-unit KES amounts used by existing catalogue */
 export function formatKesMajor(major: number): string {
-  if (!Number.isFinite(major)) return "—";
+  if (!Number.isFinite(major)) return " - ";
   return `Ksh. ${Number(major).toLocaleString("en-KE", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,

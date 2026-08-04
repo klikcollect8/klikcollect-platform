@@ -1,7 +1,17 @@
 import { currentUser, type User } from "@clerk/nextjs/server";
+import {
+  PLATFORM_ROLES,
+  migrateLegacyPlatformRole,
+  type PlatformRole,
+} from "@/lib/authz/role-ids";
+import { resolveActor } from "@/lib/authz/resolve-actor";
+import { clerkEmail } from "@/lib/auth/clerk-email";
 
-export const ADMIN_ROLES = ["head_admin", "admin", "editor", "moderator"] as const;
-export type AdminRole = (typeof ADMIN_ROLES)[number];
+export { clerkEmail };
+
+/** @deprecated Prefer PLATFORM_ROLES / PlatformRole from lib/authz */
+export const ADMIN_ROLES = PLATFORM_ROLES;
+export type AdminRole = PlatformRole;
 
 function platformAdminEmails(): string[] {
   return (process.env.PLATFORM_ADMIN_EMAILS || "")
@@ -10,36 +20,33 @@ function platformAdminEmails(): string[] {
     .filter(Boolean);
 }
 
-export function isAdminRole(role: string | null | undefined): role is AdminRole {
+export function isAdminRole(
+  role: string | null | undefined,
+): role is AdminRole {
   if (!role) return false;
-  return (ADMIN_ROLES as readonly string[]).includes(role.trim().toLowerCase());
-}
-
-export function clerkEmail(user: User): string | null {
-  return (
-    user.primaryEmailAddress?.emailAddress?.toLowerCase() ||
-    user.emailAddresses[0]?.emailAddress?.toLowerCase() ||
-    null
-  );
+  return migrateLegacyPlatformRole(role) !== null;
 }
 
 /**
  * Clerk authenticates; KlikCollect authorizes.
- * Order: publicMetadata.role → PLATFORM_ADMIN_EMAILS allowlist.
+ * Order: platform_memberships → publicMetadata.role (legacy map) → PLATFORM_ADMIN_EMAILS.
  */
 export async function resolveAdminRole(user: User): Promise<AdminRole | null> {
+  const actor = await resolveActor(user);
+  if (actor.platformRole) return actor.platformRole;
+
+  // Fast path when actor resolution skipped meta (should not happen)
   const meta = user.publicMetadata?.role;
-  if (typeof meta === "string" && isAdminRole(meta)) {
-    return meta.trim().toLowerCase() as AdminRole;
+  if (typeof meta === "string") {
+    const migrated = migrateLegacyPlatformRole(meta);
+    if (migrated) return migrated;
   }
 
   const email = clerkEmail(user);
   if (email && platformAdminEmails().includes(email)) {
-    return "head_admin";
+    return "super_admin";
   }
 
-  // Skip slow Supabase profiles lookup — profiles table may be missing and
-  // hanging auth resolution was causing 500s across admin APIs.
   return null;
 }
 

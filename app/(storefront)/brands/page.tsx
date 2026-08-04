@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { track } from "@/lib/track";
 import { StorePage, StoreHeading } from "@/components/marketplace/StorePage";
+import ThemeSelect from "@/components/ui/ThemeSelect";
 
 type VendorRow = {
   id: string;
@@ -68,18 +69,16 @@ export default function BrandsPage() {
             className="w-full border border-black/12 bg-transparent py-3 pl-11 pr-4 text-[14px] focus:border-black/40 focus:outline-none"
           />
         </div>
-        <select
+        <ThemeSelect
           value={hood}
-          onChange={(e) => setHood(e.target.value)}
-          className="border border-black/12 bg-transparent px-4 py-3 text-[14px]"
-        >
-          <option value="all">All areas</option>
-          {neighbourhoods.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
+          onValueChange={setHood}
+          size="sm"
+          triggerClassName="h-11 min-w-[9.5rem] px-4 text-[14px]"
+          options={[
+            { value: "all", label: "All areas" },
+            ...neighbourhoods.map((n) => ({ value: n, label: n })),
+          ]}
+        />
       </div>
 
       {loading ? (
@@ -100,7 +99,9 @@ export default function BrandsPage() {
               className="border-b border-black/[0.06] px-0 py-8 transition-opacity hover:opacity-60 sm:border-r sm:px-8 lg:[&:nth-child(3n)]:border-r-0"
             >
               <div className="flex items-start justify-between gap-3">
-                <h2 className="text-[18px] font-medium tracking-tight">{v.name}</h2>
+                <h2 className="text-[18px] font-medium tracking-tight">
+                  {v.name}
+                </h2>
                 <span className="text-[11px] uppercase tracking-[0.14em] text-black/35">
                   Active
                 </span>

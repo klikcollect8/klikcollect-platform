@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import PhoneAuthForm, {
   type AuthModalMode,
 } from "@/components/auth/PhoneAuthForm";
+import { useIsClient } from "@/lib/hooks/useIsClient";
 
 export type { AuthModalMode };
 
@@ -29,7 +30,7 @@ const COPY = {
   },
 } as const;
 
-/** Full-screen auth overlay — phone-first, marketplace language. */
+/** Full-screen auth overlay - phone-first, marketplace language. */
 export default function SignInModal({
   isOpen,
   mode,
@@ -38,13 +39,9 @@ export default function SignInModal({
   onModeChange,
   onClose,
 }: SignInModalProps) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const [isVisible, setIsVisible] = useState(false);
   const c = COPY[mode];
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!isOpen) {

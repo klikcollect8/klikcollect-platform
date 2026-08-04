@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
-import BinModal from './BinModal';
+import { useState } from "react";
+import { Trash2 } from "lucide-react";
+import BinModal from "./BinModal";
 
 interface BinButtonProps {
-  itemType: 'product' | 'review' | 'question' | 'answer' | 'category' | 'order';
+  itemType: "product" | "review" | "question" | "answer" | "category" | "order";
   title?: string;
   filterByReviewId?: boolean;
   filterByQuestionId?: boolean;
@@ -29,7 +29,7 @@ export default function BinButton({
         title="View Deleted Items"
       >
         <Trash2 className="w-4 h-4 text-neutral-400 group-hover:text-black/55 transition-colors" />
-        <span>{title || 'Recycle Bin'}</span>
+        <span>{title || "Recycle Bin"}</span>
       </button>
 
       <BinModal

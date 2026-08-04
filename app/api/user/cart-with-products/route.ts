@@ -14,16 +14,20 @@ export async function GET() {
     const actor = await requireClerkUser();
     if (!actor) return unauthorizedJson();
 
-      const cartData = await listCart(actor.userId);
+    const cartData = await listCart(actor.userId);
     if (!cartData.length) return NextResponse.json([]);
 
     const items: CartItem[] = [];
+    const seen = new Set<string>();
     for (const item of cartData) {
-      // product_id stores offerId for multi-vendor cart lines
-      const offer = await getOfferById(item.product_id);
+      // Prefer offer_id; legacy rows stored offer id in product_id.
+      const offerKey = item.offer_id || item.product_id;
+      if (!offerKey || seen.has(offerKey)) continue;
+      const offer = await getOfferById(offerKey);
       if (!offer) continue;
       const product = await getProductById(offer.productId);
       if (!product) continue;
+      seen.add(offer.id);
       items.push({
         product: {
           ...product,

@@ -1,5 +1,5 @@
 /**
- * Storefront read path — unique products + vendor offers (Supabase).
+ * Storefront read path - unique products + vendor offers (Supabase).
  */
 import {
   sbGetOfferByPublicId,

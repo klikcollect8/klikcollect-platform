@@ -8,6 +8,7 @@ import { X, ArrowRight } from "lucide-react";
 import { Product } from "@/types";
 import { resolveProductImage } from "@/lib/product-image";
 import { V1_CATEGORIES } from "@/lib/curation-policy";
+import { useIsClient } from "@/lib/hooks/useIsClient";
 
 interface WishlistSidebarProps {
   items: Product[];
@@ -21,11 +22,7 @@ export default function WishlistSidebar({
   onClose,
 }: WishlistSidebarProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useIsClient();
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
@@ -124,7 +121,10 @@ export default function WishlistSidebar({
                         <span className="text-[16px] font-medium tracking-tight text-black">
                           {link.label}
                         </span>
-                        <ArrowRight className="h-4 w-4 text-black/20" strokeWidth={1.5} />
+                        <ArrowRight
+                          className="h-4 w-4 text-black/20"
+                          strokeWidth={1.5}
+                        />
                       </Link>
                     </li>
                   ))}
@@ -145,7 +145,10 @@ export default function WishlistSidebar({
                         <span className="text-[15px] tracking-tight text-black/75">
                           {cat}
                         </span>
-                        <ArrowRight className="h-4 w-4 text-black/20" strokeWidth={1.5} />
+                        <ArrowRight
+                          className="h-4 w-4 text-black/20"
+                          strokeWidth={1.5}
+                        />
                       </Link>
                     </li>
                   ))}

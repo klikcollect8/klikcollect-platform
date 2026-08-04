@@ -9,6 +9,7 @@ import Link from "next/link";
 import SearchHistory from "@/components/SearchHistory";
 import SearchBar from "@/components/SearchBar";
 import { StorePage, StoreHeading } from "@/components/marketplace/StorePage";
+import ThemeSelect from "@/components/ui/ThemeSelect";
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -42,11 +43,18 @@ function SearchContent() {
         setProducts(data.products || []);
         setFilteredCategories(data.categories || []);
         try {
-          const history = JSON.parse(localStorage.getItem("searchHistory") || "[]");
+          const history = JSON.parse(
+            localStorage.getItem("searchHistory") || "[]",
+          );
           if (!history.includes(query)) {
             localStorage.setItem(
               "searchHistory",
-              JSON.stringify([query, ...history.filter((h: string) => h !== query)].slice(0, 10)),
+              JSON.stringify(
+                [query, ...history.filter((h: string) => h !== query)].slice(
+                  0,
+                  10,
+                ),
+              ),
             );
           }
         } catch {
@@ -63,9 +71,12 @@ function SearchContent() {
   useEffect(() => {
     let filtered = [...products];
     if (selectedCategories.length > 0) {
-      filtered = filtered.filter((p) => selectedCategories.includes(p.category));
+      filtered = filtered.filter((p) =>
+        selectedCategories.includes(p.category),
+      );
     }
-    if (minRating > 0) filtered = filtered.filter((p) => (p.rating || 0) >= minRating);
+    if (minRating > 0)
+      filtered = filtered.filter((p) => (p.rating || 0) >= minRating);
 
     switch (sortBy) {
       case "rating":
@@ -75,14 +86,18 @@ function SearchContent() {
       case "price-low":
       case "price-high":
         filtered.sort(
-          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+          (a, b) =>
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime(),
         );
         break;
     }
     setFilteredProducts(filtered);
   }, [products, minRating, selectedCategories, sortBy]);
 
-  const categoryNames = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
+  const categoryNames = Array.from(
+    new Set(products.map((p) => p.category).filter(Boolean)),
+  );
 
   const Filters = (
     <div className="space-y-10">
@@ -93,7 +108,10 @@ function SearchContent() {
           </h3>
           <div className="max-h-64 space-y-3 overflow-y-auto">
             {categoryNames.map((category) => (
-              <label key={category} className="flex cursor-pointer items-center gap-3">
+              <label
+                key={category}
+                className="flex cursor-pointer items-center gap-3"
+              >
                 <input
                   type="checkbox"
                   checked={selectedCategories.includes(category)}
@@ -101,7 +119,9 @@ function SearchContent() {
                     if (e.target.checked) {
                       setSelectedCategories([...selectedCategories, category]);
                     } else {
-                      setSelectedCategories(selectedCategories.filter((c) => c !== category));
+                      setSelectedCategories(
+                        selectedCategories.filter((c) => c !== category),
+                      );
                     }
                   }}
                   className="h-4 w-4 accent-black"
@@ -145,7 +165,11 @@ function SearchContent() {
         description={`${filteredProducts.length} ${filteredProducts.length === 1 ? "result" : "results"}`}
         action={
           <div className="w-full max-w-md sm:w-80">
-            <SearchBar placeholder="Search products" defaultValue={query} size="md" />
+            <SearchBar
+              placeholder="Search products"
+              defaultValue={query}
+              size="md"
+            />
           </div>
         }
       />
@@ -158,7 +182,9 @@ function SearchContent() {
 
       <div className="flex gap-12 lg:gap-16">
         <aside className="hidden w-56 shrink-0 lg:block xl:w-64">
-          <div className="sticky top-28 border-t border-black/[0.06] pt-8">{Filters}</div>
+          <div className="sticky top-28 border-t border-black/[0.06] pt-8">
+            {Filters}
+          </div>
         </aside>
 
         <div className="min-w-0 flex-1">
@@ -171,20 +197,24 @@ function SearchContent() {
               <Filter className="h-4 w-4" />
               Filters
             </button>
-            <select
+            <ThemeSelect
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="ml-auto border border-black/12 bg-transparent px-4 py-2.5 text-[13px] focus:border-black/40 focus:outline-none"
-            >
-              <option value="relevance">Featured</option>
-              <option value="newest">Newest</option>
-              <option value="rating">Top rated</option>
-            </select>
+              onValueChange={setSortBy}
+              size="sm"
+              triggerClassName="ml-auto w-auto"
+              options={[
+                { value: "relevance", label: "Featured" },
+                { value: "newest", label: "Newest" },
+                { value: "rating", label: "Top rated" },
+              ]}
+            />
           </div>
 
           {query && filteredCategories.length > 0 ? (
             <div className="mb-14">
-              <h2 className="mb-6 text-[18px] font-medium tracking-tight">Categories</h2>
+              <h2 className="mb-6 text-[18px] font-medium tracking-tight">
+                Categories
+              </h2>
               <div className="flex flex-wrap gap-x-6 gap-y-3">
                 {filteredCategories.map((category) => (
                   <Link
@@ -194,7 +224,9 @@ function SearchContent() {
                   >
                     {category.name}
                     {category.productCount != null ? (
-                      <span className="ml-1.5 text-black/40">({category.productCount})</span>
+                      <span className="ml-1.5 text-black/40">
+                        ({category.productCount})
+                      </span>
                     ) : null}
                   </Link>
                 ))}
@@ -205,13 +237,18 @@ function SearchContent() {
           {loading ? (
             <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 xl:grid-cols-4">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="aspect-[4/5] animate-pulse bg-black/[0.04]" />
+                <div
+                  key={i}
+                  className="aspect-[4/5] animate-pulse bg-black/[0.04]"
+                />
               ))}
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="border-t border-black/[0.06] py-20 text-center">
               <p className="text-[18px] font-medium">No results</p>
-              <p className="mt-2 text-[15px] text-black/50">Try a different search or clear filters.</p>
+              <p className="mt-2 text-[15px] text-black/50">
+                Try a different search or clear filters.
+              </p>
               <Link
                 href="/shop"
                 className="mt-8 inline-flex text-[14px] font-medium underline underline-offset-4"
@@ -269,7 +306,9 @@ export default function SearchPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
-          <p className="text-[12px] uppercase tracking-[0.22em] text-black/40">Loading</p>
+          <p className="text-[12px] uppercase tracking-[0.22em] text-black/40">
+            Loading
+          </p>
         </div>
       }
     >

@@ -6,7 +6,11 @@ import ProductCard from "./ProductCard";
 import Link from "next/link";
 import { ArrowRight, Grid3X3 } from "lucide-react";
 
-export default function ShopAllProducts({ products: initialProducts }: { products?: Product[] }) {
+export default function ShopAllProducts({
+  products: initialProducts,
+}: {
+  products?: Product[];
+}) {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [displayProducts, setDisplayProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -24,7 +28,12 @@ export default function ShopAllProducts({ products: initialProducts }: { product
         },
         {} as Record<string, number>,
       );
-      setCategories(Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).map(([c]) => c).slice(0, 10));
+      setCategories(
+        Object.entries(categoryCounts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([c]) => c)
+          .slice(0, 10),
+      );
       setDisplayProducts(initialProducts.slice(0, 20));
       return;
     }
@@ -41,7 +50,12 @@ export default function ShopAllProducts({ products: initialProducts }: { product
           },
           {} as Record<string, number>,
         );
-        setCategories(Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).map(([c]) => c).slice(0, 10));
+        setCategories(
+          Object.entries(categoryCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([c]) => c)
+            .slice(0, 10),
+        );
         setDisplayProducts(arr.slice(0, 20));
       })
       .catch(() => setAllProducts([]));

@@ -16,7 +16,10 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function mapProduct(row: Record<string, unknown>, categoryName?: string): Product {
+function mapProduct(
+  row: Record<string, unknown>,
+  categoryName?: string,
+): Product {
   const images = Array.isArray(row.images)
     ? (row.images as string[])
     : row.image_url
@@ -34,7 +37,8 @@ function mapProduct(row: Record<string, unknown>, categoryName?: string): Produc
     category: categoryName || "",
     status: (row.status as Product["status"]) || "published",
     rating: row.rating != null ? Number(row.rating) : undefined,
-    reviewCount: row.review_count != null ? Number(row.review_count) : undefined,
+    reviewCount:
+      row.review_count != null ? Number(row.review_count) : undefined,
     createdAt: String(row.created_at || new Date().toISOString()),
     updatedAt: String(row.updated_at || new Date().toISOString()),
   };
@@ -48,7 +52,11 @@ function mapOffer(
     neighbourhood?: string | null;
     address_text?: string | null;
   },
-  store?: { lat?: number | null; lng?: number | null; address_text?: string | null } | null,
+  store?: {
+    lat?: number | null;
+    lng?: number | null;
+    address_text?: string | null;
+  } | null,
 ): ProductOffer {
   const onHand = Number(row.on_hand || 0);
   const reserved = Number(row.reserved || 0);
@@ -108,21 +116,24 @@ export async function sbListCategories(): Promise<Category[]> {
 
 export async function sbGetUnifiedCatalogue(): Promise<StorefrontProduct[]> {
   const sb = getServiceSupabase();
-  const [{ data: products, error: pErr }, { data: offers, error: oErr }, { data: cats }] =
-    await Promise.all([
-      sb
-        .from("products")
-        .select("*, categories(name)")
-        .eq("status", "published")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-      sb
-        .from("product_offers")
-        .select("product_id, public_id")
-        .eq("status", "published")
-        .is("deleted_at", null),
-      sb.from("categories").select("id, name"),
-    ]);
+  const [
+    { data: products, error: pErr },
+    { data: offers, error: oErr },
+    { data: cats },
+  ] = await Promise.all([
+    sb
+      .from("products")
+      .select("*, categories(name)")
+      .eq("status", "published")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    sb
+      .from("product_offers")
+      .select("product_id, public_id")
+      .eq("status", "published")
+      .is("deleted_at", null),
+    sb.from("categories").select("id, name"),
+  ]);
   if (pErr) throw pErr;
   if (oErr) throw oErr;
 
@@ -171,28 +182,34 @@ export async function sbGetProductDetail(
 
   const { data: offerRows, error: oErr } = await sb
     .from("product_offers")
-    .select("*, vendors(public_id, name, neighbourhood, address_text, specialty), stores(lat, lng, address_text)")
+    .select(
+      "*, vendors(public_id, name, neighbourhood, address_text, specialty), stores(lat, lng, address_text)",
+    )
     .eq("product_id", product.id)
     .eq("status", "published")
     .is("deleted_at", null);
   if (oErr) throw oErr;
 
   const offers: ProductOffer[] = (offerRows || []).map((row) => {
-    const vendor = (row as {
-      vendors: {
-        public_id: string;
-        name: string;
-        neighbourhood?: string | null;
-        address_text?: string | null;
-      };
-    }).vendors;
-    const store = (row as {
-      stores?: {
-        lat?: number | null;
-        lng?: number | null;
-        address_text?: string | null;
-      } | null;
-    }).stores;
+    const vendor = (
+      row as {
+        vendors: {
+          public_id: string;
+          name: string;
+          neighbourhood?: string | null;
+          address_text?: string | null;
+        };
+      }
+    ).vendors;
+    const store = (
+      row as {
+        stores?: {
+          lat?: number | null;
+          lng?: number | null;
+          address_text?: string | null;
+        } | null;
+      }
+    ).stores;
     return mapOffer(
       { ...row, product_public_id: product.public_id },
       vendor,
@@ -221,23 +238,27 @@ export async function sbGetOfferByPublicId(
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  const productPublicId = (data as { products?: { public_id?: string } }).products
-    ?.public_id;
-  const vendor = (data as {
-    vendors: {
-      public_id: string;
-      name: string;
-      neighbourhood?: string | null;
-      address_text?: string | null;
-    };
-  }).vendors;
-  const store = (data as {
-    stores?: {
-      lat?: number | null;
-      lng?: number | null;
-      address_text?: string | null;
-    } | null;
-  }).stores;
+  const productPublicId = (data as { products?: { public_id?: string } })
+    .products?.public_id;
+  const vendor = (
+    data as {
+      vendors: {
+        public_id: string;
+        name: string;
+        neighbourhood?: string | null;
+        address_text?: string | null;
+      };
+    }
+  ).vendors;
+  const store = (
+    data as {
+      stores?: {
+        lat?: number | null;
+        lng?: number | null;
+        address_text?: string | null;
+      } | null;
+    }
+  ).stores;
   return mapOffer(
     { ...data, product_public_id: productPublicId },
     vendor,
@@ -258,12 +279,13 @@ export async function sbListAdmittedVendors() {
   if (error) throw error;
 
   return (data || []).map((v) => {
-    const stores = (v.stores as Array<{
-      lat?: number | null;
-      lng?: number | null;
-      address_text?: string | null;
-      is_primary?: boolean;
-    }>) || [];
+    const stores =
+      (v.stores as Array<{
+        lat?: number | null;
+        lng?: number | null;
+        address_text?: string | null;
+        is_primary?: boolean;
+      }>) || [];
     const primary = stores.find((s) => s.is_primary) || stores[0];
     return {
       id: v.public_id,
@@ -297,21 +319,25 @@ export async function sbListPublishedOffers(): Promise<ProductOffer[]> {
   return (data || []).map((row) => {
     const productPublicId = (row as { products?: { public_id?: string } })
       .products?.public_id;
-    const vendor = (row as {
-      vendors: {
-        public_id: string;
-        name: string;
-        neighbourhood?: string | null;
-        address_text?: string | null;
-      };
-    }).vendors;
-    const store = (row as {
-      stores?: {
-        lat?: number | null;
-        lng?: number | null;
-        address_text?: string | null;
-      } | null;
-    }).stores;
+    const vendor = (
+      row as {
+        vendors: {
+          public_id: string;
+          name: string;
+          neighbourhood?: string | null;
+          address_text?: string | null;
+        };
+      }
+    ).vendors;
+    const store = (
+      row as {
+        stores?: {
+          lat?: number | null;
+          lng?: number | null;
+          address_text?: string | null;
+        } | null;
+      }
+    ).stores;
     return mapOffer(
       { ...row, product_public_id: productPublicId },
       vendor,
@@ -346,21 +372,25 @@ export async function sbGetVendorStorefrontProducts(vendorPublicId: string) {
       const catName =
         (product as { categories?: { name?: string } }).categories?.name || "";
       const mapped = mapProduct(product, catName);
-      const vendorRow = (row as {
-        vendors: {
-          public_id: string;
-          name: string;
-          neighbourhood?: string | null;
-          address_text?: string | null;
-        };
-      }).vendors;
-      const store = (row as {
-        stores?: {
-          lat?: number | null;
-          lng?: number | null;
-          address_text?: string | null;
-        } | null;
-      }).stores;
+      const vendorRow = (
+        row as {
+          vendors: {
+            public_id: string;
+            name: string;
+            neighbourhood?: string | null;
+            address_text?: string | null;
+          };
+        }
+      ).vendors;
+      const store = (
+        row as {
+          stores?: {
+            lat?: number | null;
+            lng?: number | null;
+            address_text?: string | null;
+          } | null;
+        }
+      ).stores;
       const offer = mapOffer(
         { ...row, product_public_id: product.public_id },
         vendorRow,
@@ -393,7 +423,9 @@ export async function sbListAdmittedVendorsDetailed() {
   const sb = getServiceSupabase();
   const { data: offers } = await sb
     .from("product_offers")
-    .select("public_id, vendor_id, product_id, products(image_url, category_id, categories(name)), vendors(public_id)")
+    .select(
+      "public_id, vendor_id, product_id, products(image_url, category_id, categories(name)), vendors(public_id)",
+    )
     .eq("status", "published")
     .is("deleted_at", null);
 

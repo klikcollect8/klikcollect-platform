@@ -1,35 +1,46 @@
-# Architecture (provisional M1)
+# Architecture (panels + money rails)
 
 ## Authority
 
-Engineering Bible: `Desktop/klikcollect/docs/`. This document describes the **current codebase**, not ratified chapter contracts that are still PLANNED (File Structure, API, etc.).
+Engineering Bible: `Desktop/klikcollect/docs/`. This document describes the **current codebase**.
 
-## Identity
+## Identity & RBAC
 
-- **Clerk** is the only customer/staff identity provider in this tree.
-- Admin and vendor gates: `lib/admin-auth.ts`, `lib/auth/require-clerk-user.ts`, `lib/auth/require-vendor.ts`, `lib/auth/require-admin.ts`.
-- Middleware entry: `proxy.ts` (Next.js 16).
-
-## Data truth
-
-| Layer | Role |
-|-------|------|
-| `.data/*.json` | Local M1 truth — catalogue, OS orders, cart/wishlist, memberships, events |
-| `lib/commerce-truth.ts` | Unified catalogue read (local + optional legacy merge) |
-| `lib/catalogue-store.ts` / `orders-store.ts` / `customer-store.ts` / `m1-store.ts` | Write paths for local truth |
-| `lib/data.ts` | **Legacy** Supabase helpers — narrow use; prefer `.data` truth |
-| `lib/commerce-sync.ts` | Optional push to Supabase when enabled |
+- **Clerk** authenticates; **KlikCollect** authorizes via `lib/authz/*`.
+- See [`docs/rbac.md`](docs/rbac.md).
+- Memberships: `platform_memberships`, `staff_memberships` (Clerk text ids).
+- Gates: `lib/auth/require-admin.ts`, `lib/auth/require-vendor.ts`, `requirePermission`.
 
 ## Money
 
-- `lib/money.ts` — format/parse KES minor units (INV-1 display).
-- No Paystack / live tender / ledger in this milestone.
+- Paystack test/live via `lib/paystack/client.ts` (card + M-Pesa `mobile_money` channel).
+- Docs: [`docs/paystack.md`](docs/paystack.md).
+- Capture path: initialize → Paystack → callback verify **and** webhook → `lib/payments/capture.ts` (idempotent ledger + receipt + order `payment_status`).
+- Ledger append-only: `lib/ledger/post.ts` + balances via `lib/ledger/balances.ts`.
+- Tables: `payment_intents`, `payment_receipts`, `ledger_*`, `settlements`, `payouts`, `transfer_recipients`, `webhook_events`.
+- Display: `lib/currency.ts` / money helpers (KES).
 
-## Route groups
+## Surfaces
 
-```
-app/(storefront)/   marketplace + /account
-app/(os)/app/       vendor Commerce OS
-app/admin/          platform admin
-app/api/            route handlers
-```
+| Surface        | Route               | Notes                                                 |
+| -------------- | ------------------- | ----------------------------------------------------- |
+| Storefront     | `app/(storefront)/` | Customer marketplace - theme untouched by panels work |
+| Vendor OS      | `/app`              | Commerce + finance + delivery + warehouse             |
+| Platform admin | `/admin`            | Ops, finance, KYC, security                           |
+| Driver         | `/driver`           | Assigned deliveries, OTP, POD, scan                   |
+
+## Data truth
+
+| Layer                   | Role                                            |
+| ----------------------- | ----------------------------------------------- |
+| `.data/*.json`          | Local M1 commerce fallback                      |
+| Supabase                | Memberships, ledger, KYC, deliveries, marketing |
+| `lib/commerce-truth.ts` | Catalogue read unification                      |
+
+## Middleware
+
+`proxy.ts` - Clerk auth for `/admin`, `/app`, `/account`, `/driver`.
+
+## Feature flags
+
+`pos`, `couriers`, `marketing`, `finance` default **on** in `lib/feature-flag-types.ts`.

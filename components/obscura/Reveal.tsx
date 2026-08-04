@@ -8,7 +8,7 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
-/** Obscura-style scroll reveal — fade + lift + slight blur clear */
+/** Obscura-style scroll reveal - fade + lift + slight blur clear */
 export default function Reveal({
   children,
   className = "",

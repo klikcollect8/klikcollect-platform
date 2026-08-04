@@ -7,23 +7,32 @@ import { useUserAuth } from "@/lib/hooks/useUserAuth";
 import { Order } from "@/types";
 import { formatPrice } from "@/lib/currency";
 
+type OrderRow = Order & {
+  paymentStatus?: string;
+  paymentReference?: string;
+  receiptPublicId?: string | null;
+};
+
 export default function AccountOrdersPage() {
   const { user } = useUserAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/orders")
       .then((r) => r.json())
-      .then((data) => {
+      .then((body) => {
         if (cancelled) return;
         const email = user?.email;
-        setOrders(
-          Array.isArray(data)
-            ? data.filter((o: Order) => !email || o.customerEmail === email)
-            : [],
-        );
+        const list: OrderRow[] = Array.isArray(body)
+          ? body
+          : Array.isArray(body?.data)
+            ? body.data
+            : Array.isArray(body?.orders)
+              ? body.orders
+              : [];
+        setOrders(list.filter((o) => !email || o.customerEmail === email));
       })
       .catch(() => {
         if (!cancelled) setOrders([]);
@@ -63,23 +72,37 @@ export default function AccountOrdersPage() {
         <ul>
           {orders.map((order) => (
             <li key={order.id}>
-              <Link
-                href={`/order-confirmation/${order.id}`}
-                className="flex h-14 items-center justify-between gap-4 border-b border-black/[0.08] transition-colors hover:text-black"
-              >
-                <div className="min-w-0 text-left">
+              <div className="flex h-auto min-h-14 items-center justify-between gap-4 border-b border-black/[0.08] py-3">
+                <Link
+                  href={`/order-confirmation/${order.id}`}
+                  className="min-w-0 flex-1 text-left transition-colors hover:text-black"
+                >
                   <p className="truncate text-[15px] font-medium text-black">
                     {order.orderNumber}
                   </p>
                   <p className="mt-0.5 text-[13px] text-black/35">
                     {format(new Date(order.createdAt), "MMM d, yyyy")} ·{" "}
                     {formatPrice(order.total)} · {order.status}
+                    {order.paymentStatus ? ` · ${order.paymentStatus}` : ""}
                   </p>
+                </Link>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {order.paymentStatus === "paid" && order.paymentReference ? (
+                    <Link
+                      href={`/account/receipts/lookup?ref=${encodeURIComponent(order.paymentReference)}`}
+                      className="text-[11px] uppercase tracking-[0.14em] text-black/50 underline"
+                    >
+                      Receipt
+                    </Link>
+                  ) : null}
+                  <Link
+                    href={`/order-confirmation/${order.id}`}
+                    className="text-[11px] uppercase tracking-[0.14em] text-black/25"
+                  >
+                    Open
+                  </Link>
                 </div>
-                <span className="shrink-0 text-[11px] uppercase tracking-[0.14em] text-black/25">
-                  Open
-                </span>
-              </Link>
+              </div>
             </li>
           ))}
         </ul>

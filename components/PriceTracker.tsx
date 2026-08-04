@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Product } from '@/types';
-import { Bell, BellOff, TrendingDown } from 'lucide-react';
-import { useToast } from './ToastProvider';
+import { useState, useEffect } from "react";
+import { Product } from "@/types";
+import { Bell, BellOff, TrendingDown } from "lucide-react";
+import { useToast } from "./ToastProvider";
 
 interface PriceTrackerProps {
   product: Product;
@@ -15,7 +15,7 @@ export default function PriceTracker({ product }: PriceTrackerProps) {
   const { showToast } = useToast();
 
   useEffect(() => {
-    const tracked = JSON.parse(localStorage.getItem('priceTracking') || '{}');
+    const tracked = JSON.parse(localStorage.getItem("priceTracking") || "{}");
     setTracking(!!tracked[product.id]);
     if (tracked[product.id]) {
       setTargetPrice(tracked[product.id].targetPrice);
@@ -23,11 +23,11 @@ export default function PriceTracker({ product }: PriceTrackerProps) {
   }, [product.id]);
 
   const toggleTracking = () => {
-    const tracked = JSON.parse(localStorage.getItem('priceTracking') || '{}');
-    
+    const tracked = JSON.parse(localStorage.getItem("priceTracking") || "{}");
+
     if (tracking) {
       delete tracked[product.id];
-      showToast('Price tracking removed', 'info');
+      showToast("Price tracking removed", "info");
     } else {
       tracked[product.id] = {
         productId: product.id,
@@ -36,10 +36,13 @@ export default function PriceTracker({ product }: PriceTrackerProps) {
         targetPrice: targetPrice,
         createdAt: new Date().toISOString(),
       };
-      showToast('Price tracking enabled! We\'ll notify you when the price drops.', 'success');
+      showToast(
+        "Price tracking enabled! We'll notify you when the price drops.",
+        "success",
+      );
     }
-    
-    localStorage.setItem('priceTracking', JSON.stringify(tracked));
+
+    localStorage.setItem("priceTracking", JSON.stringify(tracked));
     setTracking(!tracking);
   };
 
@@ -49,7 +52,9 @@ export default function PriceTracker({ product }: PriceTrackerProps) {
         <div className="flex items-start gap-3">
           <TrendingDown className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-1">Price Tracker</h4>
+            <h4 className="text-sm font-medium text-gray-900 mb-1">
+              Price Tracker
+            </h4>
             <p className="text-xs text-gray-500">
               Get notified when this product's price drops
             </p>
@@ -59,15 +64,19 @@ export default function PriceTracker({ product }: PriceTrackerProps) {
           onClick={toggleTracking}
           className={`p-2 rounded-lg transition-all ${
             tracking
-              ? 'bg-black text-white hover:bg-gray-900'
-              : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+              ? "bg-black text-white hover:bg-gray-900"
+              : "bg-white border border-gray-200 text-gray-600 hover:border-gray-300"
           }`}
-          aria-label={tracking ? 'Stop tracking price' : 'Track price'}
+          aria-label={tracking ? "Stop tracking price" : "Track price"}
         >
-          {tracking ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+          {tracking ? (
+            <Bell className="w-4 h-4" />
+          ) : (
+            <BellOff className="w-4 h-4" />
+          )}
         </button>
       </div>
-      
+
       {tracking && (
         <div className="mt-4 pt-4 border-t border-gray-200">
           <label className="block text-xs font-medium text-gray-900 mb-2">

@@ -148,7 +148,7 @@ export default function AdminProfilePage() {
   // Delete account confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Load profile data — Clerk identity (same as Commerce OS)
+  // Load profile data - Clerk identity (same as Commerce OS)
   const loadProfile = useCallback(async () => {
     try {
       if (!clerkLoaded) return;
@@ -171,7 +171,9 @@ export default function AdminProfilePage() {
         email: emailAddress,
         user_metadata: {
           full_name:
-            [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
+            [clerkUser.firstName, clerkUser.lastName]
+              .filter(Boolean)
+              .join(" ") ||
             clerkUser.username ||
             emailAddress,
         },
@@ -194,8 +196,9 @@ export default function AdminProfilePage() {
           email: emailAddress,
           role: roleData.role || "head_admin",
           full_name:
-            [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
-            null,
+            [clerkUser.firstName, clerkUser.lastName]
+              .filter(Boolean)
+              .join(" ") || null,
         },
       );
 

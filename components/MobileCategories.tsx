@@ -12,7 +12,10 @@ interface MobileCategoriesProps {
   onClose: () => void;
 }
 
-export default function MobileCategories({ isOpen, onClose }: MobileCategoriesProps) {
+export default function MobileCategories({
+  isOpen,
+  onClose,
+}: MobileCategoriesProps) {
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => {

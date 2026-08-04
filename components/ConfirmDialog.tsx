@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X } from "lucide-react";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -10,33 +10,33 @@ interface ConfirmDialogProps {
   cancelText?: string;
   onConfirm: () => void;
   onCancel: () => void;
-  variant?: 'danger' | 'warning' | 'info';
+  variant?: "danger" | "warning" | "info";
 }
 
 export default function ConfirmDialog({
   isOpen,
   title,
   message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText = "Confirm",
+  cancelText = "Cancel",
   onConfirm,
   onCancel,
-  variant = 'info',
+  variant = "info",
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
   const variantStyles = {
     danger: {
-      button: 'bg-red-600 hover:bg-red-700 text-white',
-      icon: 'text-red-600',
+      button: "bg-red-600 hover:bg-red-700 text-white",
+      icon: "text-red-600",
     },
     warning: {
-      button: 'bg-yellow-600 hover:bg-yellow-700 text-white',
-      icon: 'text-yellow-600',
+      button: "bg-yellow-600 hover:bg-yellow-700 text-white",
+      icon: "text-yellow-600",
     },
     info: {
-      button: 'bg-[#1e3a8a] hover:bg-[#1e40af] text-white',
-      icon: 'text-[#1e3a8a]',
+      button: "bg-[#1e3a8a] hover:bg-[#1e40af] text-white",
+      icon: "text-[#1e3a8a]",
     },
   };
 
@@ -47,11 +47,15 @@ export default function ConfirmDialog({
       <div className="bg-white rounded-lg border border-gray-200 max-w-md w-full mx-4">
         <div className="p-4">
           <div className="flex items-start gap-3 mb-4">
-            <div className={`flex-shrink-0 p-2 bg-gray-100 rounded ${styles.icon}`}>
+            <div
+              className={`flex-shrink-0 p-2 bg-gray-100 rounded ${styles.icon}`}
+            >
               <AlertTriangle className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">{title}</h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                {title}
+              </h3>
               <p className="text-xs text-gray-600">{message}</p>
             </div>
             <button
@@ -80,4 +84,3 @@ export default function ConfirmDialog({
     </div>
   );
 }
-

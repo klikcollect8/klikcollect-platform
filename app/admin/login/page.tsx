@@ -24,9 +24,7 @@ export default function AdminLogin() {
         >
           KlikCollect
         </h1>
-        <p className={`mt-3 ${ui.pageDesc}`}>
-          Sign in to manage the hall.
-        </p>
+        <p className={`mt-3 ${ui.pageDesc}`}>Sign in to manage the hall.</p>
 
         <div className="mt-10">
           <Show

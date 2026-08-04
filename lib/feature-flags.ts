@@ -9,6 +9,8 @@ import {
 export {
   DEFAULT_FEATURE_FLAGS,
   FEATURE_FLAG_KEYS,
+  FEATURE_FLAG_META,
+  NAV_FEATURE_FLAGS,
   type FeatureFlagKey,
   type FeatureFlags,
 } from "@/lib/feature-flag-types";

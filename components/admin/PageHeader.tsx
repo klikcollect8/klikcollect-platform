@@ -1,7 +1,8 @@
 "use client";
 
 import { ReactNode } from "react";
-import { ui } from "@/components/system/tokens";
+import { adminUi } from "@/components/admin/admin-ui";
+import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: string;
@@ -17,20 +18,20 @@ export default function PageHeader({
   badge,
 }: PageHeaderProps) {
   return (
-    <div className="mb-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-10 flex w-full flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
       <div className="max-w-2xl flex-1">
         <div className="mb-2 flex items-center gap-2.5">
-          <p className={ui.pageEyebrow}>Admin</p>
+          <p className={adminUi.pageEyebrow}>Admin</p>
           {badge}
         </div>
         <h1
-          className={ui.pageTitle}
+          className={adminUi.pageTitle}
           style={{ fontFamily: "var(--font-display), sans-serif" }}
         >
           {title}
         </h1>
         {description ? (
-          <p className={`mt-2 max-w-lg ${ui.pageDesc}`}>{description}</p>
+          <p className={cn(adminUi.pageDesc, "mt-2 max-w-lg")}>{description}</p>
         ) : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}

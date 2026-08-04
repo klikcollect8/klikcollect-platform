@@ -16,7 +16,9 @@ export async function GET() {
   } catch (error) {
     console.error("GET /api/map/commerce", error);
     return NextResponse.json(
-      { error: { code: "SERVER", message: "Failed to load map commerce data" } },
+      {
+        error: { code: "SERVER", message: "Failed to load map commerce data" },
+      },
       { status: 500 },
     );
   }

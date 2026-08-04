@@ -6,7 +6,7 @@ import AdminLayoutClient from "../layout-client";
 export const dynamic = "force-dynamic";
 
 /**
- * Protected admin layout — Clerk session required (proxy) + admin role required here.
+ * Protected admin layout - Clerk session required (proxy) + admin role required here.
  */
 export default async function ProtectedAdminLayout({
   children,

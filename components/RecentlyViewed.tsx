@@ -31,9 +31,11 @@ export default function RecentlyViewed({
         fetch("/api/products")
           .then((res) => res.json())
           .then((data) => {
-             // Random shuffle
-             const shuffled = Array.isArray(data) ? data.sort(() => 0.5 - Math.random()).slice(0, 4) : [];
-             setProducts(shuffled);
+            // Random shuffle
+            const shuffled = Array.isArray(data)
+              ? data.sort(() => 0.5 - Math.random()).slice(0, 4)
+              : [];
+            setProducts(shuffled);
           });
       }
     }

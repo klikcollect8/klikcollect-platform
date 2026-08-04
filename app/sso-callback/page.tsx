@@ -80,7 +80,7 @@ export default function SSOCallbackPage() {
             });
             return;
           }
-          // Still missing fields (e.g. phone) — send back to auth modal
+          // Still missing fields (e.g. phone) - send back to auth modal
           reopenAuth("Add your phone to finish signing up");
           return;
         }
@@ -104,7 +104,8 @@ export default function SSOCallbackPage() {
         }
 
         const sessionId =
-          signIn.existingSession?.sessionId || signUp.existingSession?.sessionId;
+          signIn.existingSession?.sessionId ||
+          signUp.existingSession?.sessionId;
         if (sessionId) {
           await clerk.setActive({
             session: sessionId,
@@ -116,7 +117,7 @@ export default function SSOCallbackPage() {
           return;
         }
 
-        // Fallback: incomplete OAuth — reopen auth
+        // Fallback: incomplete OAuth - reopen auth
         reopenAuth();
       } catch {
         reopenAuth("Social sign-in failed. Try again.");

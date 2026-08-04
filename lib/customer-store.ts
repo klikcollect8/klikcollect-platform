@@ -40,7 +40,16 @@ async function ensureCart(clerkUserId: string) {
     .insert({ clerk_user_id: clerkUserId })
     .select("id")
     .single();
-  if (error) throw error;
+  if (error) {
+    // Concurrent create — unique clerk_user_id; re-read.
+    const { data: raced } = await sb
+      .from("carts")
+      .select("id")
+      .eq("clerk_user_id", clerkUserId)
+      .maybeSingle();
+    if (raced) return raced.id as string;
+    throw error;
+  }
   return data.id as string;
 }
 
@@ -61,6 +70,10 @@ async function ensureWishlist(clerkUserId: string) {
   return data.id as string;
 }
 
+function cartLineKey(productPublicId: string, offerPublicId?: string | null) {
+  return offerPublicId || productPublicId;
+}
+
 export async function listCart(userId: string): Promise<CartRow[]> {
   const sb = getServiceSupabase();
   const cartId = await ensureCart(userId);
@@ -69,14 +82,28 @@ export async function listCart(userId: string): Promise<CartRow[]> {
     .select("*")
     .eq("cart_id", cartId);
   if (error) throw error;
-  return (data || []).map((r) => ({
-    id: r.id,
-    user_id: userId,
-    product_id: r.product_public_id,
-    quantity: r.quantity,
-    offer_id: r.offer_public_id || undefined,
-    updated_at: r.updated_at,
-  }));
+
+  // Collapse any legacy duplicates (null offer_public_id unique gap).
+  const byKey = new Map<string, CartRow>();
+  for (const r of data || []) {
+    const offerId = r.offer_public_id ? String(r.offer_public_id) : undefined;
+    const productId = String(r.product_public_id);
+    const key = cartLineKey(productId, offerId);
+    const prev = byKey.get(key);
+    if (prev) {
+      prev.quantity += Number(r.quantity) || 0;
+      continue;
+    }
+    byKey.set(key, {
+      id: String(r.id),
+      user_id: userId,
+      product_id: productId,
+      quantity: Number(r.quantity) || 0,
+      offer_id: offerId,
+      updated_at: String(r.updated_at),
+    });
+  }
+  return [...byKey.values()];
 }
 
 export async function upsertCartItem(
@@ -89,36 +116,69 @@ export async function upsertCartItem(
   const cartId = await ensureCart(userId);
   const now = new Date().toISOString();
 
+  // Legacy clients stored offer id in product_id with null offer_public_id.
+  const lineOfferId =
+    offerId || (productId.startsWith("off_") ? productId : undefined);
+  const lineProductId = productId;
+
   if (quantity <= 0) {
-    await sb
-      .from("cart_items")
-      .delete()
-      .eq("cart_id", cartId)
-      .eq("product_public_id", productId)
-      .eq("offer_public_id", offerId || null);
+    await deleteCartItem(userId, lineOfferId || lineProductId);
     return {
       id: "deleted",
       user_id: userId,
-      product_id: productId,
+      product_id: lineProductId,
       quantity: 0,
-      offer_id: offerId,
+      offer_id: lineOfferId,
       updated_at: now,
     };
   }
 
-  const { data: existing } = await sb
-    .from("cart_items")
-    .select("id")
-    .eq("cart_id", cartId)
-    .eq("product_public_id", productId)
-    .eq("offer_public_id", offerId ?? null)
-    .maybeSingle();
+  let existingId: string | null = null;
 
-  if (existing) {
+  if (lineOfferId) {
+    const { data: byOffer } = await sb
+      .from("cart_items")
+      .select("id")
+      .eq("cart_id", cartId)
+      .eq("offer_public_id", lineOfferId)
+      .maybeSingle();
+    if (byOffer) existingId = byOffer.id;
+
+    if (!existingId) {
+      // Legacy rows: offer id parked in product_public_id, offer_public_id null.
+      // IMPORTANT: use .is(null) — .eq(null) never matches in PostgREST.
+      const { data: legacy } = await sb
+        .from("cart_items")
+        .select("id")
+        .eq("cart_id", cartId)
+        .eq("product_public_id", lineOfferId)
+        .is("offer_public_id", null)
+        .limit(1)
+        .maybeSingle();
+      if (legacy) existingId = legacy.id;
+    }
+  } else {
+    const { data: byProduct } = await sb
+      .from("cart_items")
+      .select("id")
+      .eq("cart_id", cartId)
+      .eq("product_public_id", lineProductId)
+      .is("offer_public_id", null)
+      .limit(1)
+      .maybeSingle();
+    if (byProduct) existingId = byProduct.id;
+  }
+
+  if (existingId) {
     const { data, error } = await sb
       .from("cart_items")
-      .update({ quantity, updated_at: now })
-      .eq("id", existing.id)
+      .update({
+        quantity,
+        updated_at: now,
+        product_public_id: lineProductId,
+        offer_public_id: lineOfferId || null,
+      })
+      .eq("id", existingId)
       .select("*")
       .single();
     if (error) throw error;
@@ -136,14 +196,70 @@ export async function upsertCartItem(
     .from("cart_items")
     .insert({
       cart_id: cartId,
-      product_public_id: productId,
-      offer_public_id: offerId || null,
+      product_public_id: lineProductId,
+      offer_public_id: lineOfferId || null,
       quantity,
       updated_at: now,
     })
     .select("*")
     .single();
-  if (error) throw error;
+  if (error) {
+    // Unique race — update the winning row.
+    if (lineOfferId) {
+      const { data: raced } = await sb
+        .from("cart_items")
+        .select("*")
+        .eq("cart_id", cartId)
+        .eq("offer_public_id", lineOfferId)
+        .maybeSingle();
+      if (raced) {
+        const { data: updated, error: uErr } = await sb
+          .from("cart_items")
+          .update({ quantity, updated_at: now })
+          .eq("id", raced.id)
+          .select("*")
+          .single();
+        if (uErr) throw uErr;
+        return {
+          id: updated.id,
+          user_id: userId,
+          product_id: updated.product_public_id,
+          quantity: updated.quantity,
+          offer_id: updated.offer_public_id || undefined,
+          updated_at: updated.updated_at,
+        };
+      }
+    }
+    const { data: racedNull } = await sb
+      .from("cart_items")
+      .select("*")
+      .eq("cart_id", cartId)
+      .eq("product_public_id", lineProductId)
+      .is("offer_public_id", null)
+      .maybeSingle();
+    if (racedNull) {
+      const { data: updated, error: uErr } = await sb
+        .from("cart_items")
+        .update({
+          quantity,
+          updated_at: now,
+          offer_public_id: lineOfferId || null,
+        })
+        .eq("id", racedNull.id)
+        .select("*")
+        .single();
+      if (uErr) throw uErr;
+      return {
+        id: updated.id,
+        user_id: userId,
+        product_id: updated.product_public_id,
+        quantity: updated.quantity,
+        offer_id: updated.offer_public_id || undefined,
+        updated_at: updated.updated_at,
+      };
+    }
+    throw error;
+  }
   await sb.from("carts").update({ updated_at: now }).eq("id", cartId);
   return {
     id: data.id,

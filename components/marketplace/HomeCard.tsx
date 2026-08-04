@@ -33,7 +33,9 @@ export default function HomeCard({
   return (
     <section
       className={`flex h-full flex-col overflow-hidden rounded-[var(--kc-radius)] p-5 shadow-[var(--kc-shadow)] ${
-        dark ? "bg-[var(--kc-ink)] text-white" : "bg-[var(--kc-stage)] text-[var(--kc-ink)]"
+        dark
+          ? "bg-[var(--kc-ink)] text-white"
+          : "bg-[var(--kc-stage)] text-[var(--kc-ink)]"
       }`}
     >
       {eyebrow ? (
@@ -55,7 +57,11 @@ export default function HomeCard({
       {tiles && tiles.length > 0 ? (
         <div className="grid flex-1 grid-cols-2 gap-3">
           {tiles.slice(0, 4).map((tile) => (
-            <Link key={tile.href + tile.label} href={tile.href} className="group min-w-0">
+            <Link
+              key={tile.href + tile.label}
+              href={tile.href}
+              className="group min-w-0"
+            >
               <div
                 className={`relative aspect-square overflow-hidden rounded-[var(--kc-radius-sm)] ${
                   dark ? "bg-white/10" : "bg-[var(--kc-canvas)]"
@@ -106,7 +112,9 @@ export default function HomeCard({
         <Link
           href={href}
           className={`mt-4 text-[14px] font-medium ${
-            dark ? "text-[var(--kc-blue)] hover:underline" : "text-[var(--kc-link)] hover:underline"
+            dark
+              ? "text-[var(--kc-blue)] hover:underline"
+              : "text-[var(--kc-link)] hover:underline"
           }`}
         >
           {linkLabel} →

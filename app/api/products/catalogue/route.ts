@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ data: products });
 }
 
-/** Manual vendor listing create — tenant-scoped (M1). */
+/** Manual vendor listing create - tenant-scoped (M1). */
 export async function POST(request: NextRequest) {
   try {
     const gate = await requireVendorActor();
@@ -28,7 +28,8 @@ export async function POST(request: NextRequest) {
     const category = String(body?.category || "").trim();
     const priceMajor = Number(body?.priceMajor ?? body?.price);
     const stock = Number(body?.stock);
-    let vendorId = String(body?.vendorId || DEMO_VENDOR_ID).trim() || DEMO_VENDOR_ID;
+    let vendorId =
+      String(body?.vendorId || DEMO_VENDOR_ID).trim() || DEMO_VENDOR_ID;
     if (
       !gate.actor.isPlatformAdmin &&
       !gate.actor.vendorIds.includes(vendorId)
@@ -36,24 +37,54 @@ export async function POST(request: NextRequest) {
       vendorId = gate.actor.vendorIds[0] || DEMO_VENDOR_ID;
     }
 
-    if (!name || !category || !Number.isFinite(priceMajor) || !Number.isFinite(stock)) {
+    if (
+      !name ||
+      !category ||
+      !Number.isFinite(priceMajor) ||
+      !Number.isFinite(stock)
+    ) {
       return NextResponse.json(
-        { error: { code: "INVALID", message: "name, category, priceMajor, stock required" } },
+        {
+          error: {
+            code: "INVALID",
+            message: "name, category, priceMajor, stock required",
+          },
+        },
         { status: 400 },
       );
     }
 
     const allowed = new Set(V1_CATEGORIES.map((c) => c.toLowerCase()));
-    const excluded = new Set(V1_EXCLUDED_CATEGORIES.map((c) => c.toLowerCase()));
-    if (excluded.has(category.toLowerCase()) || !allowed.has(category.toLowerCase())) {
+    const excluded = new Set(
+      V1_EXCLUDED_CATEGORIES.map((c) => c.toLowerCase()),
+    );
+    if (
+      excluded.has(category.toLowerCase()) ||
+      !allowed.has(category.toLowerCase())
+    ) {
       return NextResponse.json(
-        { error: { code: "INVALID_CATEGORY", message: `Category not in V1: ${category}` } },
+        {
+          error: {
+            code: "INVALID_CATEGORY",
+            message: `Category not in V1: ${category}`,
+          },
+        },
         { status: 400 },
       );
     }
-    if (!Number.isInteger(priceMajor) || priceMajor < 0 || !Number.isInteger(stock) || stock < 0) {
+    if (
+      !Number.isInteger(priceMajor) ||
+      priceMajor < 0 ||
+      !Number.isInteger(stock) ||
+      stock < 0
+    ) {
       return NextResponse.json(
-        { error: { code: "INVALID", message: "priceMajor and stock must be non-negative integers" } },
+        {
+          error: {
+            code: "INVALID",
+            message: "priceMajor and stock must be non-negative integers",
+          },
+        },
         { status: 400 },
       );
     }
@@ -96,9 +127,17 @@ export async function PATCH(request: NextRequest) {
     ? body.ids.map((id: unknown) => String(id))
     : [];
   const status = String(body?.status || "") as Product["status"];
-  if (!ids.length || !["published", "draft", "archived"].includes(String(status))) {
+  if (
+    !ids.length ||
+    !["published", "draft", "archived"].includes(String(status))
+  ) {
     return NextResponse.json(
-      { error: { code: "INVALID", message: "ids and status (published|draft|archived) required" } },
+      {
+        error: {
+          code: "INVALID",
+          message: "ids and status (published|draft|archived) required",
+        },
+      },
       { status: 400 },
     );
   }

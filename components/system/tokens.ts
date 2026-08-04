@@ -30,7 +30,7 @@ export const tokens = {
 export const ui = {
   canvas: "bg-[var(--kc-canvas)]",
   surface: "bg-[var(--kc-stage)]",
-  /** Seamless — no card borders */
+  /** Seamless - no card borders */
   panel: "bg-transparent",
   btnPrimary:
     "inline-flex items-center justify-center bg-black px-5 py-3 text-[12px] font-medium uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-80",
@@ -47,9 +47,10 @@ export const ui = {
     "text-[11px] font-medium uppercase tracking-[0.2em] text-black/35",
   navActive: "font-medium text-black",
   navIdle: "font-medium text-black/40 transition-colors hover:text-black",
-  /** Breathing room off the sidebar + comfortable vertical rhythm */
+  /** Full-bleed main - spans the page beside the sidebar */
   shellMain:
-    "w-full max-w-[1120px] px-8 py-10 sm:px-12 sm:py-12 lg:px-16 lg:py-14 xl:px-20",
+    "w-full max-w-none px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12 xl:px-16",
   shellAside: "w-[240px]",
-  shellAsidePad: "lg:pl-[240px]",
+  /** Admin main pad - overridden by --admin-aside when sidebar collapses */
+  shellAsidePad: "lg:pl-[var(--admin-aside,240px)]",
 } as const;

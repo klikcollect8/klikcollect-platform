@@ -2,7 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import AdminNav from "@/components/AdminNav";
 import { ToastProvider } from "@/components/ToastProvider";
 import { resolveAdminRole } from "@/lib/admin-auth";
-import { ui } from "@/components/system/tokens";
+import { adminUi } from "@/components/admin/admin-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +21,12 @@ export default async function AdminLayout({
 
   return (
     <ToastProvider>
-      <div className="min-h-screen overflow-x-hidden bg-[#f7f7f5] text-black">
+      <div
+        className={`min-h-screen overflow-x-hidden text-black ${adminUi.canvas}`}
+      >
         <AdminNav initialRole={userRole} />
-        <div className={`w-full ${ui.shellAsidePad}`}>
-          <main className={ui.shellMain}>{children}</main>
+        <div className={`w-full ${adminUi.shellAsidePad}`}>
+          <main className={`${adminUi.shellMain} max-w-none`}>{children}</main>
         </div>
       </div>
     </ToastProvider>

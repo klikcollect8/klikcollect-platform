@@ -1,6 +1,7 @@
 "use client";
 
-import { ui } from "@/components/system/tokens";
+import { adminUi } from "@/components/admin/admin-ui";
+import { cn } from "@/lib/utils";
 
 interface PageContainerProps {
   children: React.ReactNode;
@@ -12,7 +13,9 @@ export default function PageContainer({
   className = "",
 }: PageContainerProps) {
   return (
-    <div className={`mb-8 w-full space-y-10 ${className}`}>{children}</div>
+    <div className={cn("mb-8 w-full max-w-none space-y-10", className)}>
+      {children}
+    </div>
   );
 }
 
@@ -26,17 +29,17 @@ export function AdminPageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <header className="flex w-full flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
       <div className="max-w-2xl">
-        <p className={ui.pageEyebrow}>Admin</p>
+        <p className={adminUi.pageEyebrow}>Admin</p>
         <h1
-          className={`mt-2 ${ui.pageTitle}`}
+          className={cn(adminUi.pageTitle, "mt-2")}
           style={{ fontFamily: "var(--font-display), sans-serif" }}
         >
           {title}
         </h1>
         {description ? (
-          <p className={`mt-2 max-w-lg ${ui.pageDesc}`}>{description}</p>
+          <p className={cn(adminUi.pageDesc, "mt-2 max-w-lg")}>{description}</p>
         ) : null}
       </div>
       {actions ? (

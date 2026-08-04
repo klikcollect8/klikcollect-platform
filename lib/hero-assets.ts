@@ -1,6 +1,6 @@
 import { cmsImageUrl } from "@/lib/storage-urls";
 
-/** Seed filenames — runtime URLs point at Supabase Storage (cms-images). */
+/** Seed filenames - runtime URLs point at Supabase Storage (cms-images). */
 export const HERO_SEED_FILES = [
   "hero-01.jpeg",
   "hero-02.jpeg",

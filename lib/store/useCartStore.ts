@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { CartItem, Product } from '@/types';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { CartItem, Product } from "@/types";
 
 interface CartState {
   items: CartItem[];
@@ -20,7 +20,7 @@ export const useCartStore = create<CartState>()(
       addItem: (product, quantity = 1) => {
         set((state) => {
           const existingItemIndex = state.items.findIndex(
-            (item) => item.product.id === product.id
+            (item) => item.product.id === product.id,
           );
 
           if (existingItemIndex >= 0) {
@@ -46,7 +46,7 @@ export const useCartStore = create<CartState>()(
         set((state) => ({
           items: state.items
             .map((item) =>
-              item.product.id === productId ? { ...item, quantity } : item
+              item.product.id === productId ? { ...item, quantity } : item,
             )
             .filter((item) => item.quantity > 0),
         }));
@@ -57,8 +57,9 @@ export const useCartStore = create<CartState>()(
       getTotal: () => {
         return get().items.reduce(
           (total, item) =>
-            total + (item.offerPrice ?? item.product.price ?? 0) * item.quantity,
-          0
+            total +
+            (item.offerPrice ?? item.product.price ?? 0) * item.quantity,
+          0,
         );
       },
 
@@ -67,7 +68,7 @@ export const useCartStore = create<CartState>()(
       },
     }),
     {
-      name: 'klikcollect-cart',
-    }
-  )
+      name: "klikcollect-cart",
+    },
+  ),
 );

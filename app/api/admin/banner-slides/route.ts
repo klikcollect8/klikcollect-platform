@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { requireAdmin, handleRequireAdminError } from "@/lib/auth/require-admin";
+import {
+  requireAdmin,
+  handleRequireAdminError,
+} from "@/lib/auth/require-admin";
 
 function mapSlide(slide: Record<string, unknown>) {
   return {
@@ -19,7 +22,11 @@ function mapSlide(slide: Record<string, unknown>) {
 
 export async function GET() {
   try {
-    await requireAdmin(["head_admin", "admin", "editor"]);
+    await requireAdmin([
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+    ]);
     const supabase = createAdminClient() || (await createClient());
     const { data, error } = await supabase
       .from("banner_slides")
@@ -47,7 +54,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin(["head_admin", "admin", "editor"]);
+    await requireAdmin([
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+    ]);
     const supabase = createAdminClient() || (await createClient());
     const body = await request.json();
     const {

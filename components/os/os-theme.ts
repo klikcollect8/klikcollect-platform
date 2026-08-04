@@ -1,5 +1,5 @@
 /**
- * OS design tokens — fusion of Apple stage, Amazon density, eBay trust.
+ * OS design tokens - fusion of Apple stage, Amazon density, eBay trust.
  * Prefer CSS vars from globals.css (`--kc-*`); these mirror for TS consumers.
  */
 export const os = {

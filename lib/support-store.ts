@@ -40,7 +40,11 @@ async function readAll(): Promise<SupportTicket[]> {
 
 async function writeAll(tickets: SupportTicket[]): Promise<void> {
   await ensureDir();
-  await fs.writeFile(path.join(DATA_DIR, FILE), JSON.stringify(tickets, null, 2), "utf8");
+  await fs.writeFile(
+    path.join(DATA_DIR, FILE),
+    JSON.stringify(tickets, null, 2),
+    "utf8",
+  );
 }
 
 const STATUS_RANK: Record<TicketStatus, number> = {
@@ -72,7 +76,9 @@ export async function listSupportTickets(filter?: {
   return sortTicketsForQueue(tickets);
 }
 
-export async function getSupportTicket(id: string): Promise<SupportTicket | null> {
+export async function getSupportTicket(
+  id: string,
+): Promise<SupportTicket | null> {
   const all = await readAll();
   return all.find((t) => t.id === id) ?? null;
 }
@@ -98,7 +104,9 @@ export async function listSupportTicketsForUser(
     );
 }
 
-export async function createSupportTicket(input: CreateTicketInput): Promise<SupportTicket> {
+export async function createSupportTicket(
+  input: CreateTicketInput,
+): Promise<SupportTicket> {
   const now = new Date().toISOString();
   const ticket: SupportTicket = {
     id: publicId("tkt"),

@@ -29,7 +29,11 @@ export default function ProductCard({
       <Link
         href={href}
         onClick={() =>
-          track("storefront.product_clicked", { productId: product.id }, "customer")
+          track(
+            "storefront.product_clicked",
+            { productId: product.id },
+            "customer",
+          )
         }
         className="relative mb-5 block aspect-[4/5] overflow-hidden bg-black/[0.03]"
       >

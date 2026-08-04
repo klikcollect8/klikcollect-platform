@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, ReactNode } from 'react';
-import Toast, { ToastType } from './Toast';
+import { createContext, useContext, useState, ReactNode } from "react";
+import Toast, { ToastType } from "./Toast";
 
 export type ToastOptions = {
   actionHref?: string;
@@ -17,7 +17,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within ToastProvider');
+    throw new Error("useToast must be used within ToastProvider");
   }
   return context;
 }
@@ -34,7 +34,11 @@ export function ToastProvider({ children }: ToastProviderProps) {
     actionLabel?: string;
   } | null>(null);
 
-  const showToast = (message: string, type: ToastType, options?: ToastOptions) => {
+  const showToast = (
+    message: string,
+    type: ToastType,
+    options?: ToastOptions,
+  ) => {
     setToast({
       message,
       type,
@@ -58,4 +62,3 @@ export function ToastProvider({ children }: ToastProviderProps) {
     </ToastContext.Provider>
   );
 }
-

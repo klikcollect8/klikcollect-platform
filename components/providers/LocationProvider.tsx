@@ -25,7 +25,13 @@ export type UserCoords = {
   updatedAt: number;
 };
 
-type LocationStatus = "idle" | "locating" | "ready" | "denied" | "error" | "unsupported";
+type LocationStatus =
+  | "idle"
+  | "locating"
+  | "ready"
+  | "denied"
+  | "error"
+  | "unsupported";
 
 type LocationContextValue = {
   coords: UserCoords | null;
@@ -141,7 +147,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     setError(null);
     setIsTracking(true);
 
-    navigator.geolocation.getCurrentPosition(applyPosition, applyError, WATCH_OPTIONS);
+    navigator.geolocation.getCurrentPosition(
+      applyPosition,
+      applyError,
+      WATCH_OPTIONS,
+    );
     watchIdRef.current = navigator.geolocation.watchPosition(
       applyPosition,
       applyError,
@@ -161,7 +171,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <LocationContext.Provider value={value}>{children}</LocationContext.Provider>
+    <LocationContext.Provider value={value}>
+      {children}
+    </LocationContext.Provider>
   );
 }
 

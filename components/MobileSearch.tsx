@@ -10,27 +10,34 @@ import { CloseIcon, SearchIcon } from "@/components/NavIcons";
 import { Product } from "@/types";
 import { resolveProductImage } from "@/lib/product-image";
 import { V1_CATEGORIES } from "@/lib/curation-policy";
+import { useIsClient } from "@/lib/hooks/useIsClient";
 
 interface MobileSearchProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const POPULAR = ["Olive oil", "Milk", "Sourdough", "Avocado", "Coffee", "Honey"];
+const POPULAR = [
+  "Olive oil",
+  "Milk",
+  "Sourdough",
+  "Avocado",
+  "Coffee",
+  "Honey",
+];
 
 export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const catalogueRef = useRef<Product[] | null>(null);
   const [query, setQuery] = useState("");
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   useEffect(() => {
-    setMounted(true);
     try {
       const saved = localStorage.getItem("recent_searches");
       if (saved) setRecentSearches(JSON.parse(saved));
@@ -132,7 +139,10 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
   }, [isOpen, handleClose]);
 
   const remember = (term: string) => {
-    const next = [term, ...recentSearches.filter((s) => s !== term)].slice(0, 5);
+    const next = [term, ...recentSearches.filter((s) => s !== term)].slice(
+      0,
+      5,
+    );
     setRecentSearches(next);
     localStorage.setItem("recent_searches", JSON.stringify(next));
   };
@@ -150,10 +160,9 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
 
   const hasQuery = query.trim().length > 0;
   const matchingCategories = hasQuery
-    ? V1_CATEGORIES.filter((c) => c.toLowerCase().includes(query.trim().toLowerCase())).slice(
-        0,
-        3,
-      )
+    ? V1_CATEGORIES.filter((c) =>
+        c.toLowerCase().includes(query.trim().toLowerCase()),
+      ).slice(0, 3)
     : [];
 
   const content = (
@@ -261,7 +270,11 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                         className="flex items-center justify-between border-b border-black/[0.06] py-3.5 text-[15px] font-medium tracking-tight text-black/80 transition-opacity hover:opacity-50"
                       >
                         {cat}
-                        <ArrowRight size={16} weight="regular" className="text-black/25" />
+                        <ArrowRight
+                          size={16}
+                          weight="regular"
+                          className="text-black/25"
+                        />
                       </Link>
                     ))}
                   </div>
@@ -356,20 +369,26 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                   {recentSearches.length ? "Recent" : "Popular"}
                 </h2>
                 <ul>
-                  {(recentSearches.length ? recentSearches : POPULAR).map((term) => (
-                    <li key={term}>
-                      <button
-                        type="button"
-                        onClick={() => setQuery(term)}
-                        className="flex w-full items-center justify-between border-b border-black/[0.06] py-3.5 text-left transition-opacity hover:opacity-45"
-                      >
-                        <span className="text-[16px] font-medium tracking-tight text-black">
-                          {term}
-                        </span>
-                        <ArrowRight size={16} weight="regular" className="text-black/20" />
-                      </button>
-                    </li>
-                  ))}
+                  {(recentSearches.length ? recentSearches : POPULAR).map(
+                    (term) => (
+                      <li key={term}>
+                        <button
+                          type="button"
+                          onClick={() => setQuery(term)}
+                          className="flex w-full items-center justify-between border-b border-black/[0.06] py-3.5 text-left transition-opacity hover:opacity-45"
+                        >
+                          <span className="text-[16px] font-medium tracking-tight text-black">
+                            {term}
+                          </span>
+                          <ArrowRight
+                            size={16}
+                            weight="regular"
+                            className="text-black/20"
+                          />
+                        </button>
+                      </li>
+                    ),
+                  )}
                 </ul>
                 {recentSearches.length > 0 ? (
                   <button
@@ -406,8 +425,14 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                         onClick={handleClose}
                         className="flex w-full items-center justify-between border-b border-black/[0.06] py-3.5 transition-opacity hover:opacity-45"
                       >
-                        <span className="text-[15px] tracking-tight text-black/75">{cat}</span>
-                        <ArrowRight size={16} weight="regular" className="text-black/20" />
+                        <span className="text-[15px] tracking-tight text-black/75">
+                          {cat}
+                        </span>
+                        <ArrowRight
+                          size={16}
+                          weight="regular"
+                          className="text-black/20"
+                        />
                       </Link>
                     </li>
                   ))}

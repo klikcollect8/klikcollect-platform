@@ -1,6 +1,6 @@
 /**
  * Public Supabase Storage URL helpers (client + server safe).
- * Catalogue imagery lives only in Supabase Storage — not in this repo.
+ * Catalogue imagery lives only in Supabase Storage - not in this repo.
  */
 
 function supabaseOrigin(): string {

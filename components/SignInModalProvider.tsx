@@ -45,13 +45,13 @@ function readStoredIntent(): StoredAuthIntent | null {
   }
 }
 
-/** Persist intent then navigate — used by /sign-in bridges & middleware redirects. */
+/** Persist intent then navigate - used by /sign-in bridges & middleware redirects. */
 export function queueAuthModal(intent: StoredAuthIntent) {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(intent));
 }
 
-/** Storefront auth overlay — same pattern as bag / search. */
+/** Storefront auth overlay - same pattern as bag / search. */
 export function SignInModalProvider({ children }: { children: ReactNode }) {
   const { isSignedIn } = useAuth();
   const [open, setOpen] = useState(false);

@@ -23,7 +23,8 @@ export default function AccountSecurityPage() {
         <p className={ui.pageEyebrow}>Account</p>
         <h1 className={`mt-3 ${ui.pageTitle}`}>Security</h1>
         <p className={cn("mt-2", ui.pageDesc)}>
-          Password, two-factor authentication, and connected accounts for {user?.email}.
+          Password, two-factor authentication, and connected accounts for{" "}
+          {user?.email}.
         </p>
       </div>
 
@@ -31,12 +32,18 @@ export default function AccountSecurityPage() {
         <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-[var(--kc-radius-sm)] bg-[var(--kc-canvas)]">
-              <Shield className="h-5 w-5 text-[var(--kc-ink)]" strokeWidth={1.75} />
+              <Shield
+                className="h-5 w-5 text-[var(--kc-ink)]"
+                strokeWidth={1.75}
+              />
             </span>
             <div>
-              <p className="text-[14px] font-semibold text-[var(--kc-ink)]">Clerk account settings</p>
+              <p className="text-[14px] font-semibold text-[var(--kc-ink)]">
+                Clerk account settings
+              </p>
               <p className="mt-0.5 max-w-md text-[13px] text-[var(--kc-mute)]">
-                Update your password, enable authenticator apps, and review active sessions.
+                Update your password, enable authenticator apps, and review
+                active sessions.
               </p>
             </div>
           </div>

@@ -15,9 +15,21 @@ export default function SizeGuide({ category }: SizeGuideProps) {
       return {
         title: "Device Size Guide",
         sizes: [
-          { size: "Small", dimensions: "4-5 inches", description: "Compact devices" },
-          { size: "Medium", dimensions: "5-6 inches", description: "Standard devices" },
-          { size: "Large", dimensions: "6+ inches", description: "Large devices" },
+          {
+            size: "Small",
+            dimensions: "4-5 inches",
+            description: "Compact devices",
+          },
+          {
+            size: "Medium",
+            dimensions: "5-6 inches",
+            description: "Standard devices",
+          },
+          {
+            size: "Large",
+            dimensions: "6+ inches",
+            description: "Large devices",
+          },
         ],
       };
     }
@@ -26,11 +38,19 @@ export default function SizeGuide({ category }: SizeGuideProps) {
       return {
         title: "Clothing Size Guide",
         sizes: [
-          { size: "XS", dimensions: 'Chest: 32-34"', description: "Extra Small" },
+          {
+            size: "XS",
+            dimensions: 'Chest: 32-34"',
+            description: "Extra Small",
+          },
           { size: "S", dimensions: 'Chest: 36-38"', description: "Small" },
           { size: "M", dimensions: 'Chest: 40-42"', description: "Medium" },
           { size: "L", dimensions: 'Chest: 44-46"', description: "Large" },
-          { size: "XL", dimensions: 'Chest: 48-50"', description: "Extra Large" },
+          {
+            size: "XL",
+            dimensions: 'Chest: 48-50"',
+            description: "Extra Large",
+          },
         ],
       };
     }
@@ -38,7 +58,11 @@ export default function SizeGuide({ category }: SizeGuideProps) {
     return {
       title: "Size Guide",
       sizes: [
-        { size: "One Size", dimensions: "Fits All", description: "Universal fit" },
+        {
+          size: "One Size",
+          dimensions: "Fits All",
+          description: "Universal fit",
+        },
       ],
     };
   };
@@ -103,7 +127,9 @@ export default function SizeGuide({ category }: SizeGuideProps) {
                           idx % 2 === 0 ? "bg-transparent" : "bg-black/[0.02]"
                         }`}
                       >
-                        <td className="p-3 text-[14px] font-medium sm:p-4">{item.size}</td>
+                        <td className="p-3 text-[14px] font-medium sm:p-4">
+                          {item.size}
+                        </td>
                         <td className="p-3 text-[14px] text-black/55 sm:p-4">
                           {item.dimensions}
                         </td>
@@ -116,8 +142,9 @@ export default function SizeGuide({ category }: SizeGuideProps) {
                 </table>
               </div>
               <p className="mt-5 text-[13px] leading-relaxed text-black/45">
-                <span className="font-medium text-black/70">Note:</span> Sizes may
-                vary by manufacturer. Check the product description for specifics.
+                <span className="font-medium text-black/70">Note:</span> Sizes
+                may vary by manufacturer. Check the product description for
+                specifics.
               </p>
             </div>
           </div>

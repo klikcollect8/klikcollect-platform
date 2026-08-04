@@ -1,5 +1,5 @@
 /**
- * Canonical products — Supabase-backed.
+ * Canonical products - Supabase-backed.
  */
 import type { Product } from "@/types";
 import {
@@ -26,8 +26,10 @@ export async function getProductById(
   return product;
 }
 
-export async function saveProducts(_products: CanonicalProduct[]): Promise<void> {
+export async function saveProducts(
+  _products: CanonicalProduct[],
+): Promise<void> {
   throw new Error(
-    "saveProducts is retired — mutate products via Supabase admin / seed script",
+    "saveProducts is retired - mutate products via Supabase admin / seed script",
   );
 }

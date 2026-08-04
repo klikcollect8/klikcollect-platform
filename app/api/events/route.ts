@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { publicId } from "@/lib/ids";
-import { appendUsageEvent, countUsageEvents, recentUsageEvents } from "@/lib/m1-store";
+import {
+  appendUsageEvent,
+  countUsageEvents,
+  recentUsageEvents,
+} from "@/lib/m1-store";
 
 /**
  * Day-one instrumentation (M1 / FR-9).
- * North-star and usage events must emit from the first mile — cannot retrofit.
+ * North-star and usage events must emit from the first mile - cannot retrofit.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -36,6 +40,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const [count, recent] = await Promise.all([countUsageEvents(), recentUsageEvents(30)]);
+  const [count, recent] = await Promise.all([
+    countUsageEvents(),
+    recentUsageEvents(30),
+  ]);
   return NextResponse.json({ data: { count, recent } });
 }

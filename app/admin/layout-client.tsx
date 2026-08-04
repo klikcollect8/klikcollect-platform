@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 /**
  * Client-side admin layout wrapper
@@ -8,8 +8,8 @@
 export default function AdminLayoutClient({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   // Just return children - parent AdminLayout already provides AdminNav, Footer, etc.
-  return <>{children}</>
+  return <>{children}</>;
 }

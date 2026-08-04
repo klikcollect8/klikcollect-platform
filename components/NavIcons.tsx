@@ -1,11 +1,13 @@
 "use client";
 
 import {
-  Bag,
-  House,
+  BagSimple,
+  BellSimple,
+  Compass,
+  HouseSimple,
   List,
   MagnifyingGlass,
-  Storefront,
+  Package,
   User,
   X,
   type Icon,
@@ -13,8 +15,8 @@ import {
   type IconWeight,
 } from "@phosphor-icons/react";
 
-/** Shared chrome icons — Phosphor, light outline / fill when active. */
-export const NAV_ICON_SIZE = 22;
+/** Shared chrome icons - thin SF-style outlines, fill when active. */
+export const NAV_ICON_SIZE = 24;
 
 type NavIconProps = {
   active?: boolean;
@@ -23,7 +25,7 @@ type NavIconProps = {
 };
 
 function weight(active?: boolean): IconWeight {
-  return active ? "fill" : "regular";
+  return active ? "fill" : "light";
 }
 
 function NavGlyph({
@@ -42,23 +44,31 @@ function NavGlyph({
 }
 
 export function HomeIcon(props: NavIconProps) {
-  return <NavGlyph icon={House} {...props} />;
+  return <NavGlyph icon={HouseSimple} {...props} />;
 }
 
 export function SearchIcon(props: NavIconProps) {
   return <NavGlyph icon={MagnifyingGlass} {...props} />;
 }
 
-export function VendorsIcon(props: NavIconProps) {
-  return <NavGlyph icon={Storefront} {...props} />;
+export function ExploreIcon(props: NavIconProps) {
+  return <NavGlyph icon={Compass} {...props} />;
+}
+
+export function OrdersIcon(props: NavIconProps) {
+  return <NavGlyph icon={Package} {...props} />;
 }
 
 export function BagIcon(props: NavIconProps) {
-  return <NavGlyph icon={Bag} {...props} />;
+  return <NavGlyph icon={BagSimple} {...props} />;
 }
 
 export function AccountIcon(props: NavIconProps) {
   return <NavGlyph icon={User} {...props} />;
+}
+
+export function BellIcon(props: NavIconProps) {
+  return <NavGlyph icon={BellSimple} {...props} />;
 }
 
 export function MenuIcon(props: NavIconProps) {

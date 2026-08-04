@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 interface ProductBadgesProps {
   badges?: string[];
@@ -8,8 +8,8 @@ export default function ProductBadges({ badges }: ProductBadgesProps) {
   if (!badges || badges.length === 0) return null;
 
   // Only show essential badges: Best Seller and New Arrival
-  const essentialBadges = badges.filter(badge => 
-    badge.includes("Best Seller") || badge.includes("New Arrival")
+  const essentialBadges = badges.filter(
+    (badge) => badge.includes("Best Seller") || badge.includes("New Arrival"),
   );
 
   if (essentialBadges.length === 0) return null;
@@ -27,4 +27,3 @@ export default function ProductBadges({ badges }: ProductBadgesProps) {
     </div>
   );
 }
-

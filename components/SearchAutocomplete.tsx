@@ -139,7 +139,9 @@ export default function SearchAutocomplete({
                     <h4 className="truncate text-[14px] font-medium text-black">
                       {prod.name}
                     </h4>
-                    <p className="truncate text-[12px] text-black/40">{prod.category}</p>
+                    <p className="truncate text-[12px] text-black/40">
+                      {prod.category}
+                    </p>
                   </div>
                 </Link>
               ))}

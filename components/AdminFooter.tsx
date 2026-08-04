@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 export default function AdminFooter() {
   const currentYear = new Date().getFullYear();
@@ -13,8 +13,8 @@ export default function AdminFooter() {
           <div className="flex items-center gap-4 lg:gap-6 text-sm text-neutral-500">
             <span className="text-neutral-400">Admin Panel</span>
             <span className="text-neutral-300">•</span>
-            <a 
-              href="/" 
+            <a
+              href="/"
               className="text-black hover:text-neutral-600 font-medium transition-colors"
             >
               View Store
@@ -25,4 +25,3 @@ export default function AdminFooter() {
     </footer>
   );
 }
-

@@ -1,8 +1,8 @@
-/** Mapbox client helpers — public token only. */
+/** Mapbox client helpers - public token only. */
 
 export const NAIROBI_CENTER: [number, number] = [36.8219, -1.2921];
 
-/** Marketplace camera — north-up, soft tilt, street-level zoom */
+/** Marketplace camera - north-up, soft tilt, street-level zoom */
 export const DEFAULT_MAP_ZOOM = 15.4;
 export const PREVIEW_MAP_ZOOM = 16.2;
 export const LIVE_MAP_ZOOM = 16.2;
@@ -35,7 +35,7 @@ export const MAP_BEARING = 0;
 export const MAP_FLAT_PITCH = 0;
 export const MAP_FLAT_ZOOM = 16.5;
 
-/** Three basemap modes only — Street · Satellite · 3D */
+/** Three basemap modes only - Street · Satellite · 3D */
 export type MapStyleId = "street" | "satellite" | "map-3d";
 
 export type MapStylePreset = {
@@ -109,7 +109,11 @@ export function pitchForBasemap(basemap: MapBasemap): number {
 
 export function getMapboxToken(): string | null {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim();
-  if (!token || token === "YOUR_MAPBOX_ACCESS_TOKEN" || !token.startsWith("pk.")) {
+  if (
+    !token ||
+    token === "YOUR_MAPBOX_ACCESS_TOKEN" ||
+    !token.startsWith("pk.")
+  ) {
     return null;
   }
   return token;
@@ -132,13 +136,13 @@ export function distanceKm(
 }
 
 export function formatDistanceKm(km: number): string {
-  if (!Number.isFinite(km)) return "—";
+  if (!Number.isFinite(km)) return " - ";
   if (km < 1) return `${Math.round(km * 1000)} m`;
   return `${km.toFixed(km < 10 ? 1 : 0)} km`;
 }
 
 export function formatDuration(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return "—";
+  if (!Number.isFinite(seconds) || seconds <= 0) return " - ";
   const m = Math.round(seconds / 60);
   if (m < 60) return `${m} min`;
   const h = Math.floor(m / 60);

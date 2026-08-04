@@ -13,7 +13,7 @@ export type MarketplaceUser = {
 };
 
 /**
- * Marketplace auth — Clerk only (Founder D2).
+ * Marketplace auth - Clerk only (Founder D2).
  * Admins and customers share the same identity plane; authorization is separate.
  */
 export function useUserAuth() {
@@ -23,7 +23,9 @@ export function useUserAuth() {
     if (!user) return null;
     return {
       id: user.id,
-      email: user.primaryEmailAddress?.emailAddress || user.emailAddresses[0]?.emailAddress,
+      email:
+        user.primaryEmailAddress?.emailAddress ||
+        user.emailAddresses[0]?.emailAddress,
       firstName: user.firstName,
       lastName: user.lastName,
       fullName: user.fullName,

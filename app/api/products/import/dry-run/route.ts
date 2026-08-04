@@ -15,7 +15,7 @@ type RowPreview = {
 
 /**
  * Bulk catalogue import dry-run (M1 DoD / Ch 03 P-V1).
- * Does not write products — returns preview + errors only.
+ * Does not write products - returns preview + errors only.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -35,7 +35,12 @@ export async function POST(request: NextRequest) {
 
     if (lines.length < 2) {
       return NextResponse.json(
-        { error: { code: "INVALID", message: "CSV needs a header and at least one row" } },
+        {
+          error: {
+            code: "INVALID",
+            message: "CSV needs a header and at least one row",
+          },
+        },
         { status: 400 },
       );
     }
@@ -66,7 +71,9 @@ export async function POST(request: NextRequest) {
     const errors: RowError[] = [];
     const preview: RowPreview[] = [];
     const allowed = new Set(V1_CATEGORIES.map((c) => c.toLowerCase()));
-    const excluded = new Set(V1_EXCLUDED_CATEGORIES.map((c) => c.toLowerCase()));
+    const excluded = new Set(
+      V1_EXCLUDED_CATEGORIES.map((c) => c.toLowerCase()),
+    );
 
     lines.slice(1).forEach((line, i) => {
       const rowNum = i + 2;
@@ -84,7 +91,11 @@ export async function POST(request: NextRequest) {
         ok = false;
       }
       if (!category) {
-        errors.push({ row: rowNum, field: "category", message: "Category required" });
+        errors.push({
+          row: rowNum,
+          field: "category",
+          message: "Category required",
+        });
         ok = false;
       } else if (excluded.has(category.toLowerCase())) {
         errors.push({
@@ -105,7 +116,8 @@ export async function POST(request: NextRequest) {
         errors.push({
           row: rowNum,
           field: "price",
-          message: "Price must be a non-negative integer (KES major units for dry-run)",
+          message:
+            "Price must be a non-negative integer (KES major units for dry-run)",
         });
         ok = false;
       }

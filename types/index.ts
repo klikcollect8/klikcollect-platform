@@ -81,12 +81,12 @@ export interface Product {
   category: string;
   /** Aggregate availability across offers; prefer offer.stock at checkout */
   stock?: number;
-  status: 'draft' | 'pending_review' | 'published' | 'archived';
+  status: "draft" | "pending_review" | "published" | "archived";
   badges?: string[];
   variations?: ProductVariation[];
   rating?: number;
   reviewCount?: number;
-  /** @deprecated Prefer offers — kept for cart snapshots / legacy */
+  /** @deprecated Prefer offers - kept for cart snapshots / legacy */
   vendorName?: string;
   neighbourhood?: string;
   /** Offer count for listings (optional) */
@@ -102,7 +102,7 @@ export type FulfilmentMethod = "pickup" | "delivery";
 export interface CartItem {
   product: Product;
   quantity: number;
-  /** Selected vendor offer — required for multi-vendor products */
+  /** Selected vendor offer - required for multi-vendor products */
   offerId?: string;
   /** Snapshots from the chosen offer */
   offerPrice?: number;
@@ -120,12 +120,12 @@ export interface Order {
   customerPhone: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'confirmed' | 'ready' | 'collected' | 'cancelled';
+  status: "pending" | "confirmed" | "ready" | "collected" | "cancelled";
   pickupDate: string;
   pickupTime: string;
   createdAt: string;
   orderNumber: string;
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'abandoned';
+  paymentStatus: "pending" | "paid" | "failed" | "abandoned";
   paymentReference?: string;
   paymentMethod?: string;
   paymentChannel?: string;
@@ -136,7 +136,7 @@ export interface User {
   id: string;
   email: string;
   password: string; // In production, this should be hashed
-  role: 'admin' | 'user';
+  role: "admin" | "user";
 }
 
 export interface Category {
@@ -153,7 +153,7 @@ export interface Category {
 
 export interface DeletedItem {
   id: string;
-  itemType: 'product' | 'review' | 'question' | 'answer' | 'category' | 'order';
+  itemType: "product" | "review" | "question" | "answer" | "category" | "order";
   itemId: string;
   itemData: any;
   deletedBy?: string;
@@ -162,4 +162,3 @@ export interface DeletedItem {
   permanentlyDeletedAt?: string;
   reason?: string;
 }
-

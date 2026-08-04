@@ -20,7 +20,7 @@ interface LogActivityParams {
 }
 
 /**
- * Admin activity log — posts to /api/events (M1 instrumentation).
+ * Admin activity log - posts to /api/events (M1 instrumentation).
  * No longer writes via Supabase Auth.
  */
 export function useActivityLog() {

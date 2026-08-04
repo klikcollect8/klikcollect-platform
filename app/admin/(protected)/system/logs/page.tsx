@@ -1,16 +1,17 @@
-import { format } from 'date-fns';
-import PageContainer from '@/components/admin/PageContainer';
-import PageHeader from '@/components/admin/PageHeader';
-import SectionCard from '@/components/admin/SectionCard';
-import AccessControl from '@/components/admin/AccessControl';
-import { recentUsageEvents, type UsageEvent } from '@/lib/m1-store';
+import { format } from "date-fns";
+import PageContainer from "@/components/admin/PageContainer";
+import PageHeader from "@/components/admin/PageHeader";
+import SectionCard from "@/components/admin/SectionCard";
+import AccessControl from "@/components/admin/AccessControl";
+import { recentUsageEvents, type UsageEvent } from "@/lib/m1-store";
 
 function LogsList({ events }: { events: UsageEvent[] }) {
   if (events.length === 0) {
     return (
       <div className="rounded-lg bg-[var(--kc-canvas)] p-6 text-center text-sm text-neutral-500">
-        No tracked events yet. Client activity is appended to{' '}
-        <code className="text-xs">.data/usage-events.jsonl</code> when the events API runs.
+        No tracked events yet. Client activity is appended to{" "}
+        <code className="text-xs">.data/usage-events.jsonl</code> when the
+        events API runs.
       </div>
     );
   }
@@ -30,12 +31,14 @@ function LogsList({ events }: { events: UsageEvent[] }) {
           {events.map((ev) => (
             <tr key={ev.id} className="text-[var(--kc-ink)]">
               <td className="py-3 pr-4 whitespace-nowrap text-neutral-500">
-                {format(new Date(ev.createdAt), 'PP pp')}
+                {format(new Date(ev.createdAt), "PP pp")}
               </td>
               <td className="py-3 pr-4 font-medium">{ev.name}</td>
-              <td className="py-3 pr-4 capitalize text-neutral-600">{ev.actorType ?? '—'}</td>
+              <td className="py-3 pr-4 capitalize text-neutral-600">
+                {ev.actorType ?? " - "}
+              </td>
               <td className="py-3 font-mono text-xs text-neutral-600 max-w-md truncate">
-                {ev.properties ? JSON.stringify(ev.properties) : '—'}
+                {ev.properties ? JSON.stringify(ev.properties) : " - "}
               </td>
             </tr>
           ))}
@@ -49,7 +52,7 @@ export default async function SystemLogsPage() {
   const events = await recentUsageEvents(100);
 
   return (
-    <AccessControl allowedRoles={['head_admin', 'admin']}>
+    <AccessControl requiredPermission="audit:view">
       <PageContainer>
         <PageHeader
           title="Activity logs"

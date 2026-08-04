@@ -9,10 +9,7 @@ export function slugifyVendorName(name: string): string {
 }
 
 /** Prefer explicit id slug when shaped as ven_*, else slugify name */
-export function resolveVendorSlug(opts: {
-  id?: string;
-  name: string;
-}): string {
+export function resolveVendorSlug(opts: { id?: string; name: string }): string {
   if (opts.id?.startsWith("ven_")) {
     return opts.id.replace(/^ven_/, "").replace(/_/g, "-");
   }

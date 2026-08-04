@@ -13,7 +13,7 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
-/** Sticky interactive case-study scroll — Obscura project energy, marketplace products */
+/** Sticky interactive case-study scroll - Obscura project energy, marketplace products */
 export default function FeaturedScroll({ products }: { products: Product[] }) {
   const root = useRef<HTMLElement>(null);
   const items = products.slice(0, 3);
@@ -95,11 +95,14 @@ export default function FeaturedScroll({ products }: { products: Product[] }) {
 
         <div className="relative order-1 lg:order-2 lg:col-span-5">
           <p className="mb-6 text-[11px] uppercase tracking-[0.22em] text-black/40">
-            02 — featured finds
+            02 - featured finds
           </p>
           <div className="relative min-h-[220px]">
             {items.map((p, i) => (
-              <div key={p.id} className="kc-feat-panel absolute inset-x-0 top-0">
+              <div
+                key={p.id}
+                className="kc-feat-panel absolute inset-x-0 top-0"
+              >
                 <p className="text-[11px] uppercase tracking-[0.18em] text-black/35">
                   (Case Study) · {String(i + 1).padStart(2, "0")}
                 </p>
@@ -108,7 +111,7 @@ export default function FeaturedScroll({ products }: { products: Product[] }) {
                 </h3>
                 <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-black/55">
                   {p.description ||
-                    "Fresh groceries and everyday essentials — ready for click & collect."}
+                    "Fresh groceries and everyday essentials - ready for click & collect."}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] uppercase tracking-[0.14em] text-black/40">
                   <span>{p.category || "Catalogue"}</span>

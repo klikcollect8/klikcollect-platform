@@ -41,7 +41,7 @@ type MapCanvasProps = {
   fitMarkers?: boolean;
   fitRoute?: boolean;
   alwaysShowLabels?: boolean;
-  /** Flat 2D streets (no terrain / tilt) — product pickup style */
+  /** Flat 2D streets (no terrain / tilt) - product pickup style */
   flat?: boolean;
   cameraKey?: string | number | null;
   onMarkerClick?: (id: string) => void;
@@ -224,7 +224,11 @@ function ensureVendorLayers(map: mapboxgl.Map) {
       filter: [
         "all",
         ["!", ["has", "point_count"]],
-        ["any", ["==", ["get", "highlighted"], true], ["==", ["get", "active"], true]],
+        [
+          "any",
+          ["==", ["get", "highlighted"], true],
+          ["==", ["get", "active"], true],
+        ],
       ],
       minzoom: 13.5,
       layout: {
@@ -256,7 +260,9 @@ function setRouteData(
   routeGeoJSON: GeoJSON.LineString | null | undefined,
 ) {
   ensureRouteLayers(map);
-  const source = map.getSource(ROUTE_SOURCE) as mapboxgl.GeoJSONSource | undefined;
+  const source = map.getSource(ROUTE_SOURCE) as
+    | mapboxgl.GeoJSONSource
+    | undefined;
   if (!source) return;
   source.setData({
     type: "Feature",
@@ -270,7 +276,9 @@ function setVendorData(
   data: GeoJSON.FeatureCollection | null | undefined,
 ) {
   ensureVendorLayers(map);
-  const source = map.getSource(VENDOR_SOURCE) as mapboxgl.GeoJSONSource | undefined;
+  const source = map.getSource(VENDOR_SOURCE) as
+    | mapboxgl.GeoJSONSource
+    | undefined;
   if (!source) return;
   source.setData(data || { type: "FeatureCollection", features: [] });
 }
@@ -405,14 +413,18 @@ export default function MapCanvas({
     }
 
     map.on("click", (e) => {
-      const layers = [VENDOR_LAYER, CLUSTER_LAYER].filter((id) => map.getLayer(id));
+      const layers = [VENDOR_LAYER, CLUSTER_LAYER].filter((id) =>
+        map.getLayer(id),
+      );
       if (layers.length) {
         const feats = map.queryRenderedFeatures(e.point, { layers });
         if (feats.length) {
           const f = feats[0];
           if (f.layer?.id === CLUSTER_LAYER && f.geometry.type === "Point") {
             const clusterId = f.properties?.cluster_id;
-            const source = map.getSource(VENDOR_SOURCE) as mapboxgl.GeoJSONSource;
+            const source = map.getSource(
+              VENDOR_SOURCE,
+            ) as mapboxgl.GeoJSONSource;
             source.getClusterExpansionZoom(clusterId, (err, zoomOut) => {
               if (err || zoomOut == null) return;
               const coords = (f.geometry as GeoJSON.Point).coordinates as [
@@ -498,7 +510,7 @@ export default function MapCanvas({
     markersRef.current = [];
 
     for (const m of markers) {
-      /* Vendor clusters come from GeoJSON — skip those only */
+      /* Vendor clusters come from GeoJSON - skip those only */
       if (m.kind === "vendor") continue;
 
       const el = document.createElement("button");
@@ -597,14 +609,23 @@ export default function MapCanvas({
       essential: true,
       duration: 1000,
     });
-  }, [center, zoom, pitch, bearing, fitMarkers, followUser, fitRoute, cameraKey]);
+  }, [
+    center,
+    zoom,
+    pitch,
+    bearing,
+    fitMarkers,
+    followUser,
+    fitRoute,
+    cameraKey,
+  ]);
 
   const token = getMapboxToken();
   if (!token) {
     return (
       <div className={className} style={style} role="status">
         <div className="flex h-full min-h-[160px] items-center justify-center bg-black/[0.03] text-[13px] text-black/45">
-          Map unavailable — set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+          Map unavailable - set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
         </div>
       </div>
     );

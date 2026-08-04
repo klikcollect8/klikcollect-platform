@@ -4,7 +4,10 @@ import {
   restoreDeletedItem,
   permanentlyDeleteItem,
 } from "@/lib/data";
-import { requireAdmin, handleRequireAdminError } from "@/lib/auth/require-admin";
+import {
+  requireAdmin,
+  handleRequireAdminError,
+} from "@/lib/auth/require-admin";
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,7 +50,10 @@ export async function POST(request: NextRequest) {
 
     const success = await restoreDeletedItem(deletedItemId);
     if (!success) {
-      return NextResponse.json({ error: "Failed to restore item" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to restore item" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ success: true });

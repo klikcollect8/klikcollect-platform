@@ -4,22 +4,25 @@ import { OsStat } from "@/components/os/OsPanel";
 import { InventoryBoard } from "./InventoryBoard";
 import { messages } from "@/messages/en-KE";
 import { listCatalogue } from "@/lib/catalogue-store";
-import { getAdmittedVendors } from "@/lib/admitted-vendors";
+import { requireVendorActor } from "@/lib/auth/require-vendor";
 
 export default async function OsInventoryPage() {
-  const [catalogue, vendors] = await Promise.all([
-    listCatalogue(),
-    getAdmittedVendors(),
-  ]);
+  const gate = await requireVendorActor();
+  const vendorId = gate.ok ? gate.actor.vendorIds[0] || "" : "";
+  const catalogue = vendorId ? await listCatalogue(vendorId) : [];
   const onHand = catalogue.reduce((sum, p) => sum + (p.stock || 0), 0);
-  const lowStock = catalogue.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5).length;
+  const lowStock = catalogue.filter(
+    (p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5,
+  ).length;
   const outOfStock = catalogue.filter((p) => (p.stock ?? 0) <= 0).length;
-  const vendorMap = Object.fromEntries(vendors.map((v) => [v.id, v.name]));
+  const vendorMap = vendorId
+    ? { [vendorId]: "Your store" }
+    : ({} as Record<string, string>);
 
   return (
     <ModuleShell
       title={messages.os.inventory}
-      description="One stock truth for marketplace listings — adjust on hand here."
+      description="Stock for your store - on hand, low stock, and adjustments."
       live
       actions={
         <Link

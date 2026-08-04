@@ -52,7 +52,7 @@ export default function NewProductPage() {
   return (
     <ModuleShell
       title="New listing"
-      description="Manual catalogue write — tenant-scoped to the founding vendor demo tenant."
+      description="Manual catalogue write - tenant-scoped to the founding vendor demo tenant."
       live
       actions={
         <Link
@@ -64,7 +64,10 @@ export default function NewProductPage() {
       }
     >
       <OsAuthGate title="Sign in to list products">
-        <form onSubmit={submit} className="max-w-xl space-y-3 rounded-xl border border-neutral-200 bg-white p-5">
+        <form
+          onSubmit={submit}
+          className="max-w-xl space-y-3 rounded-xl border border-neutral-200 bg-white p-5"
+        >
           <input
             required
             value={name}

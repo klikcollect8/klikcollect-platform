@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ModuleShell } from "@/components/os/ModuleShell";
 import { OsPanel, OsStat } from "@/components/os/OsPanel";
 import { messages } from "@/messages/en-KE";
-import { DEMO_VENDOR_ID } from "@/lib/tenancy";
 
 export default function OsSettingsPage() {
   const rows = [
@@ -10,26 +9,52 @@ export default function OsSettingsPage() {
     { label: "Currency", value: "KES" },
     { label: "Launch city", value: "Nairobi" },
     { label: "Auth", value: "Clerk" },
-    { label: "Collect hubs", value: "Westlands · Kilimani · Karen" },
-    { label: "Demo tenant", value: DEMO_VENDOR_ID },
-    { label: "Payments", value: "M3 — PaymentProvider" },
-    { label: "Delivery", value: "M4 — logistics" },
+    { label: "Payments", value: "Paystack (card + M-Pesa)" },
+    { label: "Delivery", value: "Driver panel · /driver" },
+    { label: "Receipts", value: "POS print · store branding on Store" },
+    { label: "Tax", value: "Kenya VAT - configure with your accountant" },
   ];
 
   return (
     <ModuleShell
       title={messages.os.settings}
-      description="Workspace defaults for locale, currency, tenancy, and collect hubs."
+      description="Workspace defaults. Profile and opening hours live on Store."
       live
       actions={
-        <Link
-          href="/admin"
-          className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50"
-        >
-          Open admin
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/app/store"
+            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50"
+          >
+            Store profile
+          </Link>
+          <Link
+            href="/app/finance"
+            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50"
+          >
+            Wallet
+          </Link>
+          <Link
+            href="/app/staff"
+            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50"
+          >
+            Team
+          </Link>
+        </div>
       }
     >
+      <p className="mb-6 text-[14px] text-neutral-500">
+        Branding, story, and weekly hours are on{" "}
+        <Link
+          href="/app/store"
+          className="font-medium text-neutral-900 underline"
+        >
+          Store
+        </Link>
+        . Payout KYC and freezes are reviewed by platform compliance - check
+        Wallet if withdrawals are blocked.
+      </p>
+
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <OsStat label="Market" value="Nairobi" />
         <OsStat label="Currency" value="KES" />

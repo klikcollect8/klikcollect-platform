@@ -55,11 +55,10 @@ export type OsOrder = {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  collectHub: "Westlands" | "Kilimani" | "Karen" | "In-store";
+  collectHub: string;
   status: OsOrderStatus;
   items: OsOrderItem[];
   total: number;
-  /** Display-only; no tender recorded in M2. */
   totalMinor: number;
   vendorIds: string[];
   /** Primary vendor for single-vendor orders (always set). */
@@ -73,10 +72,19 @@ export type OsOrder = {
     currency: "KES";
     placedAt: string;
     itemCount: number;
+    storePublicId?: string;
+    storeName?: string;
+    tender?: "cash" | "mpesa" | "card";
+    operatorUserId?: string;
+    /** Gift wrap / platform fee in minor units (KES cents). */
+    feeMinor?: number;
   };
 };
 
-function mapDbOrder(row: Record<string, unknown>, items: OsOrderItem[]): OsOrder {
+function mapDbOrder(
+  row: Record<string, unknown>,
+  items: OsOrderItem[],
+): OsOrder {
   const vendorIds = Array.isArray(row.vendor_ids)
     ? (row.vendor_ids as string[])
     : [];
@@ -129,7 +137,9 @@ async function readAll(): Promise<OsOrder[]> {
   if (error) throw error;
   const out: OsOrder[] = [];
   for (const row of data || []) {
-    out.push(mapDbOrder(row as Record<string, unknown>, await loadItems(row.id)));
+    out.push(
+      mapDbOrder(row as Record<string, unknown>, await loadItems(row.id)),
+    );
   }
   return out;
 }
@@ -253,16 +263,54 @@ export async function listOsOrders(vendorId?: string): Promise<OsOrder[]> {
 }
 
 export async function getOsOrder(id: string): Promise<OsOrder | null> {
-  const all = await readAll();
-  return all.find((o) => o.id === id || o.orderNumber === id) || null;
+  if (!id) return null;
+  const sb = getServiceSupabase();
+  const { data: row } = await sb
+    .from("orders")
+    .select("*")
+    .or(`public_id.eq.${id},order_number.eq.${id}`)
+    .maybeSingle();
+  if (!row) return null;
+  return mapDbOrder(
+    row as Record<string, unknown>,
+    await loadItems(String(row.id)),
+  );
 }
 
 export type TransitionResult =
   | { ok: true; order: OsOrder; transition: OrderTransition }
   | { ok: false; code: string; message: string; transition?: OrderTransition };
 
+export async function assignOsOrderBranch(input: {
+  id: string;
+  storePublicId: string;
+  storeName: string;
+  actorUserId?: string;
+}): Promise<
+  { ok: true; order: OsOrder } | { ok: false; code: string; message: string }
+> {
+  const order = await getOsOrder(input.id);
+  if (!order) {
+    return { ok: false, code: "NOT_FOUND", message: "Order not found" };
+  }
+  const next: OsOrder = {
+    ...order,
+    collectHub: input.storeName || input.storePublicId,
+    updatedAt: new Date().toISOString(),
+    snapshot: {
+      currency: "KES",
+      placedAt: order.snapshot?.placedAt || order.createdAt,
+      itemCount: order.snapshot?.itemCount ?? order.items.length,
+      storePublicId: input.storePublicId,
+      storeName: input.storeName,
+    },
+  };
+  await persistOrder(next);
+  return { ok: true, order: next };
+}
+
 /**
- * INV-4: only via this transition helper — never raw status UPDATE.
+ * INV-4: only via this transition helper - never raw status UPDATE.
  * Illegal transitions are rejected AND logged.
  */
 export async function transitionOsOrder(input: {
@@ -272,7 +320,8 @@ export async function transitionOsOrder(input: {
   reason?: string;
 }): Promise<TransitionResult> {
   const order = await getOsOrder(input.id);
-  if (!order) return { ok: false, code: "NOT_FOUND", message: "Order not found" };
+  if (!order)
+    return { ok: false, code: "NOT_FOUND", message: "Order not found" };
 
   const from = order.status;
   const allowed = ORDER_TRANSITIONS[from] || [];
@@ -320,6 +369,15 @@ export async function transitionOsOrder(input: {
         actorUserId: input.actorUserId,
       });
     }
+    // Separate charges & transfers: release Stripe vendor payouts after pickup
+    try {
+      const { releaseTransfersForOrder } = await import(
+        "@/lib/stripe/transfers"
+      );
+      await releaseTransfersForOrder(order.id);
+    } catch (e) {
+      console.error("[transitionOsOrder] stripe transfer release", e);
+    }
   }
 
   const transition: OrderTransition = {
@@ -338,7 +396,7 @@ export async function transitionOsOrder(input: {
   return { ok: true, order: updated, transition };
 }
 
-/** @deprecated Prefer transitionOsOrder — kept for seed demos. */
+/** @deprecated Prefer transitionOsOrder - kept for seed demos. */
 export async function updateOsOrderStatus(
   id: string,
   status: OsOrderStatus,
@@ -383,9 +441,14 @@ export async function createOsOrder(input: {
   channel?: "marketplace" | "pos";
   actorUserId?: string;
   vendorId?: string;
-}): Promise<{ ok: true; order: OsOrder } | { ok: false; code: string; message: string }> {
+  /** Extra fees in minor units (e.g. gift wrap) added to order total */
+  feeMinor?: number;
+}): Promise<
+  { ok: true; order: OsOrder } | { ok: false; code: string; message: string }
+> {
   const snap = await snapshotItems(input.items);
-  if ("error" in snap) return { ok: false, code: "NOT_FOUND", message: snap.error };
+  if ("error" in snap)
+    return { ok: false, code: "NOT_FOUND", message: snap.error };
 
   const vendorIds = [...new Set(snap.map((i) => i.vendorId))];
   if (vendorIds.length !== 1 && input.channel !== "pos") {
@@ -424,7 +487,12 @@ export async function createOsOrder(input: {
   }
 
   const now = new Date().toISOString();
-  const totalMinor = snap.reduce((s, it) => s + it.moneyMinor * it.quantity, 0);
+  const feeMinor = Math.max(0, Math.round(Number(input.feeMinor) || 0));
+  const itemsMinor = snap.reduce(
+    (s, it) => s + it.moneyMinor * it.quantity,
+    0,
+  );
+  const totalMinor = itemsMinor + feeMinor;
   const order: OsOrder = {
     id: tempId,
     orderNumber: `KC-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -446,6 +514,7 @@ export async function createOsOrder(input: {
       currency: "KES",
       placedAt: now,
       itemCount: snap.reduce((s, i) => s + i.quantity, 0),
+      feeMinor: feeMinor || undefined,
     },
   };
 
@@ -465,18 +534,27 @@ export async function createOsOrder(input: {
 }
 
 /**
- * Money-free POS sale: direct commit stock + collected order + receipt.
- * No tender / ledger (Chapter 05 M2 constraint).
+ * POS sale: commit stock + collected order + receipt with tender on the order.
+ * Platform ledger capture remains via Paystack for online; POS tender is store-recorded.
  */
 export async function createPosSale(input: {
   items: { productId: string; quantity: number }[];
   operatorUserId: string;
   operatorName?: string;
   vendorId: string;
-}): Promise<{ ok: true; order: OsOrder } | { ok: false; code: string; message: string }> {
+  tender?: "cash" | "mpesa" | "card";
+  customerName?: string | null;
+  customerEmail?: string | null;
+  customerPhone?: string | null;
+  storeId?: string | null;
+}): Promise<
+  { ok: true; order: OsOrder } | { ok: false; code: string; message: string }
+> {
   const snap = await snapshotItems(input.items);
-  if ("error" in snap) return { ok: false, code: "NOT_FOUND", message: snap.error };
+  if ("error" in snap)
+    return { ok: false, code: "NOT_FOUND", message: snap.error };
 
+  const tender = input.tender || "cash";
   const tempId = publicId("ord");
   for (const item of snap) {
     const r = await commitStock({
@@ -495,13 +573,16 @@ export async function createPosSale(input: {
   const now = new Date().toISOString();
   const totalMinor = snap.reduce((s, it) => s + it.moneyMinor * it.quantity, 0);
   const receiptCode = `POS-${Date.now().toString(36).toUpperCase()}`;
+  const customerName = (input.customerName || "").trim() || "Walk-in";
+  const customerEmail = (input.customerEmail || "").trim() || "pos@local";
+  const customerPhone = (input.customerPhone || "").trim() || "n/a";
   const order: OsOrder = {
     id: tempId,
     orderNumber: receiptCode,
     channel: "pos",
-    customerName: "Walk-in",
-    customerEmail: "pos@local",
-    customerPhone: "n/a",
+    customerName,
+    customerEmail,
+    customerPhone,
     collectHub: "In-store",
     status: "collected",
     items: snap,
@@ -509,7 +590,7 @@ export async function createPosSale(input: {
     totalMinor,
     vendorIds: [input.vendorId],
     vendorId: input.vendorId,
-    notes: `Money-free POS sale · operator ${input.operatorName || input.operatorUserId} · no tender`,
+    notes: `POS · ${tender} · operator ${input.operatorName || input.operatorUserId}`,
     receiptCode,
     createdAt: now,
     updatedAt: now,
@@ -517,6 +598,9 @@ export async function createPosSale(input: {
       currency: "KES",
       placedAt: now,
       itemCount: snap.reduce((s, i) => s + i.quantity, 0),
+      tender,
+      operatorUserId: input.operatorUserId,
+      storePublicId: input.storeId || undefined,
     },
   };
 
@@ -527,7 +611,7 @@ export async function createPosSale(input: {
     from: "pending",
     to: "collected",
     actorUserId: input.operatorUserId,
-    reason: "POS sale completed (money-free)",
+    reason: `POS sale completed · tender ${tender}`,
     createdAt: now,
   });
 
@@ -567,7 +651,7 @@ export async function ensureOrderSeed(): Promise<number> {
 
   let n = 0;
   for (const d of demos) {
-    // Seed without reservation failure — bump onHand if needed
+    // Seed without reservation failure - bump onHand if needed
     const result = await createOsOrder(d);
     if (result.ok) n += 1;
   }

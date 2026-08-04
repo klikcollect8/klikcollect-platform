@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import Cart from './Cart';
-import { useCart } from '@/lib/hooks/useCart';
+import Cart from "./Cart";
+import { useCart } from "@/lib/hooks/useCart";
 
 interface CartWrapperProps {
   isOpen: boolean;
@@ -9,7 +9,8 @@ interface CartWrapperProps {
 }
 
 export default function CartWrapper({ isOpen, onClose }: CartWrapperProps) {
-  const { cartItems, updateQuantity, removeFromCart, addToCart, loading } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, addToCart, loading } =
+    useCart();
 
   if (!isOpen) return null;
 
@@ -20,7 +21,9 @@ export default function CartWrapper({ isOpen, onClose }: CartWrapperProps) {
       <div className="fixed inset-0 z-[100] flex justify-end bg-black/30 backdrop-blur-sm">
         <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
-          <p className="mt-4 text-gray-500 font-medium text-sm">Loading cart...</p>
+          <p className="mt-4 text-gray-500 font-medium text-sm">
+            Loading cart...
+          </p>
         </div>
       </div>
     );

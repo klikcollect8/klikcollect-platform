@@ -26,7 +26,11 @@ async function readAll(): Promise<Record[]> {
 async function writeAll(rows: Record[]) {
   await fs.mkdir(DATA_DIR, { recursive: true });
   const trimmed = rows.slice(-500);
-  await fs.writeFile(path.join(DATA_DIR, FILE), JSON.stringify(trimmed, null, 2), "utf8");
+  await fs.writeFile(
+    path.join(DATA_DIR, FILE),
+    JSON.stringify(trimmed, null, 2),
+    "utf8",
+  );
 }
 
 /**
@@ -63,7 +67,10 @@ export async function withIdempotency(
 }
 
 export function idempotencyKeyFrom(request: Request): string | null {
-  return request.headers.get("Idempotency-Key") || request.headers.get("idempotency-key");
+  return (
+    request.headers.get("Idempotency-Key") ||
+    request.headers.get("idempotency-key")
+  );
 }
 
 export function newIdempotencyKey() {

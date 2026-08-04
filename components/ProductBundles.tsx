@@ -1,27 +1,32 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Product } from '@/types';
-import Image from 'next/image';
-import Link from 'next/link';
-import { resolveProductImage } from '@/lib/product-image';
+import { useState, useEffect } from "react";
+import { Product } from "@/types";
+import Image from "next/image";
+import Link from "next/link";
+import { resolveProductImage } from "@/lib/product-image";
 
 interface ProductBundlesProps {
   productId: string;
   category: string;
 }
 
-export default function ProductBundles({ productId, category }: ProductBundlesProps) {
+export default function ProductBundles({
+  productId,
+  category,
+}: ProductBundlesProps) {
   const [related, setRelated] = useState<Product[]>([]);
 
   useEffect(() => {
-    fetch('/api/products')
+    fetch("/api/products")
       .then((res) => res.json())
       .then((data) => {
         if (!Array.isArray(data)) return;
         setRelated(
           data
-            .filter((p: Product) => p.category === category && p.id !== productId)
+            .filter(
+              (p: Product) => p.category === category && p.id !== productId,
+            )
             .slice(0, 3),
         );
       })

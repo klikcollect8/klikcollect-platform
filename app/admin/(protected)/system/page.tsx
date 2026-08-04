@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { format } from 'date-fns';
-import { Activity, CheckCircle2, Package, ShoppingBag } from 'lucide-react';
-import PageContainer from '@/components/admin/PageContainer';
-import PageHeader from '@/components/admin/PageHeader';
-import SectionCard from '@/components/admin/SectionCard';
-import StatCard from '@/components/admin/StatCard';
-import AccessControl from '@/components/admin/AccessControl';
-import { useToast } from '@/components/ToastProvider';
+import { useCallback, useEffect, useState } from "react";
+import { format } from "date-fns";
+import { Activity, CheckCircle2, Package, ShoppingBag } from "lucide-react";
+import PageContainer from "@/components/admin/PageContainer";
+import PageHeader from "@/components/admin/PageHeader";
+import SectionCard from "@/components/admin/SectionCard";
+import StatCard from "@/components/admin/StatCard";
+import AccessControl from "@/components/admin/AccessControl";
+import { useToast } from "@/components/ToastProvider";
 
 type HealthPayload = {
   ok: boolean;
@@ -24,11 +24,11 @@ function SystemHealthContent() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/system/health');
-      if (!res.ok) throw new Error('Health check failed');
+      const res = await fetch("/api/admin/system/health");
+      if (!res.ok) throw new Error("Health check failed");
       setHealth(await res.json());
     } catch {
-      showToast('Could not load system health', 'error');
+      showToast("Could not load system health", "error");
     } finally {
       setLoading(false);
     }
@@ -54,9 +54,9 @@ function SystemHealthContent() {
           <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Status"
-              value={health.ok ? 'OK' : 'Degraded'}
+              value={health.ok ? "OK" : "Degraded"}
               icon={health.ok ? CheckCircle2 : Activity}
-              description={health.ok ? 'All checks passed' : 'Review services'}
+              description={health.ok ? "All checks passed" : "Review services"}
             />
             <StatCard
               label="Catalogue items"
@@ -70,9 +70,9 @@ function SystemHealthContent() {
             />
             <StatCard
               label="Last check"
-              value={format(new Date(health.timestamp), 'HH:mm:ss')}
+              value={format(new Date(health.timestamp), "HH:mm:ss")}
               icon={Activity}
-              description={format(new Date(health.timestamp), 'PP')}
+              description={format(new Date(health.timestamp), "PP")}
             />
           </div>
 
@@ -89,7 +89,7 @@ function SystemHealthContent() {
 
 export default function SystemHealthPage() {
   return (
-    <AccessControl allowedRoles={['head_admin', 'admin']}>
+    <AccessControl requiredPermission="system:health">
       <SystemHealthContent />
     </AccessControl>
   );

@@ -19,7 +19,8 @@ function lineId(item: CartItem) {
 }
 
 export default function CartPage() {
-  const { cartItems, loading, updateQuantity, removeFromCart, addToCart } = useCart();
+  const { cartItems, loading, updateQuantity, removeFromCart, addToCart } =
+    useCart();
   const [savedForLater, setSavedForLater] = useState<CartItem[]>([]);
 
   const subtotal = cartItems.reduce(
@@ -79,7 +80,10 @@ export default function CartPage() {
     return (
       <StorePage narrow>
         <div className="border-t border-black/[0.06] py-24 text-center">
-          <ShoppingBag className="mx-auto mb-6 h-10 w-10 text-black/20" strokeWidth={1.25} />
+          <ShoppingBag
+            className="mx-auto mb-6 h-10 w-10 text-black/20"
+            strokeWidth={1.25}
+          />
           <h1 className="text-[clamp(1.75rem,3vw,2.5rem)] font-medium tracking-tight">
             Your bag is empty
           </h1>
@@ -115,7 +119,9 @@ export default function CartPage() {
                 <div key={lineId(item)} className="flex gap-5 sm:gap-6">
                   <Link
                     href={`/products/${item.product.id}${
-                      item.offerId ? `?offer=${encodeURIComponent(item.offerId)}` : ""
+                      item.offerId
+                        ? `?offer=${encodeURIComponent(item.offerId)}`
+                        : ""
                     }`}
                     className="relative h-36 w-28 shrink-0 overflow-hidden bg-black/[0.03] sm:h-44 sm:w-36"
                   >
@@ -142,7 +148,7 @@ export default function CartPage() {
                         <p className="mt-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-black/40">
                           {item.product.category}
                         </p>
-                        {(item.vendorName || item.product.vendorName) ? (
+                        {item.vendorName || item.product.vendorName ? (
                           <p className="mt-1 text-[13px] text-black/45">
                             Sold by {item.vendorName || item.product.vendorName}
                           </p>
@@ -153,7 +159,9 @@ export default function CartPage() {
                       </p>
                     </div>
                     <p className="mt-3 text-[13px] text-black/45">
-                      {(item.product.stock ?? 0) > 0 ? "In stock" : "Out of stock"}
+                      {(item.product.stock ?? 0) > 0
+                        ? "In stock"
+                        : "Out of stock"}
                     </p>
 
                     <div className="mt-5 flex flex-wrap items-center gap-4">
@@ -161,7 +169,10 @@ export default function CartPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            updateQuantity(lineId(item), Math.max(0, item.quantity - 1))
+                            updateQuantity(
+                              lineId(item),
+                              Math.max(0, item.quantity - 1),
+                            )
                           }
                           className="flex h-10 w-10 items-center justify-center text-black/50 hover:text-black"
                           aria-label="Decrease"
@@ -177,9 +188,13 @@ export default function CartPage() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => updateQuantity(lineId(item), item.quantity + 1)}
+                          onClick={() =>
+                            updateQuantity(lineId(item), item.quantity + 1)
+                          }
                           className="flex h-10 w-10 items-center justify-center text-black/50 hover:text-black disabled:opacity-30"
-                          disabled={item.quantity >= (item.product.stock ?? 999)}
+                          disabled={
+                            item.quantity >= (item.product.stock ?? 999)
+                          }
                           aria-label="Increase"
                         >
                           <Plus className="h-3.5 w-3.5" />
@@ -207,7 +222,9 @@ export default function CartPage() {
 
             {savedForLater.length > 0 ? (
               <div>
-                <h2 className="mb-8 text-[20px] font-medium tracking-tight">Saved for later</h2>
+                <h2 className="mb-8 text-[20px] font-medium tracking-tight">
+                  Saved for later
+                </h2>
                 <div className="space-y-8 border-t border-black/[0.06] pt-8">
                   {savedForLater.map((item) => (
                     <div key={lineId(item)} className="flex gap-5">
@@ -220,8 +237,10 @@ export default function CartPage() {
                         />
                       </div>
                       <div>
-                        <p className="text-[15px] font-medium">{item.product.name}</p>
-                        {(item.vendorName || item.product.vendorName) ? (
+                        <p className="text-[15px] font-medium">
+                          {item.product.name}
+                        </p>
+                        {item.vendorName || item.product.vendorName ? (
                           <p className="mt-1 text-[12px] text-black/45">
                             Sold by {item.vendorName || item.product.vendorName}
                           </p>

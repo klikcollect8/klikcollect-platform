@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdmittedVendors } from "@/lib/admitted-vendors";
 
-/** Public directory — admitted vendors only */
+/** Public directory - admitted vendors only */
 export async function GET() {
   try {
     const vendors = await getAdmittedVendors();

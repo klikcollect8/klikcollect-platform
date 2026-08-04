@@ -24,8 +24,10 @@ export default function NewArrivals({ section }: NewArrivalsProps) {
       .then((data) => {
         const arr = Array.isArray(data) ? data : [];
         const newProducts = arr
-          .sort((a: Product, b: Product) => 
-            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          .sort(
+            (a: Product, b: Product) =>
+              new Date(b.createdAt || 0).getTime() -
+              new Date(a.createdAt || 0).getTime(),
           )
           .slice(0, 5);
         setProducts(newProducts);
@@ -60,55 +62,55 @@ export default function NewArrivals({ section }: NewArrivalsProps) {
 
       <div className="grid lg:grid-cols-2 gap-0 border border-neutral-200">
         {/* Hero Product */}
-        <Link 
+        <Link
           href={`/products/${heroProduct.id}`}
           className="relative group bg-neutral-50 overflow-hidden border-b lg:border-b-0 lg:border-r border-neutral-200 min-h-[400px] md:min-h-[500px] lg:min-h-[600px]"
         >
           <div className="absolute inset-0 p-8 md:p-12 lg:p-16 flex flex-col z-10">
             <div className="flex justify-between items-start">
-               <span className="bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest">
-                 Fresh
-               </span>
+              <span className="bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest">
+                Fresh
+              </span>
             </div>
-            
+
             <div className="mt-auto">
-               <h3 className="text-3xl md:text-4xl md:text-5xl font-light text-black mb-2 md:mb-4 leading-tight group-hover:underline decoration-1 underline-offset-8 transition-all">
-                 {heroProduct.name}
-               </h3>
-               <p className="text-lg md:text-xl font-medium text-neutral-900 mb-6 md:mb-8">
-                 {formatPrice(heroProduct.price)}
-               </p>
-               <span className="inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest text-black group-hover:translate-x-2 transition-transform duration-300">
-                 Shop Now <ArrowRight className="w-4 h-4" />
-               </span>
+              <h3 className="text-3xl md:text-4xl md:text-5xl font-light text-black mb-2 md:mb-4 leading-tight group-hover:underline decoration-1 underline-offset-8 transition-all">
+                {heroProduct.name}
+              </h3>
+              <p className="text-lg md:text-xl font-medium text-neutral-900 mb-6 md:mb-8">
+                {formatPrice(heroProduct.price)}
+              </p>
+              <span className="inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest text-black group-hover:translate-x-2 transition-transform duration-300">
+                Shop Now <ArrowRight className="w-4 h-4" />
+              </span>
             </div>
           </div>
-          
+
           <div className="absolute inset-0 flex items-center justify-center p-12 md:p-20">
-             <div className="relative w-full h-full transform group-hover:scale-105 transition-transform duration-700 ease-out grayscale group-hover:grayscale-0 opacity-50 md:opacity-100 mix-blend-multiply">
-                <Image
-                  src={heroProduct.image}
-                  alt={heroProduct.name}
-                  fill
-                  className="object-contain mix-blend-multiply"
-                />
-             </div>
+            <div className="relative w-full h-full transform group-hover:scale-105 transition-transform duration-700 ease-out grayscale group-hover:grayscale-0 opacity-50 md:opacity-100 mix-blend-multiply">
+              <Image
+                src={heroProduct.image}
+                alt={heroProduct.name}
+                fill
+                className="object-contain mix-blend-multiply"
+              />
+            </div>
           </div>
         </Link>
 
         {/* Grid Products - Tight Grid */}
         <div className="grid grid-cols-2">
           {gridProducts.map((product, i) => (
-            <div 
-              key={product.id} 
-              className={`bg-white p-4 md:p-6 hover:bg-neutral-50 transition-colors duration-300 group/card border-b border-neutral-200 ${i % 2 === 0 ? 'border-r' : ''} ${i >= 2 ? 'border-b-0' : ''}`}
+            <div
+              key={product.id}
+              className={`bg-white p-4 md:p-6 hover:bg-neutral-50 transition-colors duration-300 group/card border-b border-neutral-200 ${i % 2 === 0 ? "border-r" : ""} ${i >= 2 ? "border-b-0" : ""}`}
             >
               <ProductCard product={product} />
             </div>
           ))}
         </div>
       </div>
-      
+
       <div className="mt-8 md:hidden">
         <Link
           href="/shop?sort=newest"

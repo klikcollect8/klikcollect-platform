@@ -1,23 +1,30 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Product } from '@/types';
-import Image from 'next/image';
-import { X, Star, Check, XCircle } from 'lucide-react';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { Product } from "@/types";
+import Image from "next/image";
+import { X, Star, Check, XCircle } from "lucide-react";
+import Link from "next/link";
 
 interface ProductComparisonProps {
   productIds: string[];
   onClose: () => void;
 }
 
-export default function ProductComparison({ productIds, onClose }: ProductComparisonProps) {
+export default function ProductComparison({
+  productIds,
+  onClose,
+}: ProductComparisonProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all(productIds.map(id => fetch(`/api/products/${id}`).then(res => res.json())))
-      .then(data => {
+    Promise.all(
+      productIds.map((id) =>
+        fetch(`/api/products/${id}`).then((res) => res.json()),
+      ),
+    )
+      .then((data) => {
         setProducts(data);
         setLoading(false);
       })
@@ -38,24 +45,53 @@ export default function ProductComparison({ productIds, onClose }: ProductCompar
   }
 
   const features = [
-    { label: 'Price', key: 'price', format: (val: number | string) => typeof val === 'number' ? `$${val.toFixed(2)}` : String(val) },
-    { label: 'Rating', key: 'rating', format: (val: number | string) => {
-      const numVal = typeof val === 'number' ? val : parseFloat(String(val)) || 0;
-      return numVal ? `${numVal.toFixed(1)} ⭐` : 'N/A';
-    }},
-    { label: 'Reviews', key: 'reviewCount', format: (val: number | string) => {
-      const numVal = typeof val === 'number' ? val : parseInt(String(val)) || 0;
-      return numVal ? numVal.toLocaleString() : '0';
-    }},
-    { label: 'Stock', key: 'stock', format: (val: number | string) => {
-      const numVal = typeof val === 'number' ? val : parseInt(String(val)) || 0;
-      return numVal > 0 ? `${numVal} available` : 'Out of stock';
-    }},
-    { label: 'Category', key: 'category', format: (val: number | string) => String(val) },
-    { label: 'Free Delivery', key: 'price', format: (val: number | string) => {
-      const numVal = typeof val === 'number' ? val : parseFloat(String(val)) || 0;
-      return numVal > 25 ? 'Yes' : 'No';
-    }},
+    {
+      label: "Price",
+      key: "price",
+      format: (val: number | string) =>
+        typeof val === "number" ? `$${val.toFixed(2)}` : String(val),
+    },
+    {
+      label: "Rating",
+      key: "rating",
+      format: (val: number | string) => {
+        const numVal =
+          typeof val === "number" ? val : parseFloat(String(val)) || 0;
+        return numVal ? `${numVal.toFixed(1)} ⭐` : "N/A";
+      },
+    },
+    {
+      label: "Reviews",
+      key: "reviewCount",
+      format: (val: number | string) => {
+        const numVal =
+          typeof val === "number" ? val : parseInt(String(val)) || 0;
+        return numVal ? numVal.toLocaleString() : "0";
+      },
+    },
+    {
+      label: "Stock",
+      key: "stock",
+      format: (val: number | string) => {
+        const numVal =
+          typeof val === "number" ? val : parseInt(String(val)) || 0;
+        return numVal > 0 ? `${numVal} available` : "Out of stock";
+      },
+    },
+    {
+      label: "Category",
+      key: "category",
+      format: (val: number | string) => String(val),
+    },
+    {
+      label: "Free Delivery",
+      key: "price",
+      format: (val: number | string) => {
+        const numVal =
+          typeof val === "number" ? val : parseFloat(String(val)) || 0;
+        return numVal > 25 ? "Yes" : "No";
+      },
+    },
   ];
 
   return (
@@ -70,7 +106,7 @@ export default function ProductComparison({ productIds, onClose }: ProductCompar
             <X className="w-6 h-6" />
           </button>
         </div>
-        
+
         <div className="flex-1 overflow-x-auto overflow-y-auto p-6">
           <table className="w-full border-collapse">
             <thead>
@@ -79,7 +115,10 @@ export default function ProductComparison({ productIds, onClose }: ProductCompar
                   Features
                 </th>
                 {products.map((product) => (
-                  <th key={product.id} className="p-4 text-center border-b border-gray-200 min-w-[250px]">
+                  <th
+                    key={product.id}
+                    className="p-4 text-center border-b border-gray-200 min-w-[250px]"
+                  >
                     <div className="flex flex-col items-center">
                       <button
                         onClick={onClose}
@@ -105,7 +144,9 @@ export default function ProductComparison({ productIds, onClose }: ProductCompar
                         {product.rating ? (
                           <>
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-xs">{product.rating.toFixed(1)}</span>
+                            <span className="text-xs">
+                              {product.rating.toFixed(1)}
+                            </span>
                           </>
                         ) : null}
                       </div>
@@ -124,7 +165,9 @@ export default function ProductComparison({ productIds, onClose }: ProductCompar
                     const value = (product as any)[feature.key];
                     return (
                       <td key={product.id} className="p-4 text-center">
-                        {feature.format(value ?? (feature.key === 'category' ? '' : 0))}
+                        {feature.format(
+                          value ?? (feature.key === "category" ? "" : 0),
+                        )}
                       </td>
                     );
                   })}
@@ -152,4 +195,3 @@ export default function ProductComparison({ productIds, onClose }: ProductCompar
     </div>
   );
 }
-

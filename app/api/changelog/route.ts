@@ -28,7 +28,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const access = await requireAdminUser();
-    if (!access || (access.role !== "admin" && access.role !== "head_admin")) {
+    if (
+      !access ||
+      (access.role !== "platform_admin" && access.role !== "super_admin")
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -63,6 +66,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data });
   } catch (error) {
     console.error("Error creating changelog:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

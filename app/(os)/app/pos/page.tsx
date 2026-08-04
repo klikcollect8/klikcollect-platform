@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Show, SignInButton, useUser } from "@clerk/nextjs";
 import { ModuleShell } from "@/components/os/ModuleShell";
+import { osUi } from "@/components/os/os-ui";
 import { formatKesMinor } from "@/lib/money";
 import { ScanBarcode, Trash2, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,66 +24,85 @@ type Receipt = {
   currency: string;
   items: Array<{ name: string; quantity: number; moneyMinor: number }>;
   note: string;
+  tender?: string;
 };
+
+type Tender = "cash" | "mpesa" | "card";
 
 export default function PosPage() {
   const { user } = useUser();
+  const [vendorId, setVendorId] = useState("");
   const [scan, setScan] = useState("");
   const [cart, setCart] = useState<Line[]>([]);
+  const [tender, setTender] = useState<Tender>("cash");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
 
+  useEffect(() => {
+    void fetch("/api/os/me")
+      .then((r) => r.json())
+      .then((b) => setVendorId(b?.data?.vendorIds?.[0] || ""));
+  }, []);
+
   const totalMinor = cart.reduce((s, l) => s + l.moneyMinor * l.quantity, 0);
 
-  const addProduct = useCallback((p: {
-    id: string;
-    name: string;
-    price: number;
-    moneyMinor?: number;
-    available?: number;
-    stock?: number;
-    barcode?: string;
-  }) => {
-    const available = p.available ?? p.stock ?? 0;
-    if (available <= 0) {
-      setMessage(`${p.name} is out of stock`);
-      return;
-    }
-    setCart((prev) => {
-      const idx = prev.findIndex((l) => l.productId === p.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        const q = next[idx].quantity + 1;
-        if (q > available) {
-          setMessage(`Only ${available} available`);
-          return prev;
-        }
-        next[idx] = { ...next[idx], quantity: q };
-        return next;
+  const addProduct = useCallback(
+    (p: {
+      id: string;
+      name: string;
+      price: number;
+      moneyMinor?: number;
+      available?: number;
+      stock?: number;
+      barcode?: string;
+    }) => {
+      const available = p.available ?? p.stock ?? 0;
+      if (available <= 0) {
+        setMessage(`${p.name} is out of stock`);
+        return;
       }
-      return [
-        ...prev,
-        {
-          productId: p.id,
-          name: p.name,
-          quantity: 1,
-          unitPrice: p.price,
-          moneyMinor: p.moneyMinor ?? Math.round(p.price * 100),
-          available,
-          barcode: p.barcode,
-        },
-      ];
-    });
-    setMessage(null);
-  }, []);
+      setCart((prev) => {
+        const idx = prev.findIndex((l) => l.productId === p.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          const q = next[idx].quantity + 1;
+          if (q > available) {
+            setMessage(`Only ${available} available`);
+            return prev;
+          }
+          next[idx] = { ...next[idx], quantity: q };
+          return next;
+        }
+        return [
+          ...prev,
+          {
+            productId: p.id,
+            name: p.name,
+            quantity: 1,
+            unitPrice: p.price,
+            moneyMinor: p.moneyMinor ?? Math.round(p.price * 100),
+            available,
+            barcode: p.barcode,
+          },
+        ];
+      });
+      setMessage(null);
+    },
+    [],
+  );
 
   async function lookupBarcode(code: string) {
     const trimmed = code.trim();
     if (!trimmed) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/os/barcode?code=${encodeURIComponent(trimmed)}`);
+      const res = await fetch(
+        `/api/os/barcode?code=${encodeURIComponent(trimmed)}`,
+      );
       const json = await res.json();
       if (!res.ok) {
         setMessage(json?.error?.message || "Barcode not found");
@@ -96,7 +116,7 @@ export default function PosPage() {
   }
 
   async function completeSale() {
-    if (!cart.length) return;
+    if (!cart.length || !vendorId) return;
     setBusy(true);
     try {
       const res = await fetch("/api/os/pos/sale", {
@@ -106,6 +126,11 @@ export default function PosPage() {
           "Idempotency-Key": `pos-${user?.id || "anon"}-${Date.now()}`,
         },
         body: JSON.stringify({
+          vendorId,
+          tender,
+          customerName: customerName.trim() || undefined,
+          customerPhone: customerPhone.trim() || undefined,
+          customerEmail: customerEmail.trim() || undefined,
           items: cart.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
@@ -119,6 +144,9 @@ export default function PosPage() {
       }
       setReceipt(json.receipt);
       setCart([]);
+      setCustomerName("");
+      setCustomerPhone("");
+      setCustomerEmail("");
       setMessage(null);
     } finally {
       setBusy(false);
@@ -134,21 +162,21 @@ export default function PosPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [scan]);
 
   return (
     <ModuleShell
       title="Point of sale"
-      description="Money-free POS - scan, sell, decrement the same inventory. No tender until M3."
+      description="Scan, choose tender (cash / M-Pesa / card), sell against shared inventory."
+      live
     >
       <Show when="signed-out">
-        <div className="mb-4 flex items-center justify-between rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white px-4 py-3 text-[13px]">
-          <span className="text-[var(--kc-mute)]">Sign in as a vendor operator to sell</span>
+        <div className="mb-4 flex items-center justify-between border-b border-black/10 py-3 text-[13px]">
+          <span className={osUi.muted}>
+            Sign in as a vendor operator to sell
+          </span>
           <SignInButton mode="redirect">
-            <button
-              type="button"
-              className="rounded-[var(--kc-radius-sm)] bg-[var(--kc-ink)] px-3 py-1.5 text-[12px] font-medium text-white"
-            >
+            <button type="button" className={osUi.btnPrimary}>
               Sign in
             </button>
           </SignInButton>
@@ -156,18 +184,24 @@ export default function PosPage() {
       </Show>
 
       {message ? (
-        <p className="mb-3 rounded-[var(--kc-radius-sm)] bg-[#fcebea] px-3 py-2 text-[13px] text-[#8e1b0d]">
-          {message}
-        </p>
+        <p className={cn("mb-3 text-[13px]", osUi.danger)}>{message}</p>
       ) : null}
 
       {receipt ? (
-        <div className="mb-4 rounded-[var(--kc-radius)] border border-[#c6ecd4] bg-[#e4f8e9] px-5 py-4">
-          <p className="text-[12px] font-medium uppercase tracking-wide text-[#0c5132]">
-            Receipt (display-only)
+        <div
+          id="pos-receipt"
+          className="mb-4 border-b border-black/10 pb-4 print:border-0"
+        >
+          <p className={osUi.sectionLabel}>Receipt</p>
+          <p className="mt-1 text-[18px] font-semibold text-black">
+            {receipt.code}
           </p>
-          <p className="mt-1 text-[18px] font-semibold text-[#0c5132]">{receipt.code}</p>
-          <ul className="mt-3 space-y-1 text-[13px] text-[#0c5132]">
+          {receipt.tender ? (
+            <p className="mt-1 text-[13px] capitalize text-black/50">
+              Paid · {receipt.tender}
+            </p>
+          ) : null}
+          <ul className="mt-3 space-y-1 text-[13px] text-black">
             {receipt.items.map((it, i) => (
               <li key={i} className="flex justify-between">
                 <span>
@@ -179,37 +213,46 @@ export default function PosPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 flex justify-between border-t border-[#c6ecd4] pt-2 text-[14px] font-semibold text-[#0c5132]">
+          <p className="mt-3 flex justify-between border-t border-black/10 pt-2 text-[14px] font-semibold">
             <span>Total</span>
             <span>{formatKesMinor(receipt.totalMinor)}</span>
           </p>
-          <p className="mt-2 text-[12px] text-[#0c5132]">{receipt.note}</p>
-          <button
-            type="button"
-            onClick={() => setReceipt(null)}
-            className="mt-3 text-[12px] font-medium text-[#0c5132] underline"
-          >
-            New sale
-          </button>
+          <p className={cn("mt-2 text-[12px]", osUi.muted)}>{receipt.note}</p>
+          <div className="mt-3 flex flex-wrap gap-2 print:hidden">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className={osUi.btnSecondary}
+            >
+              Print
+            </button>
+            <button
+              type="button"
+              onClick={() => setReceipt(null)}
+              className={osUi.btnGhost}
+            >
+              New sale
+            </button>
+          </div>
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-3">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               void lookupBarcode(scan);
             }}
-            className="flex gap-2 rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white p-3"
+            className="flex gap-2"
           >
-            <div className="flex flex-1 items-center gap-2 rounded-[var(--kc-radius-sm)] border border-[var(--kc-line)] px-3">
-              <ScanBarcode className="h-4 w-4 text-[var(--kc-faint)]" />
+            <div className="flex flex-1 items-center gap-2 border-b border-black/15">
+              <ScanBarcode className="h-4 w-4 text-black/35" />
               <input
                 id="pos-scan"
                 value={scan}
                 onChange={(e) => setScan(e.target.value)}
-                placeholder="Scan or type GTIN / barcode..."
+                placeholder="Scan or type GTIN / barcode…"
                 className="h-10 w-full text-[14px] outline-none"
                 autoComplete="off"
               />
@@ -217,33 +260,40 @@ export default function PosPage() {
             <button
               type="submit"
               disabled={busy || !scan.trim()}
-              className="rounded-[var(--kc-radius-sm)] bg-[var(--kc-ink)] px-4 text-[13px] font-medium text-white disabled:opacity-40"
+              className={osUi.btnPrimary}
             >
               Add
             </button>
           </form>
 
-          <div className="overflow-hidden rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white">
+          <div className="overflow-hidden">
             <table className="w-full text-left text-[13px]">
-              <thead className="border-b border-[var(--kc-line-soft)] text-[12px] text-[var(--kc-faint)]">
+              <thead
+                className={cn(
+                  "border-b border-black/10 text-[12px]",
+                  osUi.muted,
+                )}
+              >
                 <tr>
-                  <th className="px-4 py-2.5 font-medium">Item</th>
-                  <th className="px-4 py-2.5 font-medium">Qty</th>
-                  <th className="px-4 py-2.5 font-medium">Line</th>
-                  <th className="px-4 py-2.5" />
+                  <th className="px-1 py-2.5 font-medium">Item</th>
+                  <th className="px-1 py-2.5 font-medium">Qty</th>
+                  <th className="px-1 py-2.5 font-medium">Line</th>
+                  <th className="px-1 py-2.5" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--kc-line-soft)]">
+              <tbody className="divide-y divide-black/[0.06]">
                 {cart.map((l) => (
                   <tr key={l.productId}>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-[var(--kc-ink)]">{l.name}</p>
+                    <td className="px-1 py-3">
+                      <p className="font-medium text-black">{l.name}</p>
                       {l.barcode ? (
-                        <p className="text-[11px] text-[var(--kc-faint)]">{l.barcode}</p>
+                        <p className={cn("text-[11px]", osUi.muted)}>
+                          {l.barcode}
+                        </p>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="inline-flex items-center rounded-[var(--kc-radius-sm)] border border-[var(--kc-line)]">
+                    <td className="px-1 py-3">
+                      <div className="inline-flex items-center border border-black/15">
                         <button
                           type="button"
                           className="px-2 py-1"
@@ -261,7 +311,9 @@ export default function PosPage() {
                         >
                           <Minus className="h-3.5 w-3.5" />
                         </button>
-                        <span className="w-8 text-center tabular-nums">{l.quantity}</span>
+                        <span className="w-8 text-center tabular-nums">
+                          {l.quantity}
+                        </span>
                         <button
                           type="button"
                           className="px-2 py-1"
@@ -280,10 +332,10 @@ export default function PosPage() {
                         </button>
                       </div>
                     </td>
-                    <td className="px-4 py-3 tabular-nums">
+                    <td className="px-1 py-3 tabular-nums">
                       {formatKesMinor(l.moneyMinor * l.quantity)}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-1 py-3 text-right">
                       <button
                         type="button"
                         onClick={() =>
@@ -291,7 +343,7 @@ export default function PosPage() {
                             prev.filter((x) => x.productId !== l.productId),
                           )
                         }
-                        className="text-[var(--kc-faint)] hover:text-[#8e1b0d]"
+                        className="text-black/35 hover:text-[#8e1b0d]"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -301,36 +353,74 @@ export default function PosPage() {
               </tbody>
             </table>
             {!cart.length ? (
-              <p className="px-4 py-10 text-center text-[13px] text-[var(--kc-faint)]">
+              <p
+                className={cn("px-1 py-10 text-center text-[13px]", osUi.muted)}
+              >
                 Scan a barcode to start a sale
               </p>
             ) : null}
           </div>
         </div>
 
-        <aside className="h-fit rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white p-5">
-          <p className="text-[12px] font-medium uppercase tracking-wide text-[var(--kc-faint)]">
-            Sale total (display)
-          </p>
-          <p className="mt-2 text-[28px] font-semibold tabular-nums text-[var(--kc-ink)]">
+        <aside className="h-fit border-t border-black/10 pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+          <p className={osUi.sectionLabel}>Sale total</p>
+          <p className="mt-2 text-[28px] font-semibold tabular-nums text-black">
             {formatKesMinor(totalMinor)}
           </p>
-          <p className="mt-1 text-[12px] text-[var(--kc-faint)]">
-            No tender · shared inventory with marketplace
+
+          <p className={cn("mt-5", osUi.sectionLabel)}>Customer (optional)</p>
+          <div className="mt-2 space-y-2">
+            <input
+              className={osUi.input}
+              placeholder="Name"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+            />
+            <input
+              className={osUi.input}
+              placeholder="Phone"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+            />
+            <input
+              className={osUi.input}
+              placeholder="Email"
+              value={customerEmail}
+              onChange={(e) => setCustomerEmail(e.target.value)}
+            />
+          </div>
+
+          <p className={cn("mt-5", osUi.sectionLabel)}>Tender</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(["cash", "mpesa", "card"] as Tender[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTender(t)}
+                className={cn(
+                  "min-w-[72px] px-3 py-2 text-[12px] font-medium uppercase tracking-[0.12em]",
+                  tender === t
+                    ? "bg-black text-white"
+                    : "border border-black/20 text-black hover:border-black",
+                )}
+              >
+                {t === "mpesa" ? "M-Pesa" : t}
+              </button>
+            ))}
+          </div>
+
+          <p className={cn("mt-3 text-[12px]", osUi.muted)}>
+            {vendorId ? `Vendor ${vendorId}` : "Loading vendor membership…"}
           </p>
+
           <Show when="signed-in">
             <button
               type="button"
-              disabled={busy || !cart.length}
+              disabled={busy || !cart.length || !vendorId}
               onClick={() => void completeSale()}
-              className={cn(
-                "mt-5 w-full rounded-[var(--kc-radius-sm)] py-3 text-[14px] font-semibold text-white",
-                cart.length
-                  ? "bg-[var(--kc-ink)] hover:bg-black"
-                  : "bg-[#c6c6c6]",
-              )}
+              className={cn(osUi.btnPrimary, "mt-5 w-full py-3 text-[13px]")}
             >
-              {busy ? "Completing..." : "Complete sale"}
+              {busy ? "Completing…" : `Complete · ${tender}`}
             </button>
           </Show>
         </aside>

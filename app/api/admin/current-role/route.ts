@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { clerkEmail, isAdminRole, resolveAdminRole } from "@/lib/admin-auth";
+import { resolveActor } from "@/lib/authz/resolve-actor";
+import { migrateLegacyPlatformRole } from "@/lib/authz/role-ids";
 
 /**
- * Current admin role — Clerk identity, KlikCollect authorization.
+ * Current admin role - Clerk identity, KlikCollect authorization.
  * Soft-fails to JSON (never HTML) so AccessControl does not crash.
  */
 export async function GET() {
@@ -13,6 +15,7 @@ export async function GET() {
       return NextResponse.json({
         authenticated: false,
         role: null,
+        permissions: [],
         isRegularUser: true,
         error: "Not authenticated",
       });
@@ -29,7 +32,6 @@ export async function GET() {
     }
 
     if (!user) {
-      // Session exists but Clerk user fetch timed out — still authenticated.
       const email =
         typeof session.sessionClaims?.email === "string"
           ? session.sessionClaims.email
@@ -39,25 +41,40 @@ export async function GET() {
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
       const role =
-        email && allowlist.includes(email.toLowerCase()) ? "head_admin" : null;
+        email && allowlist.includes(email.toLowerCase()) ? "super_admin" : null;
       return NextResponse.json({
         authenticated: true,
         role,
+        permissions: [],
         isAdmin: !!role,
         isRegularUser: !role,
-        user: { id: session.userId, email, user_metadata: { full_name: email } },
+        user: {
+          id: session.userId,
+          email,
+          user_metadata: { full_name: email },
+        },
       });
     }
 
-    const role = await resolveAdminRole(user);
+    const actor = await resolveActor(user);
+    const role =
+      actor.platformRole ||
+      (await resolveAdminRole(user)) ||
+      migrateLegacyPlatformRole(
+        typeof user.publicMetadata?.role === "string"
+          ? user.publicMetadata.role
+          : null,
+      );
     const email = clerkEmail(user);
     const isAdmin = isAdminRole(role);
 
     return NextResponse.json({
       authenticated: true,
       role,
+      permissions: [...actor.permissions],
       isAdmin,
       isRegularUser: !isAdmin,
+      isSuperAdmin: actor.isSuperAdmin,
       user: {
         id: user.id,
         email,
@@ -76,6 +93,7 @@ export async function GET() {
       {
         authenticated: false,
         role: null,
+        permissions: [],
         isRegularUser: true,
         error: message,
       },

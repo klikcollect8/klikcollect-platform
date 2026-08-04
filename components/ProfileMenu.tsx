@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type MouseEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
@@ -8,20 +14,31 @@ import { X } from "lucide-react";
 
 const LINKS = [
   { href: "/account", label: "Account" },
-  { href: "/account/orders", label: "Orders" },
   { href: "/saved", label: "Saved" },
   { href: "/account/preferences", label: "Preferences" },
 ] as const;
 
-/** Flat full-screen account panel — no blur, no depth motion. */
-export default function ProfileMenu() {
+const subscribe = () => () => {};
+
+/** Flat full-screen account panel - open via trigger or `toggleProfile` event. */
+export default function ProfileMenu({
+  showTrigger = true,
+}: {
+  showTrigger?: boolean;
+}) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  );
 
   useEffect(() => {
-    setMounted(true);
+    const onToggle = () => setOpen(true);
+    window.addEventListener("toggleProfile", onToggle);
+    return () => window.removeEventListener("toggleProfile", onToggle);
   }, []);
 
   useEffect(() => {
@@ -35,18 +52,20 @@ export default function ProfileMenu() {
     };
   }, [open]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback((e?: MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
     setOpen(false);
   }, []);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, handleClose]);
+  }, [open]);
 
   if (!isLoaded || !user) return null;
 
@@ -78,7 +97,7 @@ export default function ProfileMenu() {
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="inline-flex items-center gap-2 text-[13px] text-black/45 transition-colors hover:text-black"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 text-[13px] text-black/45 transition-colors hover:text-black"
                   aria-label="Close"
                 >
                   <span className="hidden sm:inline">Esc</span>
@@ -98,11 +117,23 @@ export default function ProfileMenu() {
                   ) : null}
 
                   <nav className="mt-10 flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        window.setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent("toggleOrders"));
+                        }, 0);
+                      }}
+                      className="border-b border-black/[0.08] py-3.5 text-[13px] font-medium uppercase tracking-[0.14em] text-black/70 transition-colors hover:text-black"
+                    >
+                      Orders
+                    </button>
                     {LINKS.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}
-                        onClick={handleClose}
+                        onClick={() => setOpen(false)}
                         className="border-b border-black/[0.08] py-3.5 text-[13px] font-medium uppercase tracking-[0.14em] text-black/70 transition-colors hover:text-black"
                       >
                         {item.label}
@@ -113,7 +144,7 @@ export default function ProfileMenu() {
                   <button
                     type="button"
                     onClick={() => {
-                      handleClose();
+                      setOpen(false);
                       void signOut({ redirectUrl: "/" });
                     }}
                     className="mt-10 text-[13px] text-black/45 underline decoration-black/20 underline-offset-[5px] transition-colors hover:text-black hover:decoration-black"
@@ -130,23 +161,27 @@ export default function ProfileMenu() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex h-11 w-11 items-center justify-center text-[13px] font-medium text-black/70 transition-opacity hover:opacity-50"
-        aria-label="Open account"
-      >
-        {user.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={user.imageUrl}
-            alt=""
-            className="h-9 w-9 object-cover"
-          />
-        ) : (
-          <span>{initial}</span>
-        )}
-      </button>
+      {showTrigger ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="hidden h-11 w-11 items-center justify-center overflow-hidden rounded-full text-[13px] font-medium text-black/70 transition-opacity hover:opacity-50 md:inline-flex"
+          aria-label="Open account"
+        >
+          {user.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.imageUrl}
+              alt=""
+              className="h-9 w-9 rounded-full object-cover"
+            />
+          ) : (
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.06]">
+              {initial}
+            </span>
+          )}
+        </button>
+      ) : null}
       {overlay}
     </>
   );

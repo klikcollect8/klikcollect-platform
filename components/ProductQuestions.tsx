@@ -56,7 +56,9 @@ export default function ProductQuestions({
 
   if (loading) {
     return (
-      <p className="py-16 text-[11px] uppercase tracking-[0.22em] text-black/35">Loading</p>
+      <p className="py-16 text-[11px] uppercase tracking-[0.22em] text-black/35">
+        Loading
+      </p>
     );
   }
 
@@ -88,23 +90,32 @@ export default function ProductQuestions({
       </div>
 
       {showForm ? (
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6 border-b border-black/[0.06] pb-12">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-8 space-y-6 border-b border-black/[0.06] pb-12"
+        >
           <div>
             <label className="mb-2 block text-[12px] text-black/40">Name</label>
             <input
               type="text"
               required
               value={formData.userName}
-              onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, userName: e.target.value })
+              }
               className="w-full border-b border-black/15 bg-transparent py-3 text-[15px] outline-none transition-colors focus:border-black/50"
             />
           </div>
           <div>
-            <label className="mb-2 block text-[12px] text-black/40">Question</label>
+            <label className="mb-2 block text-[12px] text-black/40">
+              Question
+            </label>
             <textarea
               required
               value={formData.question}
-              onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, question: e.target.value })
+              }
               rows={3}
               placeholder="Ask about ingredients, pickup, freshness…"
               className="w-full resize-none border-b border-black/15 bg-transparent py-3 text-[15px] leading-relaxed outline-none transition-colors placeholder:text-black/25 focus:border-black/50"
@@ -121,7 +132,9 @@ export default function ProductQuestions({
 
       {questions.length === 0 ? (
         <div className="py-16">
-          <p className="text-[16px] font-medium tracking-tight">No questions yet</p>
+          <p className="text-[16px] font-medium tracking-tight">
+            No questions yet
+          </p>
           <p className="mt-2 max-w-md text-[14px] leading-relaxed text-black/45">
             Ask about freshness, pickup windows, or how vendors stock this item.
           </p>
@@ -178,7 +191,7 @@ export default function ProductQuestions({
                       </ul>
                     ) : (
                       <p className="text-[14px] text-black/40">
-                        No answers yet — a vendor may reply soon.
+                        No answers yet - a vendor may reply soon.
                       </p>
                     )}
                   </div>

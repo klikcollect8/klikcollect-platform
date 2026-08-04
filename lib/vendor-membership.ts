@@ -1,26 +1,48 @@
 /**
- * Vendor membership (Phase A) — file-backed until staff_memberships lands in Postgres.
- * Clerk authenticates; this module authorizes vendor-scoped OS actions.
+ * Vendor membership - Postgres staff_memberships preferred; file fallback when
+ * RBAC_FILE_MEMBERSHIPS=true (local M1). Soft-open demo only when RBAC_SOFT_OPEN_DEMO=true.
  */
 import { promises as fs } from "fs";
 import path from "path";
 import type { User } from "@clerk/nextjs/server";
-import { clerkEmail, resolveAdminRole } from "@/lib/admin-auth";
+import { clerkEmail } from "@/lib/auth/clerk-email";
+import { resolveAdminRole } from "@/lib/admin-auth";
 import { DEMO_VENDOR_ID } from "@/lib/tenancy";
 import { getAdmittedVendors } from "@/lib/admitted-vendors";
+import type { StaffMembershipRole } from "@/lib/authz/role-ids";
+import { isStaffMembershipRole } from "@/lib/authz/role-ids";
+import {
+  listStaffMembershipsForClerkUser,
+  upsertStaffMembership,
+} from "@/lib/authz/memberships";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const FILE = "vendor-memberships.json";
 
-export type VendorRole = "vendor_owner" | "vendor_staff";
+/** @deprecated Prefer StaffMembershipRole - kept for file-backed rows */
+export type VendorRole = "vendor_owner" | "vendor_staff" | StaffMembershipRole;
 
 export type VendorMembership = {
   clerkUserId: string;
   email: string;
   vendorId: string;
   role: VendorRole;
+  storeId?: string | null;
   createdAt: string;
 };
+
+function softOpenDemoVendor(): boolean {
+  if (process.env.RBAC_SOFT_OPEN_DEMO === "true") return true;
+  if (process.env.RBAC_SOFT_OPEN_DEMO === "false") return false;
+  // Local M1 default: soft-open demo tenant. Production must set false.
+  return process.env.NODE_ENV !== "production";
+}
+
+/** File fallback for local M1 unless explicitly disabled. */
+function shouldUseFileMembershipFallback(): boolean {
+  if (process.env.RBAC_FILE_MEMBERSHIPS === "false") return false;
+  return true;
+}
 
 async function ensureDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -39,7 +61,11 @@ async function readAll(): Promise<VendorMembership[]> {
 
 async function writeAll(rows: VendorMembership[]) {
   await ensureDir();
-  await fs.writeFile(path.join(DATA_DIR, FILE), JSON.stringify(rows, null, 2), "utf8");
+  await fs.writeFile(
+    path.join(DATA_DIR, FILE),
+    JSON.stringify(rows, null, 2),
+    "utf8",
+  );
 }
 
 function metaVendorId(user: User): string | null {
@@ -49,6 +75,7 @@ function metaVendorId(user: User): string | null {
 
 function metaVendorRole(user: User): VendorRole | null {
   const r = user.publicMetadata?.vendorRole;
+  if (typeof r === "string" && isStaffMembershipRole(r)) return r;
   if (r === "vendor_owner" || r === "vendor_staff") return r;
   return null;
 }
@@ -60,6 +87,33 @@ export async function ensureDemoMemberships(): Promise<void> {
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
   if (!emails.length) return;
+
+  for (const email of emails) {
+    try {
+      await upsertStaffMembership({
+        clerkUserId: `email:${email}`,
+        email,
+        vendorId: DEMO_VENDOR_ID,
+        role: "vendor_owner",
+        status: "active",
+      });
+      const admitted = await getAdmittedVendors();
+      const founding = admitted[0]?.id;
+      if (founding) {
+        await upsertStaffMembership({
+          clerkUserId: `email:${email}`,
+          email,
+          vendorId: founding,
+          role: "vendor_owner",
+          status: "active",
+        });
+      }
+    } catch {
+      // DB unavailable - file fallback below
+    }
+  }
+
+  if (!shouldUseFileMembershipFallback()) return;
 
   const rows = await readAll();
   let changed = false;
@@ -79,7 +133,10 @@ export async function ensureDemoMemberships(): Promise<void> {
     }
     const admitted = await getAdmittedVendors();
     const founding = admitted[0]?.id;
-    if (founding && !rows.some((r) => r.email === email && r.vendorId === founding)) {
+    if (
+      founding &&
+      !rows.some((r) => r.email === email && r.vendorId === founding)
+    ) {
       rows.push({
         clerkUserId: `email:${email}`,
         email,
@@ -97,13 +154,48 @@ export async function listMembershipsForUser(
   user: User,
 ): Promise<VendorMembership[]> {
   await ensureDemoMemberships();
-  const rows = await readAll();
   const email = clerkEmail(user);
+
+  try {
+    const dbRows = await listStaffMembershipsForClerkUser(user.id, email);
+    if (dbRows.length) {
+      return dbRows.map((r) => ({
+        clerkUserId: r.clerkUserId,
+        email: r.email || email || "",
+        vendorId: r.vendorId,
+        role: r.role,
+        storeId: r.storeId,
+        createdAt: new Date().toISOString(),
+      }));
+    }
+  } catch {
+    // fall through to file
+  }
+
+  if (!shouldUseFileMembershipFallback()) {
+    const metaId = metaVendorId(user);
+    const metaRole = metaVendorRole(user) || "vendor_owner";
+    if (metaId) {
+      return [
+        {
+          clerkUserId: user.id,
+          email: email || "",
+          vendorId: metaId,
+          role: metaRole,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+    }
+    return [];
+  }
+
+  const rows = await readAll();
   const byId = rows.filter((r) => r.clerkUserId === user.id);
   const byEmail = email
-    ? rows.filter((r) => r.email === email && r.clerkUserId.startsWith("email:"))
+    ? rows.filter(
+        (r) => r.email === email && r.clerkUserId.startsWith("email:"),
+      )
     : [];
-  // Bind email-only rows to this Clerk user on first sight
   if (byEmail.length) {
     let changed = false;
     for (const row of byEmail) {
@@ -117,7 +209,8 @@ export async function listMembershipsForUser(
   const metaId = metaVendorId(user);
   const metaRole = metaVendorRole(user) || "vendor_owner";
   const fromMeta =
-    metaId && !rows.some((r) => r.clerkUserId === user.id && r.vendorId === metaId)
+    metaId &&
+    !rows.some((r) => r.clerkUserId === user.id && r.vendorId === metaId)
       ? [
           {
             clerkUserId: user.id,
@@ -131,7 +224,11 @@ export async function listMembershipsForUser(
   if (fromMeta.length) {
     await writeAll([...rows, ...fromMeta]);
   }
-  return [...byId, ...byEmail.map((r) => ({ ...r, clerkUserId: user.id })), ...fromMeta];
+  return [
+    ...byId,
+    ...byEmail.map((r) => ({ ...r, clerkUserId: user.id })),
+    ...fromMeta,
+  ];
 }
 
 export async function resolveVendorAccess(user: User): Promise<{
@@ -150,17 +247,18 @@ export async function resolveVendorAccess(user: User): Promise<{
   }
   const memberships = await listMembershipsForUser(user);
   if (!memberships.length) {
-    // M1 soft-open: any signed-in user may operate the demo tenant
-    // until real invites exist — still scoped, not all vendors.
-    return {
-      vendorIds: [DEMO_VENDOR_ID],
-      role: "vendor_staff",
-      isPlatformAdmin: false,
-    };
+    if (softOpenDemoVendor()) {
+      return {
+        vendorIds: [DEMO_VENDOR_ID],
+        role: "vendor_staff",
+        isPlatformAdmin: false,
+      };
+    }
+    return null;
   }
   const role: VendorRole = memberships.some((m) => m.role === "vendor_owner")
     ? "vendor_owner"
-    : "vendor_staff";
+    : memberships[0].role;
   return {
     vendorIds: [...new Set(memberships.map((m) => m.vendorId))],
     role,

@@ -1,6 +1,6 @@
 import { productImageUrl } from "@/lib/storage-urls";
 
-/** Safe product image URL for next/image — never empty. */
+/** Safe product image URL for next/image - never empty. */
 export const PRODUCT_IMAGE_FALLBACK = productImageUrl("sourdough-loaf.jpeg");
 
 const BROKEN_HOST_FRAGMENTS = [

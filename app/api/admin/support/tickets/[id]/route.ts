@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, handleRequireAdminError } from "@/lib/auth/require-admin";
+import {
+  requireAdmin,
+  handleRequireAdminError,
+} from "@/lib/auth/require-admin";
 import {
   getSupportTicket,
   updateSupportTicket,

@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { format } from 'date-fns';
-import { Scale, Plus } from 'lucide-react';
-import PageContainer from '@/components/admin/PageContainer';
-import PageHeader from '@/components/admin/PageHeader';
-import SectionCard from '@/components/admin/SectionCard';
-import AccessControl from '@/components/admin/AccessControl';
-import { useToast } from '@/components/ToastProvider';
+import { useCallback, useEffect, useState } from "react";
+import { format } from "date-fns";
+import { Scale, Plus } from "lucide-react";
+import PageContainer from "@/components/admin/PageContainer";
+import PageHeader from "@/components/admin/PageHeader";
+import SectionCard from "@/components/admin/SectionCard";
+import AccessControl from "@/components/admin/AccessControl";
+import { useToast } from "@/components/ToastProvider";
 
 type SupportTicket = {
   id: string;
-  type: 'ticket' | 'dispute';
+  type: "ticket" | "dispute";
   subject: string;
   body: string;
   status: string;
@@ -22,7 +22,7 @@ type SupportTicket = {
 };
 
 const btnPrimary =
-  'inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--kc-ink)] px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50 transition-colors';
+  "inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--kc-ink)] px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50 transition-colors";
 
 function DisputesContent() {
   const [disputes, setDisputes] = useState<SupportTicket[]>([]);
@@ -30,20 +30,20 @@ function DisputesContent() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    subject: '',
-    body: '',
-    requesterEmail: '',
-    orderId: '',
+    subject: "",
+    body: "",
+    requesterEmail: "",
+    orderId: "",
   });
   const { showToast } = useToast();
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/support/tickets?type=dispute');
-      if (!res.ok) throw new Error('Failed');
+      const res = await fetch("/api/admin/support/tickets?type=dispute");
+      if (!res.ok) throw new Error("Failed");
       setDisputes(await res.json());
     } catch {
-      showToast('Could not load disputes', 'error');
+      showToast("Could not load disputes", "error");
     } finally {
       setLoading(false);
     }
@@ -57,18 +57,18 @@ function DisputesContent() {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/support/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, type: 'dispute' }),
+      const res = await fetch("/api/admin/support/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, type: "dispute" }),
       });
-      if (!res.ok) throw new Error('Create failed');
-      setForm({ subject: '', body: '', requesterEmail: '', orderId: '' });
+      if (!res.ok) throw new Error("Create failed");
+      setForm({ subject: "", body: "", requesterEmail: "", orderId: "" });
       setShowForm(false);
-      showToast('Dispute recorded', 'success');
+      showToast("Dispute recorded", "success");
       await load();
     } catch {
-      showToast('Could not create dispute', 'error');
+      showToast("Could not create dispute", "error");
     } finally {
       setSaving(false);
     }
@@ -80,7 +80,11 @@ function DisputesContent() {
         title="Disputes"
         description="Order and payment disputes tracked alongside support."
         action={
-          <button type="button" className={btnPrimary} onClick={() => setShowForm((v) => !v)}>
+          <button
+            type="button"
+            className={btnPrimary}
+            onClick={() => setShowForm((v) => !v)}
+          >
             <Plus className="h-4 w-4" />
             New dispute
           </button>
@@ -110,17 +114,23 @@ function DisputesContent() {
               />
             </label>
             <label className="block text-sm">
-              <span className="font-medium text-[var(--kc-ink)]">Requester email</span>
+              <span className="font-medium text-[var(--kc-ink)]">
+                Requester email
+              </span>
               <input
                 required
                 type="email"
                 className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm"
                 value={form.requesterEmail}
-                onChange={(e) => setForm({ ...form, requesterEmail: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, requesterEmail: e.target.value })
+                }
               />
             </label>
             <label className="block text-sm">
-              <span className="font-medium text-[var(--kc-ink)]">Order ID (optional)</span>
+              <span className="font-medium text-[var(--kc-ink)]">
+                Order ID (optional)
+              </span>
               <input
                 className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm"
                 value={form.orderId}
@@ -128,7 +138,7 @@ function DisputesContent() {
               />
             </label>
             <button type="submit" className={btnPrimary} disabled={saving}>
-              {saving ? 'Saving…' : 'Create dispute'}
+              {saving ? "Saving…" : "Create dispute"}
             </button>
           </form>
         </SectionCard>
@@ -140,23 +150,27 @@ function DisputesContent() {
         ) : disputes.length === 0 ? (
           <div className="flex flex-col items-center py-10 text-center text-neutral-500">
             <Scale className="mb-3 h-10 w-10 text-neutral-300" />
-            <p className="text-sm">No disputes on file. Use &quot;New dispute&quot; to log one.</p>
+            <p className="text-sm">
+              No disputes on file. Use &quot;New dispute&quot; to log one.
+            </p>
           </div>
         ) : (
           <ul className="divide-y divide-neutral-100">
             {disputes.map((d) => (
               <li key={d.id} className="py-4 first:pt-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold text-[var(--kc-ink)]">{d.subject}</h3>
+                  <h3 className="font-semibold text-[var(--kc-ink)]">
+                    {d.subject}
+                  </h3>
                   <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-xs capitalize">
-                    {d.status.replace('_', ' ')}
+                    {d.status.replace("_", " ")}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-neutral-600">{d.body}</p>
                 <p className="mt-2 text-xs text-neutral-500">
                   {d.requesterEmail}
-                  {d.orderId ? ` · Order ${d.orderId}` : ''} ·{' '}
-                  {format(new Date(d.createdAt), 'PP')}
+                  {d.orderId ? ` · Order ${d.orderId}` : ""} ·{" "}
+                  {format(new Date(d.createdAt), "PP")}
                 </p>
               </li>
             ))}
@@ -169,7 +183,7 @@ function DisputesContent() {
 
 export default function DisputesPage() {
   return (
-    <AccessControl allowedRoles={['head_admin', 'admin', 'moderator']}>
+    <AccessControl requiredPermission="compliance:disputes">
       <DisputesContent />
     </AccessControl>
   );

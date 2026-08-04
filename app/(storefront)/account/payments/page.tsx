@@ -7,6 +7,7 @@ import {
   type SavedPayment,
 } from "@/lib/account-storage";
 import { useToast } from "@/components/ToastProvider";
+import { useIsClient } from "@/lib/hooks/useIsClient";
 
 const fieldClass =
   "h-auto w-full border-0 border-b border-black/15 bg-transparent px-0 py-3 text-[15px] text-black outline-none placeholder:text-black/30 focus:border-black/50";
@@ -26,11 +27,10 @@ const emptyPayment = (): SavedPayment => ({
 export default function AccountPaymentsPage() {
   const { showToast } = useToast();
   const [methods, setMethods] = useState<SavedPayment[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
 
   useEffect(() => {
     setMethods(loadPayments());
-    setMounted(true);
   }, []);
 
   const persist = (next: SavedPayment[]) => {
@@ -39,7 +39,10 @@ export default function AccountPaymentsPage() {
   };
 
   const add = () => {
-    persist([...methods, { ...emptyPayment(), isDefault: methods.length === 0 }]);
+    persist([
+      ...methods,
+      { ...emptyPayment(), isDefault: methods.length === 0 },
+    ]);
     showToast("Payment method added (local only)", "success");
   };
 
@@ -63,7 +66,8 @@ export default function AccountPaymentsPage() {
           Payments
         </p>
         <p className="mt-2 text-[14px] leading-relaxed text-black/45">
-          Reference cards for checkout — stored locally until Stripe vaulting ships.
+          Reference cards for checkout - stored locally until Stripe vaulting
+          ships.
         </p>
       </div>
 
@@ -106,7 +110,9 @@ export default function AccountPaymentsPage() {
                   label="Last 4 digits"
                   value={method.last4}
                   onChange={(v) =>
-                    update(method.id, { last4: v.replace(/\D/g, "").slice(0, 4) })
+                    update(method.id, {
+                      last4: v.replace(/\D/g, "").slice(0, 4),
+                    })
                   }
                 />
                 <Field

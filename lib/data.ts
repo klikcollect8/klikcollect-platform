@@ -1,8 +1,8 @@
 /**
- * LEGACY — Supabase + JSON fallback helpers.
+ * LEGACY - Supabase + JSON fallback helpers.
  *
  * Prefer M1 local truth:
- *   lib/commerce-truth.ts, catalogue-store, orders-store, customer-store, m1-store
+ * lib/commerce-truth.ts, catalogue-store, orders-store, customer-store, m1-store
  *
  * Narrow remaining imports; do not add new call sites.
  */
@@ -140,7 +140,7 @@ function mapProductFromDb(dbProduct: any): Product {
     images: finalImages,
     category: dbProduct.category || "",
     stock: dbProduct.stock != null ? Number(dbProduct.stock) : 0,
-    status: dbProduct.status || 'published',
+    status: dbProduct.status || "published",
     badges: Array.isArray(dbProduct.badges) ? dbProduct.badges : [],
     variations: dbProduct.variations || undefined,
     rating: dbProduct.rating ? Number(dbProduct.rating) : undefined,
@@ -302,7 +302,7 @@ export async function addProduct(
         images: product.images || [],
         category: product.category,
         stock: product.stock,
-        status: (product as any).status || 'published',
+        status: (product as any).status || "published",
         badges: product.badges || [],
         rating: product.rating || 0,
         review_count: product.reviewCount || 0,
@@ -340,7 +340,8 @@ export async function updateProduct(
     if (updates.images !== undefined) updateData.images = updates.images;
     if (updates.category !== undefined) updateData.category = updates.category;
     if (updates.stock !== undefined) updateData.stock = updates.stock;
-    if ((updates as any).status !== undefined) updateData.status = (updates as any).status;
+    if ((updates as any).status !== undefined)
+      updateData.status = (updates as any).status;
     if (updates.badges !== undefined) updateData.badges = updates.badges;
     if (updates.rating !== undefined) updateData.rating = updates.rating;
     if (updates.reviewCount !== undefined)
@@ -394,7 +395,9 @@ export async function getOrders(): Promise<Order[]> {
 
     // Local OS orders when Supabase orders table is missing.
     try {
-      const { ensureOrderSeed, listOsOrders } = await import("@/lib/orders-store");
+      const { ensureOrderSeed, listOsOrders } = await import(
+        "@/lib/orders-store"
+      );
       await ensureOrderSeed();
       const local = await listOsOrders();
       return local.map((o) => ({
@@ -684,6 +687,7 @@ export async function getReviews(productId: string): Promise<ProductReview[]> {
       .from("reviews")
       .select("*")
       .eq("product_id", productId)
+      .neq("status", "hidden")
       .order("created_at", { ascending: false });
 
     if (error) {

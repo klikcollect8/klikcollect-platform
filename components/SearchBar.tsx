@@ -45,7 +45,10 @@ export default function SearchBar({
     <form onSubmit={handleSearch} className={`relative ${className}`}>
       <div ref={containerRef} className="relative w-full">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-          <Search className={`${iconSizes[size]} text-black/35`} strokeWidth={1.75} />
+          <Search
+            className={`${iconSizes[size]} text-black/35`}
+            strokeWidth={1.75}
+          />
         </div>
         <input
           type="text"

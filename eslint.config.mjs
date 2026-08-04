@@ -12,15 +12,23 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Skill packs & one-off Node scripts (not app runtime)
+    ".agents/**",
+    "scripts/**/*.js",
   ]),
   {
     rules: {
       // Relax strict rules while codebase is stabilized
       "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-      "react-hooks/set-state-in-effect": "warn",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+      // React Compiler plugin labels these "Error:" in the message even as warnings —
+      // they flood the Problems panel and keep reappearing on portal/mount patterns.
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/purity": "off",
       "react-hooks/exhaustive-deps": "warn",
-      "react-hooks/purity": "warn",
       "react-hooks/immutability": "warn",
       "react/no-unescaped-entities": "warn",
       "@next/next/no-html-link-for-pages": "warn",

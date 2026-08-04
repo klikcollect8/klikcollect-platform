@@ -40,7 +40,7 @@ type MapPreviewProps = {
 };
 
 /**
- * Uber-style flat 2D pickup map — exact vendor pin, no 3D tilt.
+ * Uber-style flat 2D pickup map - exact vendor pin, no 3D tilt.
  */
 export default function MapPreview({
   offers,
@@ -123,7 +123,7 @@ export default function MapPreview({
     return (
       <section className={className}>
         <p className="text-[14px] text-black/45">
-          Map unavailable — missing Mapbox token.
+          Map unavailable - missing Mapbox token.
         </p>
       </section>
     );
@@ -189,7 +189,9 @@ export default function MapPreview({
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
                   <MapPin className="h-5 w-5 text-black/30" strokeWidth={1.5} />
-                  <p className="text-[13px] text-black/45">Map preview unavailable.</p>
+                  <p className="text-[13px] text-black/45">
+                    Map preview unavailable.
+                  </p>
                   <button
                     type="button"
                     onClick={() => {

@@ -66,7 +66,13 @@ export default function ExploreFeed() {
     }
 
     return () => observer.disconnect();
-  }, [loadMore, displayedProducts.length, allProducts.length, loading, loadingMore]);
+  }, [
+    loadMore,
+    displayedProducts.length,
+    allProducts.length,
+    loading,
+    loadingMore,
+  ]);
 
   if (loading)
     return (
@@ -112,7 +118,7 @@ export default function ExploreFeed() {
           className="h-24 w-full flex justify-center items-center mt-8"
         >
           {loadingMore && (
-             <div className="w-6 h-6 border-2 border-gray-200 border-t-black rounded-full animate-spin"></div>
+            <div className="w-6 h-6 border-2 border-gray-200 border-t-black rounded-full animate-spin"></div>
           )}
         </div>
       )}

@@ -15,15 +15,24 @@ interface CuratedPicksProps {
   };
 }
 
-export default function CuratedPicks({ products: initialProducts, section }: CuratedPicksProps) {
+export default function CuratedPicks({
+  products: initialProducts,
+  section,
+}: CuratedPicksProps) {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     if (initialProducts && initialProducts.length > 0) {
       if (section?.productIds && section.productIds.length > 0) {
-        setProducts(initialProducts.filter((p) => section.productIds!.includes(p.id)));
+        setProducts(
+          initialProducts.filter((p) => section.productIds!.includes(p.id)),
+        );
       } else {
-        setProducts([...initialProducts].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 9));
+        setProducts(
+          [...initialProducts]
+            .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+            .slice(0, 9),
+        );
       }
       return;
     }
@@ -32,9 +41,17 @@ export default function CuratedPicks({ products: initialProducts, section }: Cur
       .then((data) => {
         const arr = Array.isArray(data) ? data : [];
         if (section?.productIds && section.productIds.length > 0) {
-          setProducts(arr.filter((p: Product) => section.productIds!.includes(p.id)));
+          setProducts(
+            arr.filter((p: Product) => section.productIds!.includes(p.id)),
+          );
         } else {
-          setProducts(arr.sort((a: Product, b: Product) => (b.rating || 0) - (a.rating || 0)).slice(0, 9));
+          setProducts(
+            arr
+              .sort(
+                (a: Product, b: Product) => (b.rating || 0) - (a.rating || 0),
+              )
+              .slice(0, 9),
+          );
         }
       })
       .catch(() => setProducts([]));

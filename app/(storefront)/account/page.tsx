@@ -68,19 +68,19 @@ export default function AccountOverviewPage() {
       <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
           label="Active orders"
-          value={loading ? "—" : String(activeOrders.length)}
+          value={loading ? " - " : String(activeOrders.length)}
           href="/account/orders"
           icon={Package}
         />
         <StatTile
           label="Ready to collect"
-          value={loading ? "—" : String(readyToCollect.length)}
+          value={loading ? " - " : String(readyToCollect.length)}
           href="/account/orders"
           icon={Package}
         />
         <StatTile
           label="Saved"
-          value={loading ? "—" : String(wishlistCount)}
+          value={loading ? " - " : String(wishlistCount)}
           href="/saved"
           icon={Heart}
         />
@@ -114,7 +114,9 @@ export default function AccountOverviewPage() {
               <p className="truncate text-[16px] font-medium text-black">
                 {user?.fullName || "Account holder"}
               </p>
-              <p className="mt-0.5 truncate text-[14px] text-black/40">{user?.email}</p>
+              <p className="mt-0.5 truncate text-[14px] text-black/40">
+                {user?.email}
+              </p>
               <Link
                 href="/account/security"
                 className="mt-3 inline-block text-[13px] text-black/45 transition-colors hover:text-black"
@@ -142,7 +144,10 @@ export default function AccountOverviewPage() {
           ) : orders.length === 0 ? (
             <div className="mt-5">
               <p className="text-[14px] text-black/40">No orders yet.</p>
-              <Link href="/shop" className={cn("mt-4 inline-flex", ui.btnPrimary)}>
+              <Link
+                href="/shop"
+                className={cn("mt-4 inline-flex", ui.btnPrimary)}
+              >
                 Start shopping
               </Link>
             </div>

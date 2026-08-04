@@ -1,26 +1,26 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Clock, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { Clock, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function SearchHistory() {
   const [history, setHistory] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+    const stored = JSON.parse(localStorage.getItem("searchHistory") || "[]");
     setHistory(stored.slice(0, 5)); // Show last 5 searches
   }, []);
 
   const clearHistory = () => {
-    localStorage.removeItem('searchHistory');
+    localStorage.removeItem("searchHistory");
     setHistory([]);
   };
 
   const removeItem = (item: string) => {
-    const updated = history.filter(h => h !== item);
-    localStorage.setItem('searchHistory', JSON.stringify(updated));
+    const updated = history.filter((h) => h !== item);
+    localStorage.setItem("searchHistory", JSON.stringify(updated));
     setHistory(updated);
   };
 
@@ -65,4 +65,3 @@ export default function SearchHistory() {
     </div>
   );
 }
-

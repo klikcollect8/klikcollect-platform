@@ -69,7 +69,9 @@ export default function ProductReviews({
 
   if (loading) {
     return (
-      <p className="py-16 text-[11px] uppercase tracking-[0.22em] text-black/35">Loading</p>
+      <p className="py-16 text-[11px] uppercase tracking-[0.22em] text-black/35">
+        Loading
+      </p>
     );
   }
 
@@ -86,7 +88,7 @@ export default function ProductReviews({
       <div className="grid gap-10 border-b border-black/[0.06] pb-12 sm:grid-cols-[auto_1fr] sm:items-end sm:gap-16">
         <div>
           <p className="text-[clamp(2.75rem,5vw,3.75rem)] font-medium tracking-tight tabular-nums leading-none">
-            {reviews.length ? summary.avg.toFixed(1) : "—"}
+            {reviews.length ? summary.avg.toFixed(1) : " - "}
           </p>
           <div className="mt-3 flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
@@ -109,10 +111,14 @@ export default function ProductReviews({
         <div className="space-y-2.5">
           {[5, 4, 3, 2, 1].map((stars) => {
             const count = summary.counts[stars - 1];
-            const pct = reviews.length ? Math.round((count / reviews.length) * 100) : 0;
+            const pct = reviews.length
+              ? Math.round((count / reviews.length) * 100)
+              : 0;
             return (
               <div key={stars} className="flex items-center gap-3">
-                <span className="w-3 text-[12px] tabular-nums text-black/40">{stars}</span>
+                <span className="w-3 text-[12px] tabular-nums text-black/40">
+                  {stars}
+                </span>
                 <div className="h-px flex-1 overflow-hidden bg-black/[0.06]">
                   <div
                     className="h-full bg-black/70 transition-all duration-500"
@@ -142,19 +148,26 @@ export default function ProductReviews({
       </div>
 
       {showForm ? (
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6 border-b border-black/[0.06] pb-12">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-8 space-y-6 border-b border-black/[0.06] pb-12"
+        >
           <div>
             <label className="mb-2 block text-[12px] text-black/40">Name</label>
             <input
               type="text"
               required
               value={formData.userName}
-              onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, userName: e.target.value })
+              }
               className="w-full border-b border-black/15 bg-transparent py-3 text-[15px] outline-none transition-colors focus:border-black/50"
             />
           </div>
           <div>
-            <label className="mb-2 block text-[12px] text-black/40">Rating</label>
+            <label className="mb-2 block text-[12px] text-black/40">
+              Rating
+            </label>
             <div className="flex gap-0.5">
               {[1, 2, 3, 4, 5].map((rating) => (
                 <button
@@ -177,21 +190,29 @@ export default function ProductReviews({
             </div>
           </div>
           <div>
-            <label className="mb-2 block text-[12px] text-black/40">Title</label>
+            <label className="mb-2 block text-[12px] text-black/40">
+              Title
+            </label>
             <input
               type="text"
               required
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
               className="w-full border-b border-black/15 bg-transparent py-3 text-[15px] outline-none transition-colors focus:border-black/50"
             />
           </div>
           <div>
-            <label className="mb-2 block text-[12px] text-black/40">Review</label>
+            <label className="mb-2 block text-[12px] text-black/40">
+              Review
+            </label>
             <textarea
               required
               value={formData.comment}
-              onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, comment: e.target.value })
+              }
               rows={4}
               className="w-full resize-none border-b border-black/15 bg-transparent py-3 text-[15px] leading-relaxed outline-none transition-colors focus:border-black/50"
             />
@@ -207,7 +228,9 @@ export default function ProductReviews({
 
       {reviews.length === 0 ? (
         <div className="py-16">
-          <p className="text-[16px] font-medium tracking-tight">No reviews yet</p>
+          <p className="text-[16px] font-medium tracking-tight">
+            No reviews yet
+          </p>
           <p className="mt-2 text-[14px] text-black/45">
             Be the first to share how this product worked for you.
           </p>
@@ -220,7 +243,9 @@ export default function ProductReviews({
               className="border-b border-black/[0.06] py-10 last:border-b-0"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <p className="text-[15px] font-medium tracking-tight">{review.userName}</p>
+                <p className="text-[15px] font-medium tracking-tight">
+                  {review.userName}
+                </p>
                 <p className="text-[12px] text-black/35">
                   {format(new Date(review.createdAt), "d MMM yyyy")}
                 </p>
@@ -231,7 +256,9 @@ export default function ProductReviews({
                     <Star
                       key={i}
                       className={`h-3 w-3 ${
-                        i < review.rating ? "fill-black text-black" : "text-black/15"
+                        i < review.rating
+                          ? "fill-black text-black"
+                          : "text-black/15"
                       }`}
                       strokeWidth={1.5}
                     />
@@ -243,7 +270,9 @@ export default function ProductReviews({
                   </span>
                 ) : null}
               </div>
-              <h4 className="mt-4 text-[17px] font-medium tracking-tight">{review.title}</h4>
+              <h4 className="mt-4 text-[17px] font-medium tracking-tight">
+                {review.title}
+              </h4>
               <p className="mt-3 max-w-2xl text-[15px] leading-[1.75] text-black/55">
                 {review.comment}
               </p>

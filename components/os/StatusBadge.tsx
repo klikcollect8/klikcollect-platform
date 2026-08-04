@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Monochrome status chip — Obscura admin/OS */
+/** Hompage-aligned status chip - hairline, no pill chrome */
 const TONES: Record<string, string> = {
   pending: "text-black/55",
   confirmed: "text-black",
@@ -16,6 +16,7 @@ const TONES: Record<string, string> = {
   low: "text-black/55",
   out: "text-black/40",
   ok: "text-black",
+  invited: "text-black/55",
 };
 
 export function StatusBadge({

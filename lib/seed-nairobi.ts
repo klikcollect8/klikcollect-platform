@@ -13,7 +13,7 @@ export async function ensureNairobiSeed(): Promise<{
   vendors: number;
 }> {
   console.warn(
-    "[seed-nairobi] ensureNairobiSeed is a no-op — catalogue is seeded via scripts/seed-supabase-catalogue.ts",
+    "[seed-nairobi] ensureNairobiSeed is a no-op - catalogue is seeded via scripts/seed-supabase-catalogue.ts",
   );
   const vendors = await getAdmittedVendors();
   return { products: 0, offers: 0, vendors: vendors.length };

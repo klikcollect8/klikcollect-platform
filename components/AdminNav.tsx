@@ -2,67 +2,328 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  BadgeCheck,
+  Bell,
   Flag,
   HeartPulse,
   HelpCircle,
+  Landmark,
   Layout,
   LayoutDashboard,
+  Lock,
   Menu,
   MessageSquare,
   Package,
+  PanelLeftClose,
+  PanelLeftOpen,
   Scale,
+  Search,
   Settings,
   Shield,
   ShoppingBag,
+  SlidersHorizontal,
   Store,
   Tag,
   Ticket,
   TrendingUp,
   Users,
+  Wallet,
   X,
 } from "lucide-react";
 import { Show, SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
-import { ui } from "@/components/system/tokens";
+import { adminUi } from "@/components/admin/admin-ui";
+import { ControlPanel } from "@/components/os/ControlPanel";
+import {
+  PLATFORM_ROLES,
+  PLATFORM_ROLE_LABELS,
+  migrateLegacyPlatformRole,
+  type PlatformRole,
+} from "@/lib/authz/role-ids";
 
 type NavItem = {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles: string[];
-  group: "platform" | "marketplace" | "support" | "system";
+  roles: PlatformRole[];
+  permission?: string;
+  group: "platform" | "marketplace" | "support" | "finance" | "system";
 };
 
 const GROUPS = [
-  { id: "platform" as const, label: "Platform" },
+  { id: "platform" as const, label: "Main menu" },
   { id: "marketplace" as const, label: "Marketplace" },
+  { id: "finance" as const, label: "Finances" },
   { id: "support" as const, label: "Support" },
   { id: "system" as const, label: "System" },
 ];
 
-const ALL_ROLES = ["head_admin", "admin", "editor", "moderator"];
+const ALL_ROLES: PlatformRole[] = [...PLATFORM_ROLES];
 
 const allNavItems: NavItem[] = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard, roles: ALL_ROLES, group: "platform" },
-  { href: "/admin/analytics", label: "Analytics", icon: TrendingUp, roles: ["head_admin", "admin"], group: "platform" },
-  { href: "/admin/roles", label: "Team", icon: Shield, roles: ["head_admin"], group: "platform" },
-  { href: "/admin/vendors", label: "Vendors", icon: Store, roles: ["head_admin", "admin", "moderator"], group: "marketplace" },
-  { href: "/admin/products", label: "Products", icon: Package, roles: ["head_admin", "admin", "editor"], group: "marketplace" },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingBag, roles: ["head_admin", "admin"], group: "marketplace" },
-  { href: "/admin/customers", label: "Customers", icon: Users, roles: ["head_admin", "admin"], group: "marketplace" },
-  { href: "/admin/categories", label: "Categories", icon: Tag, roles: ["head_admin", "admin", "editor"], group: "marketplace" },
-  { href: "/admin/homepage", label: "Homepage CMS", icon: Layout, roles: ["head_admin", "admin", "editor"], group: "marketplace" },
-  { href: "/admin/reviews", label: "Reviews", icon: MessageSquare, roles: ["head_admin", "admin", "moderator"], group: "marketplace" },
-  { href: "/admin/questions", label: "Q&A", icon: HelpCircle, roles: ["head_admin", "admin", "moderator"], group: "marketplace" },
-  { href: "/admin/support", label: "Tickets", icon: Ticket, roles: ["head_admin", "admin", "moderator"], group: "support" },
-  { href: "/admin/support/disputes", label: "Disputes", icon: Scale, roles: ["head_admin", "admin"], group: "support" },
-  { href: "/admin/system", label: "Health", icon: HeartPulse, roles: ["head_admin", "admin"], group: "system" },
-  { href: "/admin/system/flags", label: "Feature flags", icon: Flag, roles: ["head_admin"], group: "system" },
-  { href: "/admin/system/logs", label: "Logs", icon: Activity, roles: ["head_admin", "admin"], group: "system" },
-  { href: "/admin/profile", label: "Settings", icon: Settings, roles: ALL_ROLES, group: "system" },
+  {
+    href: "/admin",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    roles: ALL_ROLES,
+    group: "platform",
+  },
+  {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: TrendingUp,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "bi_analyst",
+      "finance_admin",
+      "customer_success",
+      "platform_marketing",
+    ],
+    permission: "analytics:view",
+    group: "platform",
+  },
+  {
+    href: "/admin/roles",
+    label: "Team",
+    icon: Shield,
+    roles: ["super_admin"],
+    permission: "users:assign_roles",
+    group: "platform",
+  },
+  {
+    href: "/admin/vendors",
+    label: "Vendors",
+    icon: Store,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "compliance_officer",
+      "support_agent",
+      "support_manager",
+      "trust_safety",
+      "marketplace_curator",
+      "customer_success",
+    ],
+    permission: "vendors:view",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/products",
+    label: "Products",
+    icon: Package,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "products:view",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/orders",
+    label: "Orders",
+    icon: ShoppingBag,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "support_agent",
+      "support_manager",
+      "customer_success",
+      "finance_admin",
+    ],
+    permission: "orders:view",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/customers",
+    label: "Customers",
+    icon: Users,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "support_agent",
+      "support_manager",
+      "customer_success",
+      "trust_safety",
+    ],
+    permission: "support:customers_view",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/categories",
+    label: "Categories",
+    icon: Tag,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "categories:view",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/homepage",
+    label: "Homepage CMS",
+    icon: Layout,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+      "platform_marketing",
+    ],
+    permission: "cms:banners",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/reviews",
+    label: "Reviews",
+    icon: MessageSquare,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "support_agent",
+      "support_manager",
+      "marketplace_curator",
+      "trust_safety",
+      "content_manager",
+    ],
+    permission: "content:moderate",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/questions",
+    label: "Q&A",
+    icon: HelpCircle,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "support_agent",
+      "support_manager",
+      "marketplace_curator",
+      "trust_safety",
+      "content_manager",
+    ],
+    permission: "content:moderate",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/finance",
+    label: "Finance & Ledger",
+    icon: Wallet,
+    roles: ["super_admin", "platform_admin", "finance_admin"],
+    permission: "ledger:view",
+    group: "finance",
+  },
+  {
+    href: "/admin/settlements",
+    label: "Settlements",
+    icon: Landmark,
+    roles: ["super_admin", "platform_admin", "finance_admin"],
+    permission: "finance:settlements",
+    group: "finance",
+  },
+  {
+    href: "/admin/payments",
+    label: "Paystack",
+    icon: Wallet,
+    roles: ["super_admin", "platform_admin", "finance_admin"],
+    permission: "payments:view",
+    group: "finance",
+  },
+  {
+    href: "/admin/compliance",
+    label: "KYC & Compliance",
+    icon: BadgeCheck,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "compliance_officer",
+      "trust_safety",
+    ],
+    permission: "compliance:kyc_review",
+    group: "finance",
+  },
+  {
+    href: "/admin/support",
+    label: "Tickets",
+    icon: Ticket,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "support_agent",
+      "support_manager",
+      "customer_success",
+    ],
+    permission: "support:tickets_view",
+    group: "support",
+  },
+  {
+    href: "/admin/support/disputes",
+    label: "Disputes",
+    icon: Scale,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "compliance_officer",
+      "support_agent",
+      "support_manager",
+      "trust_safety",
+    ],
+    permission: "compliance:disputes",
+    group: "support",
+  },
+  {
+    href: "/admin/system",
+    label: "Health",
+    icon: HeartPulse,
+    roles: ["super_admin", "platform_admin", "developer"],
+    permission: "system:health",
+    group: "system",
+  },
+  {
+    href: "/admin/system/flags",
+    label: "Feature flags",
+    icon: Flag,
+    roles: ["super_admin", "developer"],
+    permission: "flags:manage",
+    group: "system",
+  },
+  {
+    href: "/admin/system/logs",
+    label: "Audit Logs",
+    icon: Activity,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "compliance_officer",
+      "trust_safety",
+      "developer",
+    ],
+    permission: "audit:view",
+    group: "system",
+  },
+  {
+    href: "/admin/security",
+    label: "Security Center",
+    icon: Lock,
+    roles: ["super_admin", "platform_admin", "trust_safety"],
+    permission: "security:center",
+    group: "system",
+  },
+  {
+    href: "/admin/profile",
+    label: "Settings",
+    icon: Settings,
+    roles: ALL_ROLES,
+    group: "system",
+  },
 ];
 
 function isActive(pathname: string | null, href: string) {
@@ -71,74 +332,154 @@ function isActive(pathname: string | null, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function AdminNav({ initialRole }: { initialRole?: string | null }) {
+export default function AdminNav({
+  initialRole,
+}: {
+  initialRole?: string | null;
+}) {
   const pathname = usePathname();
   const { user, isSignedIn } = useUser();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(initialRole || null);
+  const [collapsed, setCollapsed] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [controlOpen, setControlOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(
+    initialRole ? migrateLegacyPlatformRole(initialRole) || initialRole : null,
+  );
+  const [permissions, setPermissions] = useState<string[]>([]);
 
   const isLogin =
     pathname === "/admin/login" || pathname?.startsWith("/admin/login");
 
   useEffect(() => {
-    setMobileOpen(false);
+    const id = requestAnimationFrame(() => setMobileOpen(false));
+    return () => cancelAnimationFrame(id);
   }, [pathname]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--admin-aside",
+      collapsed ? "72px" : "240px",
+    );
+  }, [collapsed]);
 
   useEffect(() => {
     if (isLogin) return;
     if (initialRole) {
-      setUserRole(initialRole);
-      return;
+      setUserRole(migrateLegacyPlatformRole(initialRole) || initialRole);
     }
     void fetch("/api/admin/current-role")
       .then((r) => r.json())
       .then((data) => {
-        if (data.authenticated && data.role) setUserRole(String(data.role).trim());
-        else if (data.authenticated) setUserRole("admin");
+        if (data.authenticated && data.role) {
+          setUserRole(
+            migrateLegacyPlatformRole(String(data.role)) ||
+              String(data.role).trim(),
+          );
+        } else if (data.authenticated) {
+          setUserRole("platform_admin");
+        }
+        if (Array.isArray(data.permissions)) {
+          setPermissions(data.permissions.map(String));
+        }
       })
       .catch(() => {
-        if (isSignedIn) setUserRole("admin");
+        if (isSignedIn) setUserRole("platform_admin");
       });
   }, [initialRole, isLogin, isSignedIn]);
 
-  if (isLogin) return null;
+  useEffect(() => {
+    if (isLogin) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+      if (e.key === "Escape") {
+        setCmdOpen(false);
+        setMobileOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isLogin]);
 
   const normalizedRole =
-    userRole?.trim().toLowerCase() || (isSignedIn ? "admin" : null);
-  const navItems = normalizedRole
-    ? allNavItems.filter(
-        (item) =>
-          item.roles.some((role) => role.trim().toLowerCase() === normalizedRole) ||
-          normalizedRole === "head_admin",
-      )
-    : allNavItems;
+    (userRole &&
+      (migrateLegacyPlatformRole(userRole) || userRole.trim().toLowerCase())) ||
+    (isSignedIn ? "platform_admin" : null);
 
-  const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => (
-    <div className="flex h-full min-h-0 flex-col bg-[#f7f7f5]">
-      <div className="shrink-0 px-7 pb-6 pt-9">
-        <Link href="/admin" onClick={onNavigate} className="block">
-          <p className={ui.pageEyebrow}>Admin</p>
-          <p
-            className="mt-2 text-[17px] font-medium tracking-tight text-black"
-            style={{ fontFamily: "var(--font-display), sans-serif" }}
+  const navItems = useMemo(() => {
+    if (!normalizedRole) return allNavItems;
+    return allNavItems.filter((item) => {
+      if (normalizedRole === "super_admin") return true;
+      const roleOk = item.roles.includes(normalizedRole as PlatformRole);
+      const permOk =
+        !item.permission ||
+        permissions.length === 0 ||
+        permissions.includes(item.permission);
+      return roleOk && permOk;
+    });
+  }, [normalizedRole, permissions]);
+
+  const roleLabel =
+    (normalizedRole && PLATFORM_ROLE_LABELS[normalizedRole as PlatformRole]) ||
+    normalizedRole ||
+    "Staff";
+
+  if (isLogin) return null;
+
+  const renderSidebar = (onNavigate?: () => void) => (
+    <div className="flex h-full min-h-0 flex-col bg-[var(--kc-canvas)]">
+      <div className={cn("shrink-0 pb-6 pt-9", collapsed ? "px-3" : "px-7")}>
+        <div className="flex items-start justify-between gap-2">
+          <Link href="/admin" onClick={onNavigate} className="block min-w-0">
+            <p className={adminUi.pageEyebrow}>{collapsed ? "KC" : "Admin"}</p>
+            {!collapsed ? (
+              <>
+                <p
+                  className="mt-2 text-[17px] font-medium tracking-tight text-black"
+                  style={{ fontFamily: "var(--font-display), sans-serif" }}
+                >
+                  Platform
+                </p>
+                <p className="mt-1 truncate text-[12px] text-black/35">
+                  {roleLabel}
+                </p>
+              </>
+            ) : null}
+          </Link>
+          <button
+            type="button"
+            className="hidden p-1 text-black/40 hover:text-black lg:inline"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setCollapsed((v) => !v)}
           >
-            Platform
-          </p>
-          <p className="mt-1 truncate text-[12px] text-black/35">
-            {normalizedRole || "staff"}
-          </p>
-        </Link>
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
 
-      <nav className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-5 pb-8">
+      <nav
+        className={cn(
+          "scrollbar-hide min-h-0 flex-1 overflow-y-auto pb-4",
+          collapsed ? "px-2" : "px-3",
+        )}
+      >
         {GROUPS.map((group) => {
           const items = navItems.filter((i) => i.group === group.id);
           if (!items.length) return null;
           return (
             <div key={group.id} className="mb-7">
-              <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-black/30">
-                {group.label}
-              </p>
+              {!collapsed ? (
+                <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-black/30">
+                  {group.label}
+                </p>
+              ) : null}
               <div className="space-y-0.5">
                 {items.map((item) => {
                   const Icon = item.icon;
@@ -148,9 +489,11 @@ export default function AdminNav({ initialRole }: { initialRole?: string | null 
                       key={item.href}
                       href={item.href}
                       onClick={onNavigate}
+                      title={item.label}
                       className={cn(
-                        "flex items-center gap-2.5 px-2 py-2.5 text-[14px]",
-                        active ? ui.navActive : ui.navIdle,
+                        "flex items-center gap-2.5 py-2.5 text-[14px]",
+                        collapsed ? "justify-center px-2" : "px-2",
+                        active ? adminUi.navActive : adminUi.navIdle,
                       )}
                     >
                       <Icon
@@ -160,7 +503,9 @@ export default function AdminNav({ initialRole }: { initialRole?: string | null 
                         )}
                         strokeWidth={1.5}
                       />
-                      <span className="truncate">{item.label}</span>
+                      {!collapsed ? (
+                        <span className="truncate">{item.label}</span>
+                      ) : null}
                     </Link>
                   );
                 })}
@@ -169,6 +514,51 @@ export default function AdminNav({ initialRole }: { initialRole?: string | null 
           );
         })}
       </nav>
+
+      <div
+        className={cn(
+          "shrink-0 space-y-3 border-t border-black/10 py-4",
+          collapsed ? "px-2" : "px-5",
+        )}
+      >
+        {!collapsed ? (
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate?.();
+              setControlOpen(true);
+            }}
+            className="flex w-full items-center gap-2.5 px-2 py-2 text-left text-[13px] font-medium text-black/50 transition-colors hover:text-black"
+          >
+            <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+            <span>Control panel</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setControlOpen(true)}
+            className="mx-auto flex h-9 w-9 items-center justify-center text-black/40 hover:text-black"
+            title="Control panel"
+          >
+            <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+        )}
+        {!collapsed ? (
+          <div>
+            <p className="truncate text-[13px] font-medium text-black">
+              {user?.fullName ||
+                user?.primaryEmailAddress?.emailAddress ||
+                "Staff"}
+            </p>
+            <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-black/35">
+              {roleLabel}
+            </p>
+            <div className="mt-3">
+              <UserButton />
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 
@@ -177,10 +567,10 @@ export default function AdminNav({ initialRole }: { initialRole?: string | null 
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 hidden overflow-hidden lg:flex lg:flex-col",
-          ui.shellAside,
+          collapsed ? "w-[72px]" : adminUi.shellAside,
         )}
       >
-        <Sidebar />
+        {renderSidebar()}
       </aside>
 
       {mobileOpen ? (
@@ -191,7 +581,7 @@ export default function AdminNav({ initialRole }: { initialRole?: string | null 
             aria-label="Close"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(320px,90vw)] flex-col bg-[#f7f7f5]">
+          <aside className="absolute inset-y-0 left-0 flex w-[min(300px,90vw)] flex-col bg-[var(--kc-canvas)]">
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
@@ -199,12 +589,19 @@ export default function AdminNav({ initialRole }: { initialRole?: string | null 
             >
               <X className="h-5 w-5" />
             </button>
-            <Sidebar onNavigate={() => setMobileOpen(false)} />
+            {renderSidebar(() => setMobileOpen(false))}
           </aside>
         </div>
       ) : null}
 
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 bg-[#f7f7f5]/90 px-8 backdrop-blur-sm sm:px-12 lg:pl-[calc(240px+4rem)] lg:pr-16 xl:pl-[calc(240px+5rem)] xl:pr-20">
+      <header
+        className={cn(
+          "sticky top-0 z-30 flex h-14 items-center gap-3 bg-[var(--kc-canvas)]/90 px-6 backdrop-blur-sm sm:px-10",
+          collapsed
+            ? "lg:pl-[calc(72px+2.5rem)] xl:pl-[calc(72px+4rem)]"
+            : "lg:pl-[calc(240px+3rem)] xl:pl-[calc(240px+4rem)]",
+        )}
+      >
         <button
           type="button"
           className="p-1.5 text-black lg:hidden"
@@ -213,13 +610,38 @@ export default function AdminNav({ initialRole }: { initialRole?: string | null 
         >
           <Menu className="h-5 w-5" strokeWidth={1.5} />
         </button>
-        <p className="min-w-0 flex-1 truncate text-[11px] font-medium uppercase tracking-[0.16em] text-black/35">
-          {user?.primaryEmailAddress?.emailAddress || "Platform"}
-        </p>
-        <div className="flex shrink-0 items-center gap-2">
+
+        <button
+          type="button"
+          onClick={() => setCmdOpen(true)}
+          className="flex h-9 max-w-md flex-1 items-center gap-2.5 text-[13px] text-black/35 transition-colors hover:text-black"
+        >
+          <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+          <span className="flex-1 truncate text-left">Search</span>
+          <kbd className="hidden font-mono text-[10px] text-black/30 sm:inline">
+            ⌘K
+          </kbd>
+        </button>
+
+        <div className="ml-auto flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setControlOpen(true)}
+            className={adminUi.btnGhost}
+            title="Control panel"
+          >
+            <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
+            <span className="hidden sm:inline">Control</span>
+          </button>
+          <Link
+            href="/admin/support"
+            className="p-1.5 text-black/40 transition-colors hover:text-black"
+          >
+            <Bell className="h-4 w-4" strokeWidth={1.5} />
+          </Link>
           <Show when="signed-out">
             <SignInButton mode="redirect" forceRedirectUrl="/admin">
-              <button type="button" className={ui.btnPrimary}>
+              <button type="button" className={adminUi.btnPrimary}>
                 Sign in
               </button>
             </SignInButton>
@@ -229,6 +651,93 @@ export default function AdminNav({ initialRole }: { initialRole?: string | null 
           </Show>
         </div>
       </header>
+
+      {cmdOpen ? (
+        <AdminCommandPalette
+          items={navItems}
+          onClose={() => setCmdOpen(false)}
+        />
+      ) : null}
+
+      <ControlPanel
+        open={controlOpen}
+        onClose={() => setControlOpen(false)}
+        variant="admin"
+        title="Platform control"
+        subtitle="Enable marketplace modules, ops planes, and dashboard widgets."
+      />
     </>
+  );
+}
+
+function AdminCommandPalette({
+  items,
+  onClose,
+}: {
+  items: NavItem[];
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((i) => i.label.toLowerCase().includes(q));
+  }, [query, items]);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-900/30 p-4 pt-[12vh] backdrop-blur-[2px]">
+      <button
+        type="button"
+        className="absolute inset-0"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Jump to…"
+            className="w-full bg-transparent text-[15px] text-slate-900 outline-none placeholder:text-slate-400"
+          />
+          <kbd className="rounded-md border border-slate-200 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+            Esc
+          </kbd>
+        </div>
+        <div className="max-h-[420px] overflow-y-auto px-3 py-3">
+          {results.length ? (
+            results.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-[14px] font-medium text-slate-800 transition hover:bg-slate-50"
+                >
+                  <Icon className="h-4 w-4 text-slate-400" />
+                  <span className="flex-1">{item.label}</span>
+                  <span className="text-[11px] capitalize text-slate-400">
+                    {item.group}
+                  </span>
+                </Link>
+              );
+            })
+          ) : (
+            <p className="px-3 py-14 text-center text-[14px] text-slate-400">
+              No matches for “{query}”
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

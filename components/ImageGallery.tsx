@@ -10,7 +10,10 @@ interface ImageGalleryProps {
   productName: string;
 }
 
-export default function ImageGallery({ images, productName }: ImageGalleryProps) {
+export default function ImageGallery({
+  images,
+  productName,
+}: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -26,9 +29,12 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
     );
   }
 
-  const nextImage = () => setCurrentIndex((prev) => (prev + 1) % validImages.length);
+  const nextImage = () =>
+    setCurrentIndex((prev) => (prev + 1) % validImages.length);
   const prevImage = () =>
-    setCurrentIndex((prev) => (prev - 1 + validImages.length) % validImages.length);
+    setCurrentIndex(
+      (prev) => (prev - 1 + validImages.length) % validImages.length,
+    );
 
   return (
     <>
@@ -45,7 +51,7 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
         >
           <Image
             src={validImages[currentIndex]}
-            alt={`${productName} — image ${currentIndex + 1}`}
+            alt={`${productName} - image ${currentIndex + 1}`}
             fill
             priority
             className="object-contain object-center"

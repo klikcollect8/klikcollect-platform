@@ -7,9 +7,8 @@
 @layer base {
   :root {
     /*
-      KlikCollect marketplace type —
-      Plus Jakarta Sans · open spacing · warm canvas
-    */
+ KlikCollect marketplace type - Plus Jakarta Sans · open spacing · warm canvas
+ */
     --kc-ink: #0a0a0a;
     --kc-mute: #3a3a3a;
     --kc-faint: #7a7a7a;
@@ -32,7 +31,8 @@
     --kc-radius-pill: 0px;
     --kc-shadow: none;
     --kc-shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.12);
-    --font-sans: var(--font-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui,
+    --font-sans:
+      var(--font-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui,
       sans-serif;
     --font-montreal: var(--font-sans);
     --font-display: var(--font-sans);
@@ -68,7 +68,8 @@
     scrollbar-color: rgba(10, 10, 10, 0.22) var(--kc-canvas);
   }
 
-  html, body {
+  html,
+  body {
     margin: 0 !important;
     padding: 0 !important;
   }
@@ -82,7 +83,9 @@
     line-height: 1.65;
     letter-spacing: 0.02em;
     word-spacing: 0.08em;
-    font-feature-settings: "kern" 1, "liga" 1;
+    font-feature-settings:
+      "kern" 1,
+      "liga" 1;
     text-rendering: optimizeLegibility;
   }
 
@@ -112,7 +115,7 @@
     word-spacing: inherit;
   }
 
-  /* WebKit â€” page scrollbar matches Obscura canvas */
+  /* WebKit - page scrollbar matches Obscura canvas (desktop) */
   html::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -135,13 +138,32 @@
     background: var(--kc-canvas);
   }
 
-  /* Subtle film grain â€” Obscura atmosphere */
+  /* Mobile - hide all scrollbars; scrolling still works */
+  @media (max-width: 1023px) {
+    html,
+    body,
+    * {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    /* Do not use *::-webkit-scrollbar — Tailwind expands * to ::before/::after
+       and produces invalid *::before::-webkit-scrollbar selectors. */
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+  }
+
+  /* Subtle film grain - Obscura atmosphere (keep below menus/modals) */
   body::before {
     content: "";
     pointer-events: none;
     position: fixed;
     inset: 0;
-    z-index: 9998;
+    z-index: 1;
     opacity: 0.035;
     mix-blend-mode: multiply;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -154,7 +176,7 @@
 
   main {
     margin: 0 !important;
-    /* Do not zero padding — ShellMain needs pb for the mobile bottom nav */
+    /* Do not zero padding - ShellMain needs pb for the mobile bottom nav */
   }
 
   /* Ensure readable text / no iOS input zoom on mobile */
@@ -177,7 +199,7 @@
 
   /* Clearance helpers for fixed mobile bottom nav */
   .kc-mobile-nav-pad {
-    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
   }
 
   @media (min-width: 1024px) {
@@ -187,6 +209,105 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /*
+ Native selects - Obscura hairline, zero radius, canvas blend.
+ Custom chevron so OS chrome doesn’t fight the marketplace look.
+ */
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0;
+    background-color: transparent;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230a0a0a' stroke-opacity='0.4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 0.95rem;
+    border: 1px solid rgba(10, 10, 10, 0.12);
+    color: var(--kc-ink);
+    cursor: pointer;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    font-size: 14px;
+    line-height: 1.4;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  select:hover {
+    border-color: rgba(10, 10, 10, 0.28);
+  }
+
+  select:focus,
+  select:focus-visible {
+    border-color: rgba(10, 10, 10, 0.45);
+    outline: none;
+    box-shadow: none;
+  }
+
+  select:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  select option,
+  select optgroup {
+    background-color: var(--kc-canvas);
+    color: var(--kc-ink);
+  }
+}
+
+@layer components {
+  /* Explicit storefront / form select - same look, slightly denser */
+  .kc-select {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0;
+    background-color: transparent;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230a0a0a' stroke-opacity='0.4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 0.95rem;
+    border: 1px solid rgba(10, 10, 10, 0.12);
+    color: #0a0a0a;
+    cursor: pointer;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    font-size: 14px;
+    line-height: 1.4;
+    transition: border-color 0.15s ease;
+  }
+
+  .kc-select:hover {
+    border-color: rgba(10, 10, 10, 0.28);
+  }
+
+  .kc-select:focus,
+  .kc-select:focus-visible {
+    border-color: rgba(10, 10, 10, 0.45);
+    outline: none;
+    box-shadow: none;
+  }
+
+  .kc-select-sm {
+    padding: 0.55rem 2.25rem 0.55rem 0.9rem;
+    font-size: 13px;
+  }
+
+  /* Underline variant for account / sparse forms */
+  .kc-select-line {
+    border: none;
+    border-bottom: 1px solid rgba(10, 10, 10, 0.15);
+    background-color: transparent;
+    background-position: right 0 center;
+    padding: 0.75rem 1.75rem 0.75rem 0;
+    font-size: 15px;
+  }
+
+  .kc-select-line:hover,
+  .kc-select-line:focus,
+  .kc-select-line:focus-visible {
+    border-color: rgba(10, 10, 10, 0.5);
   }
 }
 
@@ -283,7 +404,7 @@
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
-  /* Looser tracking than Tailwind defaults — type was too compressed */
+  /* Looser tracking than Tailwind defaults - type was too compressed */
   --tracking-tighter: -0.01em;
   --tracking-tight: 0.005em;
   --tracking-normal: 0.02em;
@@ -331,30 +452,30 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: #f7f7f5;
+  --foreground: #0a0a0a;
+  --card: #f7f7f5;
+  --card-foreground: #0a0a0a;
+  --popover: #f7f7f5;
+  --popover-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #f7f7f5;
+  --secondary: #ecece8;
+  --secondary-foreground: #0a0a0a;
+  --muted: #ecece8;
+  --muted-foreground: #7a7a7a;
+  --accent: #ebebe8;
+  --accent-foreground: #0a0a0a;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: rgba(10, 10, 10, 0.12);
+  --input: rgba(10, 10, 10, 0.12);
+  --ring: rgba(10, 10, 10, 0.35);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -399,7 +520,6 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-
 /* Marketplace map pins (Mapbox) */
 .kc-map-pin {
   width: 16px;
@@ -430,8 +550,14 @@
   pointer-events: none;
 }
 @keyframes kc-pulse {
-  0% { transform: scale(0.55); opacity: 0.85; }
-  100% { transform: scale(1.85); opacity: 0; }
+  0% {
+    transform: scale(0.55);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
 }
 .kc-map-pin__label {
   position: absolute;
@@ -524,7 +650,7 @@
   opacity: 0.5;
 }
 
-/* ─── Google Maps–style Mapbox shell ─── */
+/* ─── Google Maps-style Mapbox shell ─── */
 .gmap-shell {
   position: relative;
   width: 100%;

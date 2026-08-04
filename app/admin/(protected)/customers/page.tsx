@@ -9,7 +9,13 @@ export default async function AdminCustomersPage() {
 
   const byEmail = new Map<
     string,
-    { name: string; email: string; phone: string; orders: number; lastAt: string }
+    {
+      name: string;
+      email: string;
+      phone: string;
+      orders: number;
+      lastAt: string;
+    }
   >();
 
   for (const o of orders) {
@@ -40,14 +46,17 @@ export default async function AdminCustomersPage() {
           Customers
         </h1>
         <p className="mt-1 text-[13px] text-[var(--kc-mute)]">
-          Shoppers inferred from click &amp; collect orders. Full profiles live under
-          Customer account.
+          Shoppers inferred from click &amp; collect orders. Full profiles live
+          under Customer account.
         </p>
       </div>
 
       <div className="rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white px-4 py-3 text-[13px] text-[var(--kc-mute)]">
         {customers.length} customers ·{" "}
-        <Link href="/account" className="font-medium text-[var(--kc-ink)] underline underline-offset-4">
+        <Link
+          href="/account"
+          className="font-medium text-[var(--kc-ink)] underline underline-offset-4"
+        >
           Open customer account shell
         </Link>
       </div>
@@ -65,11 +74,22 @@ export default async function AdminCustomersPage() {
           </thead>
           <tbody className="divide-y divide-[var(--kc-line-soft)]">
             {customers.map((c) => (
-              <tr key={c.email || c.phone} className="hover:bg-[var(--kc-canvas)]">
-                <td className="px-4 py-3 font-medium text-[var(--kc-ink)]">{c.name}</td>
-                <td className="px-4 py-3 text-[var(--kc-mute)]">{c.email || "—"}</td>
-                <td className="px-4 py-3 text-[var(--kc-mute)]">{c.phone || "—"}</td>
-                <td className="px-4 py-3 tabular-nums text-[var(--kc-ink)]">{c.orders}</td>
+              <tr
+                key={c.email || c.phone}
+                className="hover:bg-[var(--kc-canvas)]"
+              >
+                <td className="px-4 py-3 font-medium text-[var(--kc-ink)]">
+                  {c.name}
+                </td>
+                <td className="px-4 py-3 text-[var(--kc-mute)]">
+                  {c.email || " - "}
+                </td>
+                <td className="px-4 py-3 text-[var(--kc-mute)]">
+                  {c.phone || " - "}
+                </td>
+                <td className="px-4 py-3 tabular-nums text-[var(--kc-ink)]">
+                  {c.orders}
+                </td>
                 <td className="px-4 py-3 text-[var(--kc-faint)]">
                   {new Date(c.lastAt).toLocaleString("en-KE")}
                 </td>

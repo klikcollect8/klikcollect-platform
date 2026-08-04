@@ -48,13 +48,20 @@ async function appendMovement(m: InventoryMovement) {
   });
 }
 
-export async function listMovements(limit = 100): Promise<InventoryMovement[]> {
+export async function listMovements(
+  limit = 100,
+  vendorIds?: string[],
+): Promise<InventoryMovement[]> {
   const sb = getServiceSupabase();
-  const { data, error } = await sb
+  let q = sb
     .from("inventory_movements")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (vendorIds?.length) {
+    q = q.in("vendor_public_id", vendorIds);
+  }
+  const { data, error } = await q;
   if (error) return [];
   return (data || []).map((r) => {
     const meta = (r.meta || {}) as Record<string, unknown>;
@@ -252,6 +259,7 @@ export async function adjustOnHand(input: {
   productId: string;
   onHand: number;
   actorUserId?: string;
+  reason?: string;
 }): Promise<CatalogueProduct | null> {
   const product = await getCatalogueProduct(input.productId);
   if (!product) return null;
@@ -271,7 +279,7 @@ export async function adjustOnHand(input: {
     type: "adjust",
     onHandDelta: onHand - prev,
     reservedDelta: reserved - (product.reserved ?? 0),
-    reason: "Manual on-hand adjustment",
+    reason: input.reason || "Manual on-hand adjustment",
     refType: "manual",
     createdAt: new Date().toISOString(),
     actorUserId: input.actorUserId,

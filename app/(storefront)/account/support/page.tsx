@@ -60,7 +60,7 @@ export default function AccountSupportPage() {
       }
       setSubject("");
       setMessage("");
-      showToast("Message sent — we will reply by email", "success");
+      showToast("Message sent - we will reply by email", "success");
       loadTickets();
     } finally {
       setSubmitting(false);
@@ -74,7 +74,8 @@ export default function AccountSupportPage() {
           Support
         </p>
         <p className="mt-2 text-[14px] leading-relaxed text-black/45">
-          Questions about pickup, payments, or your account? We are here to help.
+          Questions about pickup, payments, or your account? We are here to
+          help.
         </p>
       </div>
 
@@ -141,7 +142,9 @@ export default function AccountSupportPage() {
                 key={t.id}
                 className="border-b border-black/[0.08] py-4 text-left"
               >
-                <p className="text-[15px] font-medium text-black">{t.subject}</p>
+                <p className="text-[15px] font-medium text-black">
+                  {t.subject}
+                </p>
                 <p className="mt-0.5 line-clamp-2 text-[13px] text-black/35">
                   {t.message}
                 </p>

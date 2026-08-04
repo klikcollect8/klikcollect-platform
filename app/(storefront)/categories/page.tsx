@@ -70,7 +70,10 @@ export default function CategoriesPage() {
       {loading ? (
         <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="aspect-[4/3] animate-pulse bg-black/[0.04]" />
+            <div
+              key={i}
+              className="aspect-[4/3] animate-pulse bg-black/[0.04]"
+            />
           ))}
         </div>
       ) : filtered.length === 0 ? (
@@ -100,9 +103,13 @@ export default function CategoriesPage() {
                   </span>
                 )}
               </div>
-              <h2 className="text-[17px] font-medium tracking-tight">{cat.name}</h2>
+              <h2 className="text-[17px] font-medium tracking-tight">
+                {cat.name}
+              </h2>
               {cat.productCount != null ? (
-                <p className="mt-1 text-[13px] text-black/40">{cat.productCount} items</p>
+                <p className="mt-1 text-[13px] text-black/40">
+                  {cat.productCount} items
+                </p>
               ) : null}
             </Link>
           ))}

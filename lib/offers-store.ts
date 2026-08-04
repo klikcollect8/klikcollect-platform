@@ -1,5 +1,5 @@
 /**
- * Product offers — Supabase-backed.
+ * Product offers - Supabase-backed.
  */
 import type { ProductOffer } from "@/types";
 import {
@@ -18,7 +18,9 @@ function normalise(o: ProductOffer): ProductOffer {
     reserved,
     stock: Math.max(0, onHand - reserved),
     moneyMinor:
-      typeof o.moneyMinor === "number" ? o.moneyMinor : majorToMinor(o.price || 0),
+      typeof o.moneyMinor === "number"
+        ? o.moneyMinor
+        : majorToMinor(o.price || 0),
     barcode: o.barcode || o.gtin,
     gtin: o.gtin || o.barcode,
   };
@@ -51,7 +53,7 @@ export async function getOfferById(id: string): Promise<ProductOffer | null> {
 
 export async function saveOffers(_offers: ProductOffer[]): Promise<void> {
   throw new Error(
-    "saveOffers is retired — mutate offers via Supabase admin / seed script",
+    "saveOffers is retired - mutate offers via Supabase admin / seed script",
   );
 }
 

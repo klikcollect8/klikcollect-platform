@@ -1,5 +1,5 @@
 /**
- * KlikCollect Clerk chrome — marketplace canvas.
+ * KlikCollect Clerk chrome - marketplace canvas.
  * Clerk Next.js v7: structural prefs live under `options`.
  */
 const ink = "#0a0a0a";
@@ -21,7 +21,8 @@ export const clerkAppearance = {
     colorBorder: "rgba(10, 10, 10, 0.15)",
     colorMutedForeground: "rgba(10, 10, 10, 0.38)",
     borderRadius: "0px",
-    fontFamily: "var(--font-sans), 'Plus Jakarta Sans', ui-sans-serif, sans-serif",
+    fontFamily:
+      "var(--font-sans), 'Plus Jakarta Sans', ui-sans-serif, sans-serif",
     fontFamilyButtons:
       "var(--font-sans), 'Plus Jakarta Sans', ui-sans-serif, sans-serif",
     fontSize: "15px",
@@ -44,7 +45,7 @@ export const clerkAppearance = {
     logoBox: "!hidden",
     logoImage: "!hidden",
 
-    /* Three equal icon buttons in one row — no provider labels */
+    /* Three equal icon buttons in one row - no provider labels */
     socialButtonsRoot: "!w-full",
     socialButtons:
       "!flex !w-full !flex-row !items-stretch !justify-between !gap-3",

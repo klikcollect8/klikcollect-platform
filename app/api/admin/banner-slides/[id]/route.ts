@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { requireAdmin, handleRequireAdminError } from "@/lib/auth/require-admin";
+import {
+  requireAdmin,
+  handleRequireAdminError,
+} from "@/lib/auth/require-admin";
 
 function mapSlide(data: Record<string, unknown>) {
   return {
@@ -22,7 +25,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAdmin(["head_admin", "admin", "editor"]);
+    await requireAdmin([
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+    ]);
     const { id } = await params;
     const supabase = createAdminClient() || (await createClient());
 
@@ -33,7 +40,10 @@ export async function GET(
       .single();
 
     if (error || !data) {
-      return NextResponse.json({ error: "Banner slide not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Banner slide not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json(mapSlide(data as Record<string, unknown>));
@@ -47,11 +57,18 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAdmin(["head_admin", "admin", "editor"]);
+    await requireAdmin([
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+    ]);
     const { id: slideId } = await params;
 
     if (!slideId || slideId === "undefined" || slideId === "null") {
-      return NextResponse.json({ error: "Invalid slide ID provided" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid slide ID provided" },
+        { status: 400 },
+      );
     }
 
     const body = await request.json();
@@ -62,12 +79,17 @@ export async function PATCH(
     if (body.eyebrow !== undefined) updateData.eyebrow = body.eyebrow;
     if (body.ctaText !== undefined) updateData.cta_label = body.ctaText;
     if (body.ctaLink !== undefined) updateData.cta_href = body.ctaLink;
-    if (body.imageUrl !== undefined) updateData.image_url = body.imageUrl || null;
+    if (body.imageUrl !== undefined)
+      updateData.image_url = body.imageUrl || null;
     if (body.enabled !== undefined) updateData.is_active = body.enabled;
-    if (body.displayOrder !== undefined) updateData.sort_order = body.displayOrder;
+    if (body.displayOrder !== undefined)
+      updateData.sort_order = body.displayOrder;
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No fields to update" },
+        { status: 400 },
+      );
     }
 
     const supabase = createAdminClient() || (await createClient());
@@ -100,11 +122,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAdmin(["head_admin", "admin", "editor"]);
+    await requireAdmin([
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+    ]);
     const { id } = await params;
     const supabase = createAdminClient() || (await createClient());
 
-    const { error } = await supabase.from("banner_slides").delete().eq("id", id);
+    const { error } = await supabase
+      .from("banner_slides")
+      .delete()
+      .eq("id", id);
     if (error) {
       throw new Error(`Failed to delete banner slide: ${error.message}`);
     }

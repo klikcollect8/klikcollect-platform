@@ -9,6 +9,7 @@ import { CartItem, Product } from "@/types";
 import { formatPrice } from "@/lib/currency";
 import { resolveProductImage } from "@/lib/product-image";
 import { V1_CATEGORIES } from "@/lib/curation-policy";
+import { useIsClient } from "@/lib/hooks/useIsClient";
 
 interface CartProps {
   items: CartItem[];
@@ -28,7 +29,7 @@ export default function Cart({
   onClose,
 }: CartProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
 
   const linePrice = (item: CartItem) =>
     item.offerPrice ?? item.product.price ?? 0;
@@ -38,10 +39,6 @@ export default function Cart({
     0,
   );
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
@@ -140,7 +137,10 @@ export default function Cart({
                         <span className="text-[16px] font-medium tracking-tight text-black">
                           {link.label}
                         </span>
-                        <ArrowRight className="h-4 w-4 text-black/20" strokeWidth={1.5} />
+                        <ArrowRight
+                          className="h-4 w-4 text-black/20"
+                          strokeWidth={1.5}
+                        />
                       </Link>
                     </li>
                   ))}
@@ -171,7 +171,10 @@ export default function Cart({
                         <span className="text-[15px] tracking-tight text-black/75">
                           {cat}
                         </span>
-                        <ArrowRight className="h-4 w-4 text-black/20" strokeWidth={1.5} />
+                        <ArrowRight
+                          className="h-4 w-4 text-black/20"
+                          strokeWidth={1.5}
+                        />
                       </Link>
                     </li>
                   ))}
@@ -184,7 +187,9 @@ export default function Cart({
                 .filter((item) => item.product)
                 .map((item) => {
                   const href = `/products/${item.product.id}${
-                    item.offerId ? `?offer=${encodeURIComponent(item.offerId)}` : ""
+                    item.offerId
+                      ? `?offer=${encodeURIComponent(item.offerId)}`
+                      : ""
                   }`;
                   return (
                     <article
@@ -217,7 +222,7 @@ export default function Cart({
                             </Link>
                             <p className="mt-1.5 text-[12px] text-black/40">
                               {item.product.category}
-                              {(item.vendorName || item.product.vendorName)
+                              {item.vendorName || item.product.vendorName
                                 ? ` · ${item.vendorName || item.product.vendorName}`
                                 : ""}
                               {" · "}
@@ -248,7 +253,10 @@ export default function Cart({
                               disabled={item.quantity <= 1}
                               aria-label="Decrease quantity"
                             >
-                              <Minus className="h-3.5 w-3.5" strokeWidth={1.75} />
+                              <Minus
+                                className="h-3.5 w-3.5"
+                                strokeWidth={1.75}
+                              />
                             </button>
                             <span className="min-w-[2rem] text-center text-[14px] font-medium tabular-nums">
                               {item.quantity}
@@ -256,12 +264,18 @@ export default function Cart({
                             <button
                               type="button"
                               onClick={() =>
-                                onUpdateQuantity(lineId(item), item.quantity + 1)
+                                onUpdateQuantity(
+                                  lineId(item),
+                                  item.quantity + 1,
+                                )
                               }
                               className="flex h-11 w-11 items-center justify-center text-black/45 transition-colors hover:text-black"
                               aria-label="Increase quantity"
                             >
-                              <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+                              <Plus
+                                className="h-3.5 w-3.5"
+                                strokeWidth={1.75}
+                              />
                             </button>
                           </div>
 
@@ -284,7 +298,9 @@ export default function Cart({
         {items.length > 0 ? (
           <footer
             className={`shrink-0 border-t border-black/10 bg-transparent pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 transition-all duration-500 ease-out sm:pt-6 ${
-              isVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+              isVisible
+                ? "translate-y-0 opacity-100"
+                : "translate-y-2 opacity-0"
             }`}
           >
             <div className="mb-5 flex items-end justify-between gap-4">

@@ -1,8 +1,11 @@
 import { sbListCategories } from "@/lib/supabase-catalogue";
 import { V1_CATEGORIES } from "@/lib/curation-policy";
 
-let cache: { at: number; map: Record<string, string>; cards: Array<{ name: string; image?: string; href: string }> } | null =
-  null;
+let cache: {
+  at: number;
+  map: Record<string, string>;
+  cards: Array<{ name: string; image?: string; href: string }>;
+} | null = null;
 const TTL_MS = 60_000;
 
 async function load() {
@@ -13,13 +16,13 @@ async function load() {
     for (const c of cats) {
       if (c.image) map[c.name] = c.image;
     }
-    const cards = (cats.length ? cats.map((c) => c.name) : [...V1_CATEGORIES]).map(
-      (name) => ({
-        name,
-        image: map[name],
-        href: `/shop?category=${encodeURIComponent(name)}`,
-      }),
-    );
+    const cards = (
+      cats.length ? cats.map((c) => c.name) : [...V1_CATEGORIES]
+    ).map((name) => ({
+      name,
+      image: map[name],
+      href: `/shop?category=${encodeURIComponent(name)}`,
+    }));
     cache = { at: Date.now(), map, cards };
     return cache;
   } catch {
@@ -33,7 +36,7 @@ async function load() {
   }
 }
 
-/** Sync helper for client components — prefer async getCategoryImage when possible. */
+/** Sync helper for client components - prefer async getCategoryImage when possible. */
 export function categoryImage(name: string): string | undefined {
   if (cache?.map[name]) return cache.map[name];
   const match = cache
@@ -60,7 +63,7 @@ export async function getCategoryCards() {
   return data.cards;
 }
 
-/** @deprecated Prefer getCategoryCards() — kept for sync SSR fallbacks */
+/** @deprecated Prefer getCategoryCards() - kept for sync SSR fallbacks */
 export const CATEGORY_CARDS = V1_CATEGORIES.map((name) => ({
   name,
   image: undefined as string | undefined,

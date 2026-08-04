@@ -28,7 +28,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "KlikCollect — Groceries & everyday essentials",
+    default: "KlikCollect - Groceries & everyday essentials",
     template: "%s · KlikCollect",
   },
   description:
@@ -63,7 +63,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-KE" className={cn(jakarta.variable)} suppressHydrationWarning>
+    <html
+      lang="en-KE"
+      className={cn(jakarta.variable)}
+      suppressHydrationWarning
+    >
       <body className={cn("antialiased", jakarta.className)}>
         <ClerkProvider appearance={clerkAppearance}>
           <PostHogProvider>

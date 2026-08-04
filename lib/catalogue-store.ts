@@ -1,5 +1,5 @@
 /**
- * Vendor OS catalogue — flattened offer rows from Supabase.
+ * Vendor OS catalogue - flattened offer rows from Supabase.
  */
 import { getServiceSupabase } from "@/lib/supabase/admin";
 import { minorToMajor } from "@/lib/money";
@@ -45,13 +45,15 @@ export async function listCatalogue(
 
   return (data || []).map((row) => {
     const product = (row as { products: Record<string, unknown> }).products;
-    const vendor = (row as {
-      vendors: {
-        public_id: string;
-        name: string;
-        neighbourhood?: string | null;
-      };
-    }).vendors;
+    const vendor = (
+      row as {
+        vendors: {
+          public_id: string;
+          name: string;
+          neighbourhood?: string | null;
+        };
+      }
+    ).vendors;
     const cat =
       (product as { categories?: { name?: string } }).categories?.name || "";
     const onHand = Number(row.on_hand || 0);
@@ -62,9 +64,13 @@ export async function listCatalogue(
       id: String(row.public_id),
       name: String(product.name),
       description: String(product.description || ""),
-      longDescription: String(product.long_description || product.description || ""),
+      longDescription: String(
+        product.long_description || product.description || "",
+      ),
       image,
-      images: Array.isArray(product.images) ? (product.images as string[]) : [image],
+      images: Array.isArray(product.images)
+        ? (product.images as string[])
+        : [image],
       category: cat,
       status: "published" as const,
       vendorId: vendor.public_id,
@@ -92,7 +98,7 @@ export async function getCatalogueProduct(
 }
 
 export async function saveCatalogue(_products: CatalogueProduct[]) {
-  // Writes go through product_offers APIs — no-op for compatibility
+  // Writes go through product_offers APIs - no-op for compatibility
 }
 
 export async function mutateCatalogueProduct(

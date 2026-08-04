@@ -12,7 +12,7 @@ async function ensureDir() {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
   } catch {
-    /* serverless may not allow mkdir — ignore */
+    /* serverless may not allow mkdir - ignore */
   }
 }
 
@@ -24,13 +24,18 @@ export type UsageEvent = {
   createdAt: string;
 };
 
-function mapApplication(row: {
+type ApplicationRow = {
   public_id: string;
   status: string;
   payload: Record<string, unknown> | null;
   pitch?: string | null;
   created_at: string;
-}): CurationApplication {
+  clerk_user_id?: string | null;
+  edit_count?: number | null;
+  updated_at?: string | null;
+};
+
+function mapApplication(row: ApplicationRow): CurationApplication {
   const p = row.payload || {};
   const status =
     row.status === "admitted" || row.status === "rejected"
@@ -38,6 +43,12 @@ function mapApplication(row: {
       : row.status === "decided"
         ? "admitted"
         : "pending";
+  const editCount =
+    typeof row.edit_count === "number"
+      ? row.edit_count
+      : typeof p.editCount === "number"
+        ? p.editCount
+        : 0;
   return {
     id: row.public_id,
     businessName: String(p.businessName || row.public_id),
@@ -50,9 +61,33 @@ function mapApplication(row: {
       : row.pitch
         ? String(row.pitch)
         : undefined,
+    details:
+      p.details && typeof p.details === "object"
+        ? (p.details as CurationApplication["details"])
+        : undefined,
+    clerkUserId:
+      row.clerk_user_id ||
+      (typeof p.clerkUserId === "string" ? p.clerkUserId : undefined),
+    editCount,
+    updatedAt: row.updated_at || undefined,
     status,
     createdAt: row.created_at,
     decision: p.decision as CurationApplication["decision"],
+  };
+}
+
+function appPayload(app: CurationApplication) {
+  return {
+    businessName: app.businessName,
+    neighbourhood: app.neighbourhood,
+    contactEmail: app.contactEmail,
+    contactPhone: app.contactPhone,
+    categories: app.categories,
+    notes: app.notes,
+    details: app.details,
+    decision: app.decision,
+    clerkUserId: app.clerkUserId,
+    editCount: app.editCount,
   };
 }
 
@@ -60,20 +95,110 @@ export async function listApplications(): Promise<CurationApplication[]> {
   const sb = getServiceSupabase();
   const { data, error } = await sb
     .from("curation_applications")
-    .select("public_id, status, payload, pitch, created_at")
+    .select(
+      "public_id, status, payload, pitch, created_at, clerk_user_id, edit_count, updated_at",
+    )
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data || []).map((row) =>
-    mapApplication(row as Parameters<typeof mapApplication>[0]),
-  );
+  return (data || []).map((row) => mapApplication(row as ApplicationRow));
 }
 
-export async function saveApplications(apps: CurationApplication[]): Promise<void> {
+export async function listApplicationsForUser(
+  clerkUserId: string,
+): Promise<CurationApplication[]> {
+  const sb = getServiceSupabase();
+  const { data, error } = await sb
+    .from("curation_applications")
+    .select(
+      "public_id, status, payload, pitch, created_at, clerk_user_id, edit_count, updated_at",
+    )
+    .eq("clerk_user_id", clerkUserId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row) => mapApplication(row as ApplicationRow));
+}
+
+export async function getApplicationById(
+  publicId: string,
+): Promise<CurationApplication | null> {
+  const sb = getServiceSupabase();
+  const { data, error } = await sb
+    .from("curation_applications")
+    .select(
+      "public_id, status, payload, pitch, created_at, clerk_user_id, edit_count, updated_at",
+    )
+    .eq("public_id", publicId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapApplication(data as ApplicationRow) : null;
+}
+
+export async function insertApplication(
+  app: CurationApplication,
+): Promise<CurationApplication> {
+  const sb = getServiceSupabase();
+  const status =
+    app.status === "admitted" || app.status === "rejected"
+      ? app.status
+      : "pending";
+  const { data, error } = await sb
+    .from("curation_applications")
+    .insert({
+      public_id: app.id,
+      status,
+      pitch: app.notes || app.businessName,
+      payload: appPayload(app),
+      clerk_user_id: app.clerkUserId || null,
+      edit_count: app.editCount || 0,
+      created_at: app.createdAt,
+      updated_at: app.updatedAt || app.createdAt,
+    })
+    .select(
+      "public_id, status, payload, pitch, created_at, clerk_user_id, edit_count, updated_at",
+    )
+    .single();
+  if (error) throw error;
+  return mapApplication(data as ApplicationRow);
+}
+
+export async function updateApplication(
+  app: CurationApplication,
+): Promise<CurationApplication> {
+  const sb = getServiceSupabase();
+  const status =
+    app.status === "admitted" || app.status === "rejected"
+      ? app.status
+      : "pending";
+  const updatedAt = app.updatedAt || new Date().toISOString();
+  const { data, error } = await sb
+    .from("curation_applications")
+    .update({
+      status,
+      pitch: app.notes || app.businessName,
+      payload: appPayload(app),
+      clerk_user_id: app.clerkUserId || null,
+      edit_count: app.editCount,
+      updated_at: updatedAt,
+    })
+    .eq("public_id", app.id)
+    .select(
+      "public_id, status, payload, pitch, created_at, clerk_user_id, edit_count, updated_at",
+    )
+    .single();
+  if (error) throw error;
+  return mapApplication(data as ApplicationRow);
+}
+
+export async function saveApplications(
+  apps: CurationApplication[],
+): Promise<void> {
   const sb = getServiceSupabase();
   const { data: existing } = await sb
     .from("curation_applications")
     .select("public_id");
-  const existingIds = new Set((existing || []).map((r) => r.public_id as string));
+  const existingIds = new Set(
+    (existing || []).map((r) => r.public_id as string),
+  );
   const nextIds = new Set(apps.map((a) => a.id));
 
   for (const id of existingIds) {
@@ -87,22 +212,16 @@ export async function saveApplications(apps: CurationApplication[]): Promise<voi
       app.status === "admitted" || app.status === "rejected"
         ? app.status
         : "pending";
-    const payload = {
-      businessName: app.businessName,
-      neighbourhood: app.neighbourhood,
-      contactEmail: app.contactEmail,
-      contactPhone: app.contactPhone,
-      categories: app.categories,
-      notes: app.notes,
-      decision: app.decision,
-    };
     await sb.from("curation_applications").upsert(
       {
         public_id: app.id,
         status,
         pitch: app.notes || app.businessName,
-        payload,
+        payload: appPayload(app),
+        clerk_user_id: app.clerkUserId || null,
+        edit_count: app.editCount || 0,
         created_at: app.createdAt,
+        updated_at: app.updatedAt || app.createdAt,
       },
       { onConflict: "public_id" },
     );

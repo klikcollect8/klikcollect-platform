@@ -37,7 +37,8 @@ export async function requireClerkUser(): Promise<ClerkActor | null> {
     return {
       userId: session.userId,
       user,
-      email: (user ? clerkEmail(user) : null) || claimEmail(session.sessionClaims),
+      email:
+        (user ? clerkEmail(user) : null) || claimEmail(session.sessionClaims),
     };
   } catch {
     return null;

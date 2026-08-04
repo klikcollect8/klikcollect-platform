@@ -6,7 +6,11 @@ import { promises as fs } from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
 import { V1_CATEGORIES } from "../lib/curation-policy";
-import { FOUNDING_VENDORS, vendorForCategory } from "../lib/founding-vendors";
+import {
+  FOUNDING_VENDORS,
+  foundingVendorStores,
+  vendorForCategory,
+} from "../lib/founding-vendors";
 import { majorToMinor } from "../lib/money";
 import { HERO_COPY, HERO_SEED_FILES } from "../lib/hero-assets";
 import catalogue from "./seed-catalogue.json";
@@ -95,7 +99,7 @@ function requireEnv(name: string): string {
   return v;
 }
 
-/** Images already live in Supabase Storage — seed rows point at public URLs. */
+/** Images already live in Supabase Storage - seed rows point at public URLs. */
 function publicObjectUrl(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sb: any,
@@ -119,6 +123,7 @@ async function main() {
   await sb.from("product_offers").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("product_variants").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await sb.from("store_hours").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("stores").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("curation_decisions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("curation_applications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
@@ -186,22 +191,53 @@ async function main() {
     if (error) throw error;
     vendorUuidByPublicId.set(v.id, vendor.id);
 
-    const { data: store, error: sErr } = await sb
-      .from("stores")
-      .insert({
-        public_id: `sto_${v.slug}`,
-        vendor_id: vendor.id,
-        name: `${v.name} pickup`,
-        neighbourhood: v.neighbourhood,
-        address_text: v.address,
-        lat: v.lat,
-        lng: v.lng,
-        is_primary: true,
-      })
-      .select("id")
-      .single();
-    if (sErr) throw sErr;
-    storeUuidByVendorPublicId.set(v.id, store.id);
+    const storeDefs = foundingVendorStores(v);
+    for (const sto of storeDefs) {
+      const { data: store, error: sErr } = await sb
+        .from("stores")
+        .insert({
+          public_id: sto.publicId,
+          vendor_id: vendor.id,
+          name: sto.name,
+          neighbourhood: sto.neighbourhood,
+          address_text: sto.address,
+          lat: sto.lat,
+          lng: sto.lng,
+          phone: sto.phone,
+          is_primary: sto.isPrimary,
+        })
+        .select("id")
+        .single();
+      if (sErr) throw sErr;
+      if (sto.isPrimary) {
+        storeUuidByVendorPublicId.set(v.id, store.id);
+      }
+
+      // Per-branch hours (Sun closed; Sat shorter for satellite desks)
+      const hourRows = [0, 1, 2, 3, 4, 5, 6].map((day) => {
+        const isSunday = day === 0;
+        const isSaturday = day === 6;
+        const satellite = !sto.isPrimary;
+        return {
+          store_public_id: sto.publicId,
+          vendor_public_id: v.id,
+          day_of_week: day,
+          open_time: isSunday ? null : satellite && isSaturday ? "10:00" : "09:00",
+          close_time: isSunday
+            ? null
+            : satellite
+              ? isSaturday
+                ? "16:00"
+                : "17:30"
+              : isSaturday
+                ? "17:00"
+                : "18:00",
+          is_closed: isSunday,
+        };
+      });
+      const { error: hErr } = await sb.from("store_hours").insert(hourRows);
+      if (hErr) throw hErr;
+    }
 
     await sb.from("curation_applications").insert({
       public_id: `cap_${v.slug}`,

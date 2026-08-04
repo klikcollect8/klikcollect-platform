@@ -3,7 +3,12 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { FulfilmentMethod, Product, ProductOffer, ProductVariation } from "@/types";
+import {
+  FulfilmentMethod,
+  Product,
+  ProductOffer,
+  ProductVariation,
+} from "@/types";
 import { ChevronDown, Minus, Plus } from "lucide-react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import RelatedProducts from "@/components/RelatedProducts";
@@ -34,7 +39,9 @@ function ProductPageInner() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("details");
-  const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
+  const [selectedVariations, setSelectedVariations] = useState<
+    Record<string, string>
+  >({});
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [fulfilment, setFulfilment] = useState<FulfilmentMethod>("pickup");
   const [moreVendorsOpen, setMoreVendorsOpen] = useState(false);
@@ -62,7 +69,9 @@ function ProductPageInner() {
           return;
         }
         setProduct(data);
-        const list: ProductOffer[] = Array.isArray(data.offers) ? data.offers : [];
+        const list: ProductOffer[] = Array.isArray(data.offers)
+          ? data.offers
+          : [];
         setOffers(list);
         if (prefillOffer && list.some((o) => o.id === prefillOffer)) {
           setSelectedOfferId(prefillOffer);
@@ -117,11 +126,17 @@ function ProductPageInner() {
       localStorage.setItem(
         "recentlyViewed",
         JSON.stringify(
-          [product, ...recent.filter((p: Product) => p.id !== product.id)].slice(0, 5),
+          [
+            product,
+            ...recent.filter((p: Product) => p.id !== product.id),
+          ].slice(0, 5),
         ),
       );
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "Failed to add", "error");
+      showToast(
+        error instanceof Error ? error.message : "Failed to add",
+        "error",
+      );
     } finally {
       setIsAddingToCart(false);
     }
@@ -139,7 +154,10 @@ function ProductPageInner() {
 
   const { visibleOffers, hiddenOffers } = useMemo(() => {
     if (availableOffers.length <= 2) {
-      return { visibleOffers: availableOffers, hiddenOffers: [] as ProductOffer[] };
+      return {
+        visibleOffers: availableOffers,
+        hiddenOffers: [] as ProductOffer[],
+      };
     }
     const top = availableOffers.slice(0, 2);
     if (!selectedOfferId || top.some((o) => o.id === selectedOfferId)) {
@@ -158,7 +176,9 @@ function ProductPageInner() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-black/40">Connecting</p>
+        <p className="text-[11px] uppercase tracking-[0.28em] text-black/40">
+          Connecting
+        </p>
       </div>
     );
   }
@@ -183,7 +203,9 @@ function ProductPageInner() {
   const reviewCount = product.reviewCount || 0;
   const productImages = Array.isArray(product.images) ? product.images : [];
   const mainImage =
-    product.image && typeof product.image === "string" && product.image.trim() !== ""
+    product.image &&
+    typeof product.image === "string" &&
+    product.image.trim() !== ""
       ? product.image
       : null;
   const images = [...productImages, mainImage].filter(
@@ -238,7 +260,7 @@ function ProductPageInner() {
               </button>
             ) : null}
 
-            {/* How you get it — choose before buying */}
+            {/* How you get it - choose before buying */}
             <section className="mt-10">
               <h2 className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
                 How you get it
@@ -262,7 +284,9 @@ function ProductPageInner() {
                   </span>
                   <span
                     className={`mt-1 block text-[12px] ${
-                      fulfilment === "pickup" ? "text-white/65" : "text-black/35"
+                      fulfilment === "pickup"
+                        ? "text-white/65"
+                        : "text-black/35"
                     }`}
                   >
                     Pick up at the store
@@ -282,7 +306,9 @@ function ProductPageInner() {
                   </span>
                   <span
                     className={`mt-1 block text-[12px] ${
-                      fulfilment === "delivery" ? "text-white/65" : "text-black/35"
+                      fulfilment === "delivery"
+                        ? "text-white/65"
+                        : "text-black/35"
                     }`}
                   >
                     Fee at checkout
@@ -291,7 +317,7 @@ function ProductPageInner() {
               </div>
             </section>
 
-            {/* Vendors — 2 shown, rest in dropdown */}
+            {/* Vendors - 2 shown, rest in dropdown */}
             <section className="mt-10" id="product-vendors">
               <div className="mb-3 flex items-end justify-between gap-4">
                 <h2 className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
@@ -320,7 +346,9 @@ function ProductPageInner() {
                               setMoreVendorsOpen(false);
                             }}
                             className={`flex w-full items-center justify-between gap-4 border-b border-black/[0.06] py-4 text-left transition-colors ${
-                              active ? "opacity-100" : "opacity-70 hover:opacity-100"
+                              active
+                                ? "opacity-100"
+                                : "opacity-70 hover:opacity-100"
                             }`}
                           >
                             <span className="min-w-0">
@@ -446,7 +474,9 @@ function ProductPageInner() {
                   </p>
                 </>
               ) : (
-                <p className="text-[15px] text-black/45">Select a vendor to see price</p>
+                <p className="text-[15px] text-black/45">
+                  Select a vendor to see price
+                </p>
               )}
             </div>
 
@@ -456,7 +486,9 @@ function ProductPageInner() {
                   <div key={variation.name}>
                     <div className="mb-3 flex items-center justify-between">
                       <p className="text-[13px] text-black/50">
-                        <span className="font-medium text-black">{variation.name}</span>
+                        <span className="font-medium text-black">
+                          {variation.name}
+                        </span>
                         {" · "}
                         {selectedVariations[variation.name]}
                       </p>
@@ -466,7 +498,8 @@ function ProductPageInner() {
                     </div>
                     <div className="flex flex-wrap gap-x-2 gap-y-1">
                       {variation.options.map((option) => {
-                        const on = selectedVariations[variation.name] === option;
+                        const on =
+                          selectedVariations[variation.name] === option;
                         return (
                           <button
                             key={option}
@@ -547,7 +580,9 @@ function ProductPageInner() {
               </div>
             ) : selectedOffer ? (
               <div className="mt-8 space-y-5">
-                <p className="text-[14px] text-black/45">Out of stock with this vendor</p>
+                <p className="text-[14px] text-black/45">
+                  Out of stock with this vendor
+                </p>
                 <WishlistButton product={product} showToast={showToast} />
               </div>
             ) : (
@@ -569,7 +604,7 @@ function ProductPageInner() {
           </div>
         </div>
 
-        {/* Mobile sticky buy bar — sits above bottom nav */}
+        {/* Mobile sticky buy bar - sits above bottom nav */}
         {selectedOffer && stock > 0 ? (
           <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[85] border-t border-black/10 bg-[#f7f7f5]/95 px-4 py-3 backdrop-blur-md sm:hidden">
             <div className="mx-auto grid max-w-[1600px] grid-cols-2 gap-2">
@@ -687,14 +722,14 @@ function ProductPageInner() {
                           },
                           {
                             label: "Fulfilment",
-                            value: fulfilment === "delivery"
-                              ? "Delivery"
-                              : "Click & collect",
+                            value:
+                              fulfilment === "delivery"
+                                ? "Delivery"
+                                : "Click & collect",
                           },
                           {
                             label: "Area",
-                            value:
-                              selectedOffer.neighbourhood || "Nairobi",
+                            value: selectedOffer.neighbourhood || "Nairobi",
                           },
                           ...(selectedOffer.address
                             ? [
@@ -746,7 +781,10 @@ function ProductPageInner() {
                             {selectedOffer.vendorName}
                           </p>
                           <p className="mt-2 text-[14px] leading-relaxed text-black/50">
-                            {[selectedOffer.address, selectedOffer.neighbourhood]
+                            {[
+                              selectedOffer.address,
+                              selectedOffer.neighbourhood,
+                            ]
                               .filter(Boolean)
                               .join(" · ") || "Nairobi pickup"}
                           </p>
@@ -810,7 +848,10 @@ function ProductPageInner() {
 
         {/* Related */}
         <div className="mt-24 lg:mt-32">
-          <RelatedProducts currentProductId={product.id} category={product.category} />
+          <RelatedProducts
+            currentProductId={product.id}
+            category={product.category}
+          />
         </div>
       </div>
     </div>
@@ -822,7 +863,9 @@ export default function ProductPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-black/40">Connecting</p>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-black/40">
+            Connecting
+          </p>
         </div>
       }
     >

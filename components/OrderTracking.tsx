@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Search } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function OrderTracking() {
-  const [orderNumber, setOrderNumber] = useState('');
+  const [orderNumber, setOrderNumber] = useState("");
   const router = useRouter();
 
   const handleTrack = (e: React.FormEvent) => {
@@ -34,4 +34,3 @@ export default function OrderTracking() {
     </form>
   );
 }
-

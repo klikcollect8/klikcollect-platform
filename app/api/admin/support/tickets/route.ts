@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, handleRequireAdminError } from "@/lib/auth/require-admin";
+import {
+  requireAdmin,
+  handleRequireAdminError,
+} from "@/lib/auth/require-admin";
 import {
   createSupportTicket,
   listSupportTickets,
@@ -25,7 +28,13 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
     const payload = await request.json();
-    const { subject, body: ticketBody, requesterEmail, orderId, type } = payload as {
+    const {
+      subject,
+      body: ticketBody,
+      requesterEmail,
+      orderId,
+      type,
+    } = payload as {
       subject?: string;
       body?: string;
       requesterEmail?: string;

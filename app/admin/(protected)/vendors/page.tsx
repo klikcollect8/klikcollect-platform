@@ -18,8 +18,8 @@ export default async function AdminVendorsPage() {
             Vendors
           </h1>
           <p className="mt-1 text-[13px] text-[var(--kc-mute)]">
-            Admit or reject applicants with a recorded reason. Full decision UI lives in
-            Commerce OS Curation.
+            Admit or reject applicants with a recorded reason. Full decision UI
+            lives in Commerce OS Curation.
           </p>
         </div>
         <Link
@@ -81,7 +81,9 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white px-4 py-3">
       <p className="text-[12px] text-[var(--kc-faint)]">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--kc-ink)]">{value}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--kc-ink)]">
+        {value}
+      </p>
     </div>
   );
 }

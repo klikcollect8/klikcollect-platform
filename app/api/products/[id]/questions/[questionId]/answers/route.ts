@@ -21,7 +21,10 @@ export async function POST(
       .maybeSingle();
 
     if (fetchError || !question) {
-      return NextResponse.json({ error: "Question not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Question not found" },
+        { status: 404 },
+      );
     }
 
     const newAnswer: ProductAnswer = {
@@ -49,6 +52,9 @@ export async function POST(
 
     return NextResponse.json(newAnswer);
   } catch {
-    return NextResponse.json({ error: "Failed to add answer" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to add answer" },
+      { status: 500 },
+    );
   }
 }

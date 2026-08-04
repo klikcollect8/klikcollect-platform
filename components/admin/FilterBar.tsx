@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { Search } from 'lucide-react';
-import { ReactNode } from 'react';
+import { Search } from "lucide-react";
+import { ReactNode } from "react";
 
 interface FilterBarProps {
   searchPlaceholder?: string;
@@ -13,15 +13,17 @@ interface FilterBarProps {
 }
 
 export default function FilterBar({
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = "Search...",
   searchValue,
   onSearchChange,
   filters,
   actions,
-  className = '',
+  className = "",
 }: FilterBarProps) {
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}>
+    <div
+      className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}
+    >
       <div className="flex flex-col lg:flex-row gap-3">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -39,4 +41,3 @@ export default function FilterBar({
     </div>
   );
 }
-

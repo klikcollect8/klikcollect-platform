@@ -25,7 +25,9 @@ export default function AccountRestrictedPage() {
   if (loading || !userStatus || userStatus === "active") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
-        <p className="text-[12px] uppercase tracking-[0.22em] text-black/40">Loading</p>
+        <p className="text-[12px] uppercase tracking-[0.22em] text-black/40">
+          Loading
+        </p>
       </div>
     );
   }
@@ -62,7 +64,9 @@ export default function AccountRestrictedPage() {
             <Mail className="h-4 w-4 text-black/40" />
             <div>
               <p className="text-[13px] font-medium">Email</p>
-              <p className="text-[13px] text-black/50">support@klikcollect.com</p>
+              <p className="text-[13px] text-black/50">
+                support@klikcollect.com
+              </p>
             </div>
           </div>
         </div>

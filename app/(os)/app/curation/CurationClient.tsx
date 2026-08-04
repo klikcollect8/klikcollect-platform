@@ -19,7 +19,9 @@ export function CurationClient() {
   const [apps, setApps] = useState<CurationApplication[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [criteria, setCriteria] = useState<AdmissionCriterionId[]>([]);
-  const [rejectionClasses, setRejectionClasses] = useState<RejectionClassId[]>([]);
+  const [rejectionClasses, setRejectionClasses] = useState<RejectionClassId[]>(
+    [],
+  );
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -46,7 +48,9 @@ export function CurationClient() {
   async function decide(outcome: "admitted" | "rejected") {
     if (!current) return;
     if (!reason.trim()) {
-      setMessage("Record a reason — decisions must be auditable (who / when / why).");
+      setMessage(
+        "Record a reason - decisions must be auditable (who / when / why).",
+      );
       return;
     }
     if (outcome === "rejected" && rejectionClasses.length === 0) {
@@ -64,7 +68,8 @@ export function CurationClient() {
           outcome,
           reason,
           criteriaChecked: criteria,
-          rejectionClasses: outcome === "rejected" ? rejectionClasses : undefined,
+          rejectionClasses:
+            outcome === "rejected" ? rejectionClasses : undefined,
         }),
       });
       const json = await res.json();
@@ -76,7 +81,11 @@ export function CurationClient() {
       setCriteria([]);
       setRejectionClasses([]);
       await load();
-      setMessage(outcome === "admitted" ? "Vendor admitted." : "Vendor rejected — recorded.");
+      setMessage(
+        outcome === "admitted"
+          ? "Vendor admitted."
+          : "Vendor rejected - recorded.",
+      );
     } finally {
       setBusy(false);
     }
@@ -107,7 +116,9 @@ export function CurationClient() {
                   </span>
                   <StatusBadge status={a.status} />
                 </div>
-                <div className="mt-0.5 text-[12px] text-[var(--kc-faint)]">{a.neighbourhood}</div>
+                <div className="mt-0.5 text-[12px] text-[var(--kc-faint)]">
+                  {a.neighbourhood}
+                </div>
               </button>
             ))}
             {!apps.length ? (
@@ -138,7 +149,9 @@ export function CurationClient() {
                   </p>
                 ) : null}
                 {current.notes ? (
-                  <p className="mt-3 text-sm text-neutral-600">{current.notes}</p>
+                  <p className="mt-3 text-sm text-neutral-600">
+                    {current.notes}
+                  </p>
                 ) : null}
               </div>
 
@@ -157,7 +170,9 @@ export function CurationClient() {
                             type="button"
                             onClick={() =>
                               setCriteria((prev) =>
-                                on ? prev.filter((x) => x !== c.id) : [...prev, c.id],
+                                on
+                                  ? prev.filter((x) => x !== c.id)
+                                  : [...prev, c.id],
                               )
                             }
                             className={`rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
@@ -187,7 +202,9 @@ export function CurationClient() {
                             title={r.nature}
                             onClick={() =>
                               setRejectionClasses((prev) =>
-                                on ? prev.filter((x) => x !== r.id) : [...prev, r.id],
+                                on
+                                  ? prev.filter((x) => x !== r.id)
+                                  : [...prev, r.id],
                               )
                             }
                             className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
@@ -211,7 +228,7 @@ export function CurationClient() {
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       rows={3}
-                      placeholder="Why admit or reject — recorded for audit"
+                      placeholder="Why admit or reject - recorded for audit"
                       className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-900"
                     />
                   </div>
@@ -240,10 +257,15 @@ export function CurationClient() {
                   <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                     Decision recorded
                   </p>
-                  <p className="mt-1 text-lg font-semibold capitalize">{current.status}</p>
-                  <p className="mt-2 text-sm text-neutral-600">{current.decision?.reason}</p>
+                  <p className="mt-1 text-lg font-semibold capitalize">
+                    {current.status}
+                  </p>
+                  <p className="mt-2 text-sm text-neutral-600">
+                    {current.decision?.reason}
+                  </p>
                   <p className="mt-2 text-xs text-neutral-400">
-                    {current.decision?.decidedBy} · {current.decision?.decidedAt}
+                    {current.decision?.decidedBy} ·{" "}
+                    {current.decision?.decidedAt}
                   </p>
                 </div>
               )}
@@ -269,7 +291,9 @@ export function CurationClient() {
                 key={a.id}
                 className="flex flex-wrap items-center gap-2 px-4 py-3 text-[13px] text-[var(--kc-mute)]"
               >
-                <span className="font-medium text-[var(--kc-ink)]">{a.businessName}</span>
+                <span className="font-medium text-[var(--kc-ink)]">
+                  {a.businessName}
+                </span>
                 <StatusBadge status={a.status} />
                 <span className="text-[12px] text-[var(--kc-faint)]">
                   {a.decision?.decidedBy}

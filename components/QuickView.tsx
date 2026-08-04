@@ -11,6 +11,7 @@ import { useUserAuth } from "@/lib/hooks/useUserAuth";
 import { useSignInModal } from "./SignInModalProvider";
 import { useToast } from "./ToastProvider";
 import { resolveProductImage } from "@/lib/product-image";
+import { useIsClient } from "@/lib/hooks/useIsClient";
 
 interface QuickViewProps {
   product: Product;
@@ -23,10 +24,9 @@ export default function QuickView({ product, onClose }: QuickViewProps) {
   const { isSignedIn, loading: authLoading, user } = useUserAuth();
   const { showSignInModal } = useSignInModal();
   const { showToast } = useToast();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
 
   useEffect(() => {
-    setMounted(true);
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "unset";
@@ -57,7 +57,8 @@ export default function QuickView({ product, onClose }: QuickViewProps) {
         showToast("Added to wishlist", "success");
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to update wishlist";
+      const message =
+        error instanceof Error ? error.message : "Failed to update wishlist";
       if (message.includes("signed in") || message.includes("must be signed")) {
         showSignInModal("Please sign in to add items to your wishlist");
       } else {

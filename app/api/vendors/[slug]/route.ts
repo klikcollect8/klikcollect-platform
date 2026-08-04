@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getAdmittedVendorBySlug,
-  getVendorProducts,
-} from "@/lib/admitted-vendors";
+import { getVendorStorefrontBundle } from "@/lib/vendor-storefront";
 
-/** Public vendor storefront payload — admitted vendors only */
+/** Public vendor storefront payload - admitted vendors only */
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await context.params;
-    const vendor = await getAdmittedVendorBySlug(slug);
-    if (!vendor) {
+    const bundle = await getVendorStorefrontBundle(slug);
+    if (!bundle) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Vendor not found" } },
         { status: 404 },
       );
     }
-    const products = await getVendorProducts(vendor);
-    return NextResponse.json({ data: { vendor, products } });
+    return NextResponse.json({ data: bundle });
   } catch (error) {
     console.error("GET /api/vendors/[slug]", error);
     return NextResponse.json(

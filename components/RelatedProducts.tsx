@@ -24,7 +24,10 @@ export default function RelatedProducts({
         if (!Array.isArray(data)) return;
         setRelatedProducts(
           data
-            .filter((p: Product) => p.id !== currentProductId && p.category === category)
+            .filter(
+              (p: Product) =>
+                p.id !== currentProductId && p.category === category,
+            )
             .slice(0, 8),
         );
       })
@@ -48,7 +51,11 @@ export default function RelatedProducts({
       </div>
       <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 lg:grid-cols-4 xl:gap-x-8 xl:gap-y-12">
         {relatedProducts.map((product) => (
-          <Link key={product.id} href={`/products/${product.id}`} className="group min-w-0">
+          <Link
+            key={product.id}
+            href={`/products/${product.id}`}
+            className="group min-w-0"
+          >
             <div className="relative aspect-square overflow-hidden bg-black/[0.02]">
               <Image
                 src={resolveProductImage(product.image)}
@@ -61,7 +68,9 @@ export default function RelatedProducts({
             <h3 className="mt-3 truncate text-[14px] font-medium tracking-tight">
               {product.name}
             </h3>
-            <p className="mt-0.5 truncate text-[12px] text-black/40">{product.category}</p>
+            <p className="mt-0.5 truncate text-[12px] text-black/40">
+              {product.category}
+            </p>
           </Link>
         ))}
       </div>

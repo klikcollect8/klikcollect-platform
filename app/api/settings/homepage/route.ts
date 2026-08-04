@@ -33,13 +33,19 @@ const DEFAULT_SETTINGS = {
   ],
 };
 
-function mapSettings(row: {
-  settings?: Record<string, unknown> | null;
-} | null) {
+function mapSettings(
+  row: {
+    settings?: Record<string, unknown> | null;
+  } | null,
+) {
   const s = (row?.settings || {}) as Record<string, unknown>;
   return {
-    bannerMessage: String(s.headline || s.bannerMessage || DEFAULT_SETTINGS.bannerMessage),
-    bannerSubtitle: String(s.sub || s.bannerSubtitle || DEFAULT_SETTINGS.bannerSubtitle),
+    bannerMessage: String(
+      s.headline || s.bannerMessage || DEFAULT_SETTINGS.bannerMessage,
+    ),
+    bannerSubtitle: String(
+      s.sub || s.bannerSubtitle || DEFAULT_SETTINGS.bannerSubtitle,
+    ),
     bannerEnabled: s.bannerEnabled !== false,
     bannerMessageSize: Number(s.bannerMessageSize || 1),
     bannerSubtitleSize: Number(s.bannerSubtitleSize || 1),
@@ -57,9 +63,10 @@ function mapSettings(row: {
     heroImages: Array.isArray(s.heroImages)
       ? s.heroImages.map(String)
       : DEFAULT_SETTINGS.heroImages,
-    sections: Array.isArray(s.sections) && s.sections.length
-      ? s.sections
-      : DEFAULT_SETTINGS.sections,
+    sections:
+      Array.isArray(s.sections) && s.sections.length
+        ? s.sections
+        : DEFAULT_SETTINGS.sections,
   };
 }
 

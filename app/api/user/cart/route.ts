@@ -3,11 +3,7 @@ import {
   requireClerkUser,
   unauthorizedJson,
 } from "@/lib/auth/require-clerk-user";
-import {
-  deleteCartItem,
-  listCart,
-  upsertCartItem,
-} from "@/lib/customer-store";
+import { deleteCartItem, listCart, upsertCartItem } from "@/lib/customer-store";
 
 export async function GET() {
   const actor = await requireClerkUser();
@@ -21,10 +17,10 @@ export async function POST(request: Request) {
   if (!actor) return unauthorizedJson();
 
   const body = await request.json();
-  // Prefer offer_id (vendor offer); fall back to product_id for legacy
-  const lineId = String(body.offer_id || body.product_id || "");
+  const offerId = body.offer_id ? String(body.offer_id) : undefined;
+  const productId = String(body.product_id || body.offer_id || "");
   const quantity = body.quantity;
-  if (!lineId || !quantity) {
+  if (!productId || !quantity) {
     return NextResponse.json(
       { error: "Missing offer_id/product_id or quantity" },
       { status: 400 },
@@ -33,8 +29,9 @@ export async function POST(request: Request) {
 
   const data = await upsertCartItem(
     actor.userId,
-    lineId,
+    productId,
     Number(quantity),
+    offerId,
   );
   return NextResponse.json(data);
 }
@@ -44,9 +41,10 @@ export async function PUT(request: Request) {
   if (!actor) return unauthorizedJson();
 
   const body = await request.json();
-  const lineId = String(body.offer_id || body.product_id || "");
+  const offerId = body.offer_id ? String(body.offer_id) : undefined;
+  const productId = String(body.product_id || body.offer_id || "");
   const quantity = body.quantity;
-  if (!lineId || quantity === undefined) {
+  if (!productId || quantity === undefined) {
     return NextResponse.json(
       { error: "Missing offer_id/product_id or quantity" },
       { status: 400 },
@@ -54,11 +52,16 @@ export async function PUT(request: Request) {
   }
 
   if (Number(quantity) <= 0) {
-    await deleteCartItem(actor.userId, lineId);
+    await deleteCartItem(actor.userId, offerId || productId);
     return NextResponse.json({ deleted: true });
   }
 
-  const data = await upsertCartItem(actor.userId, lineId, Number(quantity));
+  const data = await upsertCartItem(
+    actor.userId,
+    productId,
+    Number(quantity),
+    offerId,
+  );
   return NextResponse.json(data);
 }
 

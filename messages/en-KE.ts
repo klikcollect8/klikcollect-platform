@@ -1,4 +1,4 @@
-/** Launch locale copy — en-KE (Constitution §3.1). No second locale before V1. */
+/** Launch locale copy - en-KE (Constitution §3.1). No second locale before V1. */
 export const messages = {
   brand: "KlikCollect",
   tagline: "Curated commerce for Nairobi",
@@ -42,11 +42,12 @@ export const messages = {
     ai: "AI",
     settings: "Settings",
     comingSoon: "This module lands later. Operate live M2 surfaces today.",
-    m1Note: "M2 walking skeleton: catalogue, inventory (INV-7), orders, money-free POS + barcode.",
+    m1Note:
+      "M2 walking skeleton: catalogue, inventory (INV-7), orders, money-free POS + barcode.",
   },
   footer: {
     blurb:
-      "Commerce infrastructure for curated retail — marketplace, inventory, POS, and fulfilment software for Nairobi vendors.",
+      "Commerce infrastructure for curated retail - marketplace, inventory, POS, and fulfilment software for Nairobi vendors.",
     rights: `© ${new Date().getFullYear()} KlikCollect. All rights reserved.`,
   },
 } as const;

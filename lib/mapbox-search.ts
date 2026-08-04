@@ -64,7 +64,7 @@ export async function suggestAddresses(
     country: "ke",
     language: "en",
     limit: String(opts?.limit ?? 8),
-    // Streets, districts, addresses, POIs — anything Mapbox can resolve
+    // Streets, districts, addresses, POIs - anything Mapbox can resolve
     types:
       "address,street,neighborhood,locality,place,district,region,postcode,poi",
     proximity: `${proximity.lng},${proximity.lat}`,
@@ -85,13 +85,15 @@ export async function suggestAddresses(
     }>;
   };
 
-  const suggestions: AddressSuggestion[] = (data.suggestions || []).map((s) => ({
-    id: `addr_${s.mapbox_id}`,
-    mapboxId: s.mapbox_id,
-    name: s.name,
-    fullAddress: s.full_address || s.place_formatted || s.name,
-    featureType: s.feature_type || "place",
-  }));
+  const suggestions: AddressSuggestion[] = (data.suggestions || []).map(
+    (s) => ({
+      id: `addr_${s.mapbox_id}`,
+      mapboxId: s.mapbox_id,
+      name: s.name,
+      fullAddress: s.full_address || s.place_formatted || s.name,
+      featureType: s.feature_type || "place",
+    }),
+  );
 
   return { suggestions, sessionToken };
 }
@@ -144,6 +146,55 @@ export async function retrieveAddress(
     featureType: feature.properties?.feature_type || "place",
     lng: coords[0],
     lat: coords[1],
+  };
+}
+
+/** Forward-geocode a free-text address (Kenya-biased). */
+export async function forwardGeocode(
+  query: string,
+  proximity?: { lng: number; lat: number },
+): Promise<{ lng: number; lat: number; label: string } | null> {
+  const token = getMapboxToken();
+  const q = query.trim();
+  if (!token || q.length < 3) return null;
+
+  const prox = proximity || { lng: NAIROBI_CENTER[0], lat: NAIROBI_CENTER[1] };
+  const params = new URLSearchParams({
+    q,
+    access_token: token,
+    language: "en",
+    limit: "1",
+    country: "ke",
+    proximity: `${prox.lng},${prox.lat}`,
+  });
+
+  const res = await fetch(
+    `https://api.mapbox.com/search/geocode/v6/forward?${params}`,
+  );
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as {
+    features?: Array<{
+      geometry?: { coordinates?: [number, number] };
+      properties?: {
+        full_address?: string;
+        name?: string;
+        place_formatted?: string;
+      };
+    }>;
+  };
+
+  const f = data.features?.[0];
+  const coords = f?.geometry?.coordinates;
+  if (!coords) return null;
+  return {
+    lng: coords[0],
+    lat: coords[1],
+    label:
+      f?.properties?.full_address ||
+      f?.properties?.place_formatted ||
+      f?.properties?.name ||
+      q,
   };
 }
 
@@ -228,9 +279,7 @@ export async function fetchDirections(
   for (const leg of route.legs || []) {
     for (const step of leg.steps || []) {
       const instruction =
-        step.maneuver?.instruction ||
-        step.manoeuvre?.instruction ||
-        "Continue";
+        step.maneuver?.instruction || step.manoeuvre?.instruction || "Continue";
       steps.push({
         instruction,
         distanceM: step.distance,

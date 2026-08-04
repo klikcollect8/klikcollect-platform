@@ -11,7 +11,10 @@ export async function POST(request: Request) {
 
   const { activity_type, activity_data } = await request.json();
   if (!activity_type) {
-    return NextResponse.json({ error: "Missing activity_type" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing activity_type" },
+      { status: 400 },
+    );
   }
 
   const data = await appendActivity(

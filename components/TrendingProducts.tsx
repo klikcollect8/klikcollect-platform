@@ -18,11 +18,19 @@ export default function TrendingProducts({
   useEffect(() => {
     if (initialProducts && initialProducts.length > 0) {
       if (section?.productIds && section.productIds.length > 0) {
-        setProducts(initialProducts.filter((p) => section.productIds!.includes(p.id)));
+        setProducts(
+          initialProducts.filter((p) => section.productIds!.includes(p.id)),
+        );
       } else {
-        setProducts([...initialProducts]
-          .sort((a, b) => ((b.reviewCount || 0) * (b.rating || 0)) - ((a.reviewCount || 0) * (a.rating || 0)))
-          .slice(0, 8));
+        setProducts(
+          [...initialProducts]
+            .sort(
+              (a, b) =>
+                (b.reviewCount || 0) * (b.rating || 0) -
+                (a.reviewCount || 0) * (a.rating || 0),
+            )
+            .slice(0, 8),
+        );
       }
       return;
     }
@@ -31,9 +39,19 @@ export default function TrendingProducts({
       .then((data) => {
         const arr = Array.isArray(data) ? data : [];
         if (section?.productIds && section.productIds.length > 0) {
-          setProducts(arr.filter((p: Product) => section.productIds!.includes(p.id)));
+          setProducts(
+            arr.filter((p: Product) => section.productIds!.includes(p.id)),
+          );
         } else {
-          setProducts([...arr].sort((a: Product, b: Product) => ((b.reviewCount || 0) * (b.rating || 0)) - ((a.reviewCount || 0) * (a.rating || 0))).slice(0, 8));
+          setProducts(
+            [...arr]
+              .sort(
+                (a: Product, b: Product) =>
+                  (b.reviewCount || 0) * (b.rating || 0) -
+                  (a.reviewCount || 0) * (a.rating || 0),
+              )
+              .slice(0, 8),
+          );
         }
       })
       .catch(() => setProducts([]));

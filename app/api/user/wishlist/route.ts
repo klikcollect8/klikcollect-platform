@@ -27,7 +27,10 @@ export async function POST(request: Request) {
 
     const { product_id } = await request.json();
     if (!product_id) {
-      return NextResponse.json({ error: "Missing product_id" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing product_id" },
+        { status: 400 },
+      );
     }
 
     const data = await addWishlist(actor.userId, String(product_id));
@@ -46,7 +49,10 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const product_id = searchParams.get("product_id");
     if (!product_id) {
-      return NextResponse.json({ error: "Missing product_id" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing product_id" },
+        { status: 400 },
+      );
     }
 
     await removeWishlist(actor.userId, product_id);

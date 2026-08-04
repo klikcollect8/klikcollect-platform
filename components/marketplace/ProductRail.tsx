@@ -15,7 +15,12 @@ type ProductRailProps = {
   products: Product[];
 };
 
-export default function ProductRail({ title, subtitle, href, products }: ProductRailProps) {
+export default function ProductRail({
+  title,
+  subtitle,
+  href,
+  products,
+}: ProductRailProps) {
   const scroller = useRef<HTMLDivElement>(null);
   if (!products.length) return null;
 
@@ -31,7 +36,9 @@ export default function ProductRail({ title, subtitle, href, products }: Product
             {title}
           </h2>
           {subtitle ? (
-            <p className="mt-2 text-[14px] text-black/45 sm:text-[15px]">{subtitle}</p>
+            <p className="mt-2 text-[14px] text-black/45 sm:text-[15px]">
+              {subtitle}
+            </p>
           ) : null}
         </div>
         <div className="flex items-center gap-4">
@@ -66,32 +73,42 @@ export default function ProductRail({ title, subtitle, href, products }: Product
         ref={scroller}
         className="scrollbar-hide -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-6 sm:px-0 lg:gap-8"
       >
-        {products.map((product) => (
-          <Link
-            key={product.id}
-            href={`/products/${product.id}`}
-            onClick={() =>
-              track("storefront.product_clicked", { productId: product.id }, "customer")
-            }
-            className="group w-[160px] shrink-0 sm:w-[220px] lg:w-[260px]"
-          >
-            <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-black/[0.03]">
-              <Image
-                src={resolveProductImage(product.image)}
-                alt={product.name || "Product"}
-                fill
-                className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-                sizes="260px"
-              />
-            </div>
-            <p className="mb-1 text-[11px] uppercase tracking-[0.14em] text-black/35">
-              {product.category || "Catalogue"}
-            </p>
-            <p className="line-clamp-2 text-[15px] font-medium leading-snug text-black">
-              {product.name}
-            </p>
-          </Link>
-        ))}
+        {products.map((product, index) => {
+          const offerId = (product as { offerId?: string }).offerId;
+          const href = offerId
+            ? `/products/${product.id}?offer=${encodeURIComponent(offerId)}`
+            : `/products/${product.id}`;
+          return (
+            <Link
+              key={`${offerId || product.id}-${index}`}
+              href={href}
+              onClick={() =>
+                track(
+                  "storefront.product_clicked",
+                  { productId: product.id },
+                  "customer",
+                )
+              }
+              className="group w-[160px] shrink-0 sm:w-[220px] lg:w-[260px]"
+            >
+              <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-black/[0.03]">
+                <Image
+                  src={resolveProductImage(product.image)}
+                  alt={product.name || "Product"}
+                  fill
+                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                  sizes="260px"
+                />
+              </div>
+              <p className="mb-1 text-[11px] uppercase tracking-[0.14em] text-black/35">
+                {product.category || "Catalogue"}
+              </p>
+              <p className="line-clamp-2 text-[15px] font-medium leading-snug text-black">
+                {product.name}
+              </p>
+            </Link>
+          );
+        })}
       </div>
     </section>
   );

@@ -15,7 +15,7 @@ export type AddToCartOffer = {
   fulfilment?: FulfilmentMethod;
 };
 
-/** Module-level guard — many components call useCart(); one fetch per user. */
+/** Module-level guard - many components call useCart(); one fetch per user. */
 let cartFetchUserId: string | null = null;
 let cartFetchPromise: Promise<CartItem[]> | null = null;
 
@@ -23,12 +23,32 @@ function lineKey(item: CartItem): string {
   return item.offerId || item.product?.id || "";
 }
 
+function dedupeCartItems(items: CartItem[]): CartItem[] {
+  const byKey = new Map<string, CartItem>();
+  for (const item of items) {
+    if (!item?.product?.id) continue;
+    const key = lineKey(item);
+    if (!key) continue;
+    const prev = byKey.get(key);
+    if (prev) {
+      byKey.set(key, {
+        ...prev,
+        ...item,
+        quantity: (prev.quantity || 0) + (item.quantity || 0),
+      });
+    } else {
+      byKey.set(key, item);
+    }
+  }
+  return [...byKey.values()];
+}
+
 function readLocalCart(): CartItem[] {
   if (typeof window === "undefined") return [];
   try {
     const stored = localStorage.getItem("cart");
     const parsed = stored ? JSON.parse(stored) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    return dedupeCartItems(Array.isArray(parsed) ? parsed : []);
   } catch {
     return [];
   }
@@ -50,6 +70,7 @@ async function fetchServerCart(userId: string): Promise<CartItem[]> {
       if (!cartResponse.ok) throw new Error("Failed to fetch cart");
       let items: CartItem[] = await cartResponse.json();
       if (!Array.isArray(items)) items = [];
+      items = dedupeCartItems(items);
 
       const guestItems = readLocalCart();
       if (guestItems.length) {
@@ -63,16 +84,19 @@ async function fetchServerCart(userId: string): Promise<CartItem[]> {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                offer_id: gi.offerId || gi.product.id,
-                product_id: gi.offerId || gi.product.id,
+                offer_id: gi.offerId || undefined,
+                product_id: gi.product.id,
                 quantity: gi.quantity || 1,
               }),
             }).catch(() => {});
+          } else if (key && existingKeys.has(key)) {
+            // Guest qty already represented server-side — drop local only.
           }
         }
         localStorage.removeItem("cart");
       }
 
+      items = dedupeCartItems(items);
       localStorage.setItem("cart", JSON.stringify(items));
       return items;
     } finally {
@@ -178,7 +202,8 @@ export function useCart() {
       }
 
       const existingQty =
-        cartItems.find((item) => lineKey(item) === offer.offerId)?.quantity || 0;
+        cartItems.find((item) => lineKey(item) === offer.offerId)?.quantity ||
+        0;
       const nextQty = existingQty + quantity;
 
       const response = await fetch("/api/user/cart", {
@@ -186,7 +211,7 @@ export function useCart() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           offer_id: offer.offerId,
-          product_id: offer.offerId,
+          product_id: product.id,
           quantity: nextQty,
         }),
       });
@@ -250,11 +275,20 @@ export function useCart() {
         return;
       }
 
+      const target = cartItems.find(
+        (item) =>
+          lineKey(item) === productOrOfferId ||
+          item.product.id === productOrOfferId,
+      );
+
       setCartItems((prev) => {
-        const updated = prev.map((item) =>
-          lineKey(item) === productOrOfferId || item.product.id === productOrOfferId
-            ? { ...item, quantity }
-            : item,
+        const updated = dedupeCartItems(
+          prev.map((item) =>
+            lineKey(item) === productOrOfferId ||
+            item.product.id === productOrOfferId
+              ? { ...item, quantity }
+              : item,
+          ),
         );
         localStorage.setItem("cart", JSON.stringify(updated));
         return updated;
@@ -266,13 +300,13 @@ export function useCart() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          product_id: productOrOfferId,
-          offer_id: productOrOfferId,
+          product_id: target?.product.id || productOrOfferId,
+          offer_id: target?.offerId || productOrOfferId,
           quantity,
         }),
       }).catch(() => {});
     },
-    [isSignedIn, userId, removeFromCart],
+    [cartItems, isSignedIn, userId, removeFromCart],
   );
 
   const clearCart = useCallback(async () => {

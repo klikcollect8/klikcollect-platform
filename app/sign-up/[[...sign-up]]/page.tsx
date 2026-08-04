@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { queueAuthModal } from "@/components/SignInModalProvider";
 
-/** Bridge — opens the auth overlay instead of a dedicated page. */
+/** Bridge - opens the auth overlay instead of a dedicated page. */
 export default function SignUpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();

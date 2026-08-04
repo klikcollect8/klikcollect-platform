@@ -1,5 +1,5 @@
 /**
- * Public storefront vendors — admitted vendors from Supabase.
+ * Public storefront vendors - admitted vendors from Supabase.
  */
 import {
   sbGetVendorStorefrontProducts,

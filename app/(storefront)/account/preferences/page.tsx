@@ -8,6 +8,7 @@ import {
   type AccountPreferences,
 } from "@/lib/account-storage";
 import { useToast } from "@/components/ToastProvider";
+import ThemeSelect from "@/components/ui/ThemeSelect";
 
 const fieldClass =
   "h-auto w-full border-0 border-b border-black/15 bg-transparent px-0 py-3 text-[15px] text-black outline-none focus:border-black/50";
@@ -54,20 +55,19 @@ export default function AccountPreferencesPage() {
               <p className="mt-1 text-[13px] text-black/35">
                 Batch non-urgent updates.
               </p>
-              <select
+              <ThemeSelect
                 value={prefs.emailDigest}
-                onChange={(e) =>
-                  update(
-                    "emailDigest",
-                    e.target.value as AccountPreferences["emailDigest"],
-                  )
+                onValueChange={(v) =>
+                  update("emailDigest", v as AccountPreferences["emailDigest"])
                 }
-                className={`mt-1 ${fieldClass}`}
-              >
-                <option value="instant">Instant</option>
-                <option value="daily">Daily summary</option>
-                <option value="weekly">Weekly summary</option>
-              </select>
+                fullWidth
+                triggerClassName="mt-1 border-0 border-b border-black/15 px-0 hover:border-black/50 focus-visible:border-black/50"
+                options={[
+                  { value: "instant", label: "Instant" },
+                  { value: "daily", label: "Daily summary" },
+                  { value: "weekly", label: "Weekly summary" },
+                ]}
+              />
             </label>
           </div>
 
@@ -77,7 +77,9 @@ export default function AccountPreferencesPage() {
             className="flex w-full items-center justify-between gap-4 border-b border-black/[0.08] py-4 text-left transition-colors hover:text-black"
           >
             <div className="min-w-0">
-              <p className="text-[15px] font-medium text-black">SMS pickup alerts</p>
+              <p className="text-[15px] font-medium text-black">
+                SMS pickup alerts
+              </p>
               <p className="mt-0.5 text-[13px] text-black/35">
                 Text when your order is ready.
               </p>

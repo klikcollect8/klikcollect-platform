@@ -56,7 +56,9 @@ export default function CustomerServicePage() {
             href={item.href}
             className="border-b border-black/[0.06] py-10 transition-opacity hover:opacity-55 md:border-r md:px-8 md:[&:last-child]:border-r-0"
           >
-            <h2 className="text-[20px] font-medium tracking-tight">{item.title}</h2>
+            <h2 className="text-[20px] font-medium tracking-tight">
+              {item.title}
+            </h2>
             <p className="mt-3 text-[15px] text-black/50">{item.body}</p>
           </Link>
         ))}
@@ -70,7 +72,9 @@ export default function CustomerServicePage() {
           {FAQ.map((item) => (
             <div key={item.q}>
               <h3 className="text-[17px] font-medium">{item.q}</h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-black/55">{item.a}</p>
+              <p className="mt-2 text-[15px] leading-relaxed text-black/55">
+                {item.a}
+              </p>
             </div>
           ))}
         </div>

@@ -17,7 +17,10 @@ interface WishlistButtonProps {
   ) => void;
 }
 
-export default function WishlistButton({ product, showToast }: WishlistButtonProps) {
+export default function WishlistButton({
+  product,
+  showToast,
+}: WishlistButtonProps) {
   const { isSignedIn } = useUserAuth();
   const { showSignInModal } = useSignInModal();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();

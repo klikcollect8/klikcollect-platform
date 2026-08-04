@@ -31,7 +31,9 @@ export default function SavedPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-black/40">Loading</p>
+        <p className="text-[11px] uppercase tracking-[0.28em] text-black/40">
+          Loading
+        </p>
       </div>
     );
   }
@@ -40,12 +42,15 @@ export default function SavedPage() {
     return (
       <StorePage narrow>
         <div className="border-t border-black/[0.06] py-24 text-center">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-black/35">Saved</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-black/35">
+            Saved
+          </p>
           <h1 className="mt-4 text-[clamp(1.75rem,3vw,2.5rem)] font-medium tracking-tight">
             Sign in to see saved items
           </h1>
           <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-black/50">
-            Save products while you browse, then come back to choose a vendor and add them to your bag.
+            Save products while you browse, then come back to choose a vendor
+            and add them to your bag.
           </p>
           <button
             type="button"
@@ -63,12 +68,14 @@ export default function SavedPage() {
     return (
       <StorePage narrow>
         <div className="border-t border-black/[0.06] py-24 text-center">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-black/35">Saved</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-black/35">
+            Saved
+          </p>
           <h1 className="mt-4 text-[clamp(1.75rem,3vw,2.5rem)] font-medium tracking-tight">
             Nothing saved yet
           </h1>
           <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-black/50">
-            Tap Save for later on a product — it will show up here.
+            Tap Save for later on a product - it will show up here.
           </p>
           <Link
             href="/shop"
@@ -105,7 +112,9 @@ export default function SavedPage() {
               <h2 className="mt-3 truncate text-[14px] font-medium tracking-tight">
                 {product.name}
               </h2>
-              <p className="mt-0.5 truncate text-[12px] text-black/40">{product.category}</p>
+              <p className="mt-0.5 truncate text-[12px] text-black/40">
+                {product.category}
+              </p>
             </Link>
             <div className="mt-3 flex items-center justify-between gap-3">
               <Link

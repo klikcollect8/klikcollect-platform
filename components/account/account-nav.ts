@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Bell,
+  ClipboardList,
   CreditCard,
   Heart,
   LayoutDashboard,
@@ -20,6 +21,11 @@ export type AccountNavItem = {
 export const accountNav: AccountNavItem[] = [
   { href: "/account", label: "Overview", icon: LayoutDashboard },
   { href: "/account/orders", label: "Orders", icon: Package },
+  {
+    href: "/account/sell-application",
+    label: "Sell application",
+    icon: ClipboardList,
+  },
   { href: "/saved", label: "Saved", icon: Heart },
   { href: "/account/addresses", label: "Addresses", icon: MapPin },
   { href: "/account/payments", label: "Payments", icon: CreditCard },
@@ -32,6 +38,7 @@ export const accountNav: AccountNavItem[] = [
 export function isAccountNavActive(pathname: string | null, href: string) {
   if (!pathname) return false;
   if (href === "/account") return pathname === "/account";
-  if (href === "/saved") return pathname === "/saved" || pathname.startsWith("/wishlist");
+  if (href === "/saved")
+    return pathname === "/saved" || pathname.startsWith("/wishlist");
   return pathname === href || pathname.startsWith(`${href}/`);
 }

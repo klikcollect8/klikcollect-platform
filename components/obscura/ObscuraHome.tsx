@@ -77,7 +77,11 @@ export default function ObscuraHome({ products }: { products: Product[] }) {
         </Reveal>
 
         <Reveal>
-          <ProductRail title="Fresh arrivals" href="/shop?sort=newest" products={featured} />
+          <ProductRail
+            title="Fresh arrivals"
+            href="/shop?sort=newest"
+            products={featured}
+          />
         </Reveal>
 
         <Reveal>

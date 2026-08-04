@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { X, GitCompare } from 'lucide-react';
-import ProductComparison from './ProductComparison';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { X, GitCompare } from "lucide-react";
+import ProductComparison from "./ProductComparison";
 
 export default function CompareBar() {
   const [comparing, setComparing] = useState<string[]>([]);
@@ -12,19 +12,22 @@ export default function CompareBar() {
 
   useEffect(() => {
     const updateComparing = () => {
-      const ids = JSON.parse(localStorage.getItem('comparing') || '[]');
+      const ids = JSON.parse(localStorage.getItem("comparing") || "[]");
       setComparing(ids);
     };
-    
+
     updateComparing();
-    window.addEventListener('storage', updateComparing);
-    return () => window.removeEventListener('storage', updateComparing);
+    window.addEventListener("storage", updateComparing);
+    return () => window.removeEventListener("storage", updateComparing);
   }, []);
 
   const removeFromCompare = (id: string) => {
-    const ids = JSON.parse(localStorage.getItem('comparing') || '[]');
-    localStorage.setItem('comparing', JSON.stringify(ids.filter((i: string) => i !== id)));
-    window.dispatchEvent(new Event('storage'));
+    const ids = JSON.parse(localStorage.getItem("comparing") || "[]");
+    localStorage.setItem(
+      "comparing",
+      JSON.stringify(ids.filter((i: string) => i !== id)),
+    );
+    window.dispatchEvent(new Event("storage"));
   };
 
   if (comparing.length === 0) return null;
@@ -36,17 +39,22 @@ export default function CompareBar() {
           <div className="flex items-center gap-4">
             <GitCompare className="w-6 h-6" />
             <div>
-              <div className="font-semibold">Comparing {comparing.length} product{comparing.length > 1 ? 's' : ''}</div>
+              <div className="font-semibold">
+                Comparing {comparing.length} product
+                {comparing.length > 1 ? "s" : ""}
+              </div>
               <div className="text-sm text-neutral-400">
-                {comparing.length < 3 ? `Add ${3 - comparing.length} more to compare` : 'Maximum 3 products'}
+                {comparing.length < 3
+                  ? `Add ${3 - comparing.length} more to compare`
+                  : "Maximum 3 products"}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <button
               onClick={() => {
-                localStorage.removeItem('comparing');
-                window.dispatchEvent(new Event('storage'));
+                localStorage.removeItem("comparing");
+                window.dispatchEvent(new Event("storage"));
               }}
               className="text-sm hover:underline text-neutral-300 hover:text-white transition-colors"
             >
@@ -62,7 +70,7 @@ export default function CompareBar() {
           </div>
         </div>
       </div>
-      
+
       {showComparison && (
         <ProductComparison
           productIds={comparing}
@@ -72,4 +80,3 @@ export default function CompareBar() {
     </>
   );
 }
-

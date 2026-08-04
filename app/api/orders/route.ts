@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireClerkUser, unauthorizedJson } from "@/lib/auth/require-clerk-user";
-import { createOsOrder, listOsOrders, ensureOrderSeed } from "@/lib/orders-store";
+import {
+  requireClerkUser,
+  unauthorizedJson,
+} from "@/lib/auth/require-clerk-user";
+import {
+  createOsOrder,
+  listOsOrders,
+  ensureOrderSeed,
+} from "@/lib/orders-store";
 import { appendUsageEvent } from "@/lib/m1-store";
 import { publicId } from "@/lib/ids";
 import { getCatalogueProduct } from "@/lib/catalogue-store";
 import { withIdempotency, idempotencyKeyFrom } from "@/lib/idempotency";
-
 export async function GET() {
   try {
-      await ensureOrderSeed();
+    await ensureOrderSeed();
     const orders = await listOsOrders();
     return NextResponse.json({ data: orders });
   } catch {
@@ -20,7 +26,7 @@ export async function GET() {
 }
 
 /**
- * Place marketplace order(s) — one per vendor (Chapter 05 M2).
+ * Place marketplace order(s) - one per vendor (Chapter 05 M2).
  * Display-only totals; reserves stock; no tender.
  */
 export async function POST(request: NextRequest) {
@@ -36,8 +42,6 @@ export async function POST(request: NextRequest) {
       items,
       pickupDate,
       pickupTime,
-      giftWrap,
-      giftMessage,
     } = body;
 
     if (
@@ -56,7 +60,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-  
     type Line = { productId: string; quantity: number; vendorId: string };
     const lines: Line[] = [];
     for (const item of items) {
@@ -68,7 +71,12 @@ export async function POST(request: NextRequest) {
       const product = await getCatalogueProduct(offerOrProductId);
       if (!product) {
         return NextResponse.json(
-          { error: { code: "NOT_FOUND", message: `${offerOrProductId} unavailable` } },
+          {
+            error: {
+              code: "NOT_FOUND",
+              message: `${offerOrProductId} unavailable`,
+            },
+          },
           { status: 400 },
         );
       }
@@ -88,8 +96,6 @@ export async function POST(request: NextRequest) {
 
     const notes = [
       `Pickup ${pickupDate} ${pickupTime}`,
-      giftWrap ? "Gift wrap" : null,
-      giftMessage ? `Gift: ${giftMessage}` : null,
       `clerk:${actor.userId}`,
     ]
       .filter(Boolean)
@@ -121,13 +127,15 @@ export async function POST(request: NextRequest) {
         created.push(r.order);
       }
 
+      const totalMinor = created.reduce((s, o) => s + o.totalMinor, 0);
+
       await appendUsageEvent({
         id: publicId("evt"),
         name: "marketplace.order_placed",
         properties: {
           orderIds: created.map((o) => o.id),
           orderCount: created.length,
-          totalMinor: created.reduce((s, o) => s + o.totalMinor, 0),
+          totalMinor,
         },
         actorType: "customer",
         createdAt: new Date().toISOString(),
@@ -139,10 +147,12 @@ export async function POST(request: NextRequest) {
         body: {
           data: created,
           id: primary.id,
+          public_id: primary.id,
           orders: created,
           orderNumber: primary.orderNumber,
-          total: primary.total,
-          totalMinor: primary.totalMinor,
+          total: totalMinor / 100,
+          totalMinor,
+          orderIds: created.map((o) => o.id),
         },
       };
     });

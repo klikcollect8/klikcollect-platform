@@ -29,7 +29,9 @@ export default function OrderConfirmation() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
-        <p className="text-[12px] uppercase tracking-[0.22em] text-black/40">Loading</p>
+        <p className="text-[12px] uppercase tracking-[0.22em] text-black/40">
+          Loading
+        </p>
       </div>
     );
   }
@@ -37,7 +39,10 @@ export default function OrderConfirmation() {
   if (!order) {
     return (
       <StorePage narrow>
-        <StoreHeading title="Order not found" description="We couldn’t find that order." />
+        <StoreHeading
+          title="Order not found"
+          description="We couldn’t find that order."
+        />
         <Link
           href="/account/orders"
           className="inline-flex bg-black px-8 py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-white hover:opacity-80"
@@ -53,7 +58,10 @@ export default function OrderConfirmation() {
   return (
     <StorePage narrow>
       <div className="border-b border-black/[0.06] pb-12 text-center">
-        <CheckCircle className="mx-auto mb-6 h-10 w-10 text-black" strokeWidth={1.25} />
+        <CheckCircle
+          className="mx-auto mb-6 h-10 w-10 text-black"
+          strokeWidth={1.25}
+        />
         <p className="mb-3 text-[12px] font-medium uppercase tracking-[0.24em] text-black/40">
           Confirmed
         </p>
@@ -74,41 +82,59 @@ export default function OrderConfirmation() {
 
       <div className="mt-12 space-y-10 border border-black/10 p-8 sm:p-10">
         <div>
-          <p className="text-[12px] uppercase tracking-[0.16em] text-black/40">Order number</p>
-          <p className="mt-2 text-[22px] font-medium tracking-tight">{order.orderNumber}</p>
+          <p className="text-[12px] uppercase tracking-[0.16em] text-black/40">
+            Order number
+          </p>
+          <p className="mt-2 text-[22px] font-medium tracking-tight">
+            {order.orderNumber}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
           <div>
-            <p className="text-[12px] uppercase tracking-[0.16em] text-black/40">Pickup date</p>
+            <p className="text-[12px] uppercase tracking-[0.16em] text-black/40">
+              Pickup date
+            </p>
             <p className="mt-2 text-[15px] font-medium">
               {format(new Date(order.pickupDate), "EEEE, MMMM d, yyyy")}
             </p>
           </div>
           <div>
-            <p className="text-[12px] uppercase tracking-[0.16em] text-black/40">Pickup time</p>
+            <p className="text-[12px] uppercase tracking-[0.16em] text-black/40">
+              Pickup time
+            </p>
             <p className="mt-2 text-[15px] font-medium">{order.pickupTime}</p>
           </div>
         </div>
 
         <div>
-          <p className="text-[12px] uppercase tracking-[0.16em] text-black/40">Customer</p>
+          <p className="text-[12px] uppercase tracking-[0.16em] text-black/40">
+            Customer
+          </p>
           <p className="mt-2 text-[15px] font-medium">{order.customerName}</p>
-          <p className="mt-1 text-[14px] text-black/50">{order.customerEmail}</p>
+          <p className="mt-1 text-[14px] text-black/50">
+            {order.customerEmail}
+          </p>
           <p className="text-[14px] text-black/50">{order.customerPhone}</p>
         </div>
 
         <div className="border-t border-black/[0.06] pt-8">
-          <p className="mb-4 text-[12px] uppercase tracking-[0.16em] text-black/40">Items</p>
+          <p className="mb-4 text-[12px] uppercase tracking-[0.16em] text-black/40">
+            Items
+          </p>
           <div className="space-y-3">
             {order.items.map((item, index) => (
-              <div key={index} className="flex justify-between gap-4 text-[14px]">
+              <div
+                key={index}
+                className="flex justify-between gap-4 text-[14px]"
+              >
                 <span className="text-black/70">
                   {item.product.name} × {item.quantity}
                 </span>
                 <span className="shrink-0 font-medium tabular-nums">
                   {formatPrice(
-                    (item.offerPrice ?? item.product.price ?? 0) * item.quantity,
+                    (item.offerPrice ?? item.product.price ?? 0) *
+                      item.quantity,
                   )}
                 </span>
               </div>

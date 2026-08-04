@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 
-/** Connecting % loader — mirrors Obscura studio intro */
+/** Connecting % loader - mirrors Obscura studio intro */
 export default function ObscuraLoader() {
   const [progress, setProgress] = useState(0);
   const [hidden, setHidden] = useState(false);

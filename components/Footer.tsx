@@ -87,7 +87,7 @@ export default function Footer() {
         <div className="mt-12 flex flex-col justify-between gap-4 border-t border-black/10 pt-6 text-[12px] text-black/45 sm:flex-row">
           <p>
             KLIKCOLLECT
-            <span className="align-super text-[0.7em]">™</span> — groceries and
+            <span className="align-super text-[0.7em]">™</span> - groceries and
             everyday essentials.
           </p>
           <p>© {new Date().getFullYear()} KlikCollect</p>

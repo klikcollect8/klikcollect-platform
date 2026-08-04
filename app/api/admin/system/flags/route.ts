@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, handleRequireAdminError } from "@/lib/auth/require-admin";
+import {
+  requireAdmin,
+  requireAdminPermission,
+  handleRequireAdminError,
+} from "@/lib/auth/require-admin";
 import {
   FEATURE_FLAG_KEYS,
   getFeatureFlags,
@@ -19,7 +23,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdmin(["head_admin", "admin"]);
+    await requireAdminPermission("flags:manage");
     const body = (await request.json()) as Record<string, unknown>;
     const updates: Partial<Record<FeatureFlagKey, boolean>> = {};
 

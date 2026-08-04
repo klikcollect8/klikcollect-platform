@@ -45,9 +45,7 @@ export default function HomepageBanner() {
         if (cancelled) return;
 
         const fromSlides = Array.isArray(slides)
-          ? slides
-              .map((s: { imageUrl?: string }) => s.imageUrl)
-              .filter(Boolean)
+          ? slides.map((s: { imageUrl?: string }) => s.imageUrl).filter(Boolean)
           : [];
         const fromSettings = Array.isArray(settings?.heroImages)
           ? settings.heroImages.filter(Boolean)
@@ -180,7 +178,10 @@ export default function HomepageBanner() {
         <div className="relative min-h-[36svh] w-full sm:min-h-[42svh] lg:col-span-8 lg:min-h-[78svh]">
           <div ref={slidesRef} className="absolute inset-0">
             {images.map((src, i) => (
-              <div key={`${src}-${i}`} className="kc-hero-slide absolute inset-0">
+              <div
+                key={`${src}-${i}`}
+                className="kc-hero-slide absolute inset-0"
+              >
                 <Image
                   src={src}
                   alt=""
@@ -204,7 +205,8 @@ export default function HomepageBanner() {
           <div
             className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 lg:hidden"
             style={{
-              background: "linear-gradient(to bottom, #f7f7f5 0%, transparent 100%)",
+              background:
+                "linear-gradient(to bottom, #f7f7f5 0%, transparent 100%)",
             }}
           />
         </div>

@@ -3,23 +3,36 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, AlertCircle } from "lucide-react";
+import {
+  migrateLegacyPlatformRole,
+  type PlatformRole,
+} from "@/lib/authz/role-ids";
+
+type RoleInput = PlatformRole | "head_admin" | "admin" | "editor" | "moderator";
 
 interface AccessControlProps {
-  allowedRoles: ("head_admin" | "admin" | "editor" | "moderator")[];
+  allowedRoles?: RoleInput[];
+  requiredPermission?: string;
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }
 
+function normalizeRole(role: string): string {
+  return migrateLegacyPlatformRole(role) || role.trim().toLowerCase();
+}
+
 /**
  * Client-side AccessControl for UX only.
- * Server layouts already enforce admin roles.
+ * No soft-open: missing role/permission = access denied.
  */
 export default function AccessControl({
-  allowedRoles,
+  allowedRoles = [],
+  requiredPermission,
   children,
   fallback,
 }: AccessControlProps) {
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
 
@@ -29,8 +42,7 @@ export default function AccessControl({
         const response = await fetch("/api/admin/current-role");
         const contentType = response.headers.get("content-type") || "";
         if (!contentType.includes("application/json")) {
-          // HTML error page — do not block the page behind Access Denied forever.
-          setUserRole(allowedRoles[0] || "admin");
+          setUserRole(null);
           return;
         }
         const data = await response.json();
@@ -41,19 +53,19 @@ export default function AccessControl({
           return;
         }
 
-        const role = data.role?.trim() || null;
-        // Soft-open: authenticated admins who pass the server layout may
-        // briefly lack a role if Clerk/allowlist is slow — don't lock them out.
-        setUserRole(role || allowedRoles[0] || "admin");
+        setUserRole(data.role ? normalizeRole(String(data.role)) : null);
+        if (Array.isArray(data.permissions)) {
+          setPermissions(data.permissions.map(String));
+        }
       } catch {
-        setUserRole(allowedRoles[0] || "admin");
+        setUserRole(null);
       } finally {
         setChecking(false);
       }
     };
 
     void checkAccess();
-  }, [router, allowedRoles]);
+  }, [router]);
 
   if (checking) {
     return (
@@ -63,12 +75,20 @@ export default function AccessControl({
     );
   }
 
-  const normalizedUserRole = userRole?.trim().toLowerCase() || null;
-  const normalizedAllowedRoles = allowedRoles.map((r) => r.trim().toLowerCase());
-  const hasAccess =
+  const normalizedUserRole = userRole ? normalizeRole(userRole) : null;
+  const normalizedAllowedRoles = allowedRoles.map((r) => normalizeRole(r));
+  const roleOk =
     normalizedUserRole !== null &&
-    (normalizedAllowedRoles.includes(normalizedUserRole) ||
-      normalizedUserRole === "head_admin");
+    (normalizedAllowedRoles.length === 0 ||
+      normalizedAllowedRoles.includes(normalizedUserRole) ||
+      normalizedUserRole === "super_admin");
+
+  const permOk =
+    !requiredPermission ||
+    normalizedUserRole === "super_admin" ||
+    permissions.includes(requiredPermission);
+
+  const hasAccess = roleOk && permOk;
 
   if (!hasAccess) {
     if (fallback) return <>{fallback}</>;
@@ -79,9 +99,13 @@ export default function AccessControl({
           <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-black/[0.04]">
             <AlertCircle className="h-7 w-7 text-black/55" />
           </div>
-          <h2 className="text-xl font-semibold text-[var(--kc-ink)]">Access denied</h2>
+          <h2 className="text-xl font-semibold text-[var(--kc-ink)]">
+            Access denied
+          </h2>
           <p className="mt-2 text-sm text-[var(--kc-mute)]">
-            This page is available to {allowedRoles.join(", ")}.
+            {requiredPermission
+              ? `Requires permission: ${requiredPermission}`
+              : `This page is available to ${allowedRoles.join(", ") || "authorized staff"}.`}
           </p>
           <button
             type="button"
