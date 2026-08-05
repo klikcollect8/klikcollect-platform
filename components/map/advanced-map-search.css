@@ -1,0 +1,79 @@
+/* Mapbox Search Box — one-line, slightly compact */
+.kc-advanced-search {
+  width: 100%;
+  max-width: 100%;
+}
+
+.kc-advanced-search mapbox-search-box {
+  display: block;
+  width: 100%;
+}
+
+.kc-advanced-search mapbox-search-box::part(input),
+.kc-advanced-search .MapboxSearchBox input,
+.kc-advanced-search input[type="search"],
+.kc-advanced-search input[type="text"] {
+  width: 100% !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  color: #0a0a0a !important;
+  line-height: 44px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.kc-advanced-search mapbox-search-box::part(button),
+.kc-advanced-search button {
+  min-height: 44px !important;
+  height: 44px !important;
+  width: 40px !important;
+}
+
+.kc-advanced-search mapbox-search-box::part(input):focus,
+.kc-advanced-search input:focus {
+  outline: none !important;
+}
+
+.MapboxSearchListbox,
+[class*="SearchListbox"],
+.kc-advanced-search [role="listbox"] {
+  border-radius: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(24px);
+  box-shadow: none !important;
+  margin-top: 6px !important;
+  overflow: hidden !important;
+  max-height: min(50vh, 360px) !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.MapboxSearchListbox::-webkit-scrollbar,
+[class*="SearchListbox"]::-webkit-scrollbar,
+.kc-advanced-search [role="listbox"]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.MapboxSearchListbox [role="option"],
+.kc-advanced-search [role="option"] {
+  border-radius: 0 !important;
+  padding: 12px 14px !important;
+}
+
+.MapboxSearchListbox [role="option"][aria-selected="true"],
+.MapboxSearchListbox [role="option"]:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}

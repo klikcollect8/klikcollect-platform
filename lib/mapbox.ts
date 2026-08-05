@@ -25,8 +25,10 @@ export const MAPBOX_3D_STYLE =
   "mapbox://styles/klikcollect/cms8uzags007001sf26gqfifb";
 
 export const MAPBOX_STATIC_STYLE = "mapbox/streets-v12";
-/** Flat Uber-style streets for product pickup previews */
+/** Classic Mapbox Streets — crisp labeling & road hierarchy */
 export const MAPBOX_FLAT_STYLE = "mapbox://styles/mapbox/streets-v12";
+/** Alias: Perfect Street basemap */
+export const MAPBOX_PERFECT_STREET_STYLE = MAPBOX_FLAT_STYLE;
 export const MAPBOX_STYLE_FALLBACK = "mapbox://styles/mapbox/standard";
 
 export const MAP_PITCH = 42;
@@ -35,8 +37,7 @@ export const MAP_BEARING = 0;
 export const MAP_FLAT_PITCH = 0;
 export const MAP_FLAT_ZOOM = 16.5;
 
-/** Three basemap modes only - Street · Satellite · 3D */
-export type MapStyleId = "street" | "satellite" | "map-3d";
+export type MapStyleId = "street" | "perfect" | "satellite" | "map-3d";
 
 export type MapStylePreset = {
   id: MapStyleId;
@@ -47,6 +48,7 @@ export type MapStylePreset = {
   defaultBearing: number;
   terrain: boolean;
   buildings: boolean;
+  flat?: boolean;
   accent: string;
   swatch: string;
 };
@@ -55,14 +57,28 @@ export const MAPBOX_STYLE_PRESETS: MapStylePreset[] = [
   {
     id: "street",
     name: "Street",
-    description: "Detailed streets · sharp & clean",
+    description: "Branded marketplace streets",
     url: MAPBOX_STYLE,
-    defaultPitch: 42,
+    defaultPitch: 0,
     defaultBearing: 0,
     terrain: false,
     buildings: true,
+    flat: true,
     accent: "#0a0a0a",
     swatch: "linear-gradient(135deg,#e8ebe6,#f7f7f5 55%,#dce4dc)",
+  },
+  {
+    id: "perfect",
+    name: "Perfect",
+    description: "Perfect Street · classic Mapbox streets",
+    url: MAPBOX_PERFECT_STREET_STYLE,
+    defaultPitch: 0,
+    defaultBearing: 0,
+    terrain: false,
+    buildings: true,
+    flat: true,
+    accent: "#1a73e8",
+    swatch: "linear-gradient(135deg,#e8f0fe,#ffffff 50%,#d2e3fc)",
   },
   {
     id: "satellite",
@@ -78,7 +94,7 @@ export const MAPBOX_STYLE_PRESETS: MapStylePreset[] = [
   },
   {
     id: "map-3d",
-    name: "3D Map",
+    name: "3D",
     description: "Terrain · buildings · depth",
     url: MAPBOX_3D_STYLE,
     defaultPitch: 58,
@@ -90,10 +106,97 @@ export const MAPBOX_STYLE_PRESETS: MapStylePreset[] = [
   },
 ];
 
+/** Camera point-of-view presets (5 locked + 1 free interactive) */
+export type MapPovId =
+  | "top"
+  | "street"
+  | "bird"
+  | "cinema"
+  | "heading"
+  | "free";
+
+export type MapPovPreset = {
+  id: MapPovId;
+  name: string;
+  description: string;
+  pitch: number;
+  bearing: number;
+  /** When true, user can freely tilt / rotate */
+  interactive: boolean;
+  /** Lock to pure top-down (no pitch) */
+  flat?: boolean;
+};
+
+export const MAP_POV_PRESETS: MapPovPreset[] = [
+  {
+    id: "top",
+    name: "Top",
+    description: "Straight overhead · north-up",
+    pitch: 0,
+    bearing: 0,
+    interactive: false,
+    flat: true,
+  },
+  {
+    id: "street",
+    name: "Street",
+    description: "Street-level tilt",
+    pitch: 48,
+    bearing: 0,
+    interactive: false,
+  },
+  {
+    id: "bird",
+    name: "Bird",
+    description: "Bird's-eye overview",
+    pitch: 62,
+    bearing: -18,
+    interactive: false,
+  },
+  {
+    id: "cinema",
+    name: "Cinema",
+    description: "Dramatic low horizon",
+    pitch: 72,
+    bearing: -32,
+    interactive: false,
+  },
+  {
+    id: "heading",
+    name: "Heading",
+    description: "Forward-facing travel view",
+    pitch: 55,
+    bearing: -40,
+    interactive: false,
+  },
+  {
+    id: "free",
+    name: "Free",
+    description: "Interactive · drag to look around",
+    pitch: 50,
+    bearing: -12,
+    interactive: true,
+  },
+];
+
+export function getMapStylePresets(): MapStylePreset[] {
+  return MAPBOX_STYLE_PRESETS;
+}
+
 export function stylePreset(id: MapStyleId): MapStylePreset {
-  return (
-    MAPBOX_STYLE_PRESETS.find((s) => s.id === id) || MAPBOX_STYLE_PRESETS[0]
-  );
+  return MAPBOX_STYLE_PRESETS.find((s) => s.id === id) || MAPBOX_STYLE_PRESETS[0];
+}
+
+export function getMapPovPresets(): MapPovPreset[] {
+  return MAP_POV_PRESETS;
+}
+
+export function povPreset(id: MapPovId): MapPovPreset {
+  return MAP_POV_PRESETS.find((p) => p.id === id) || MAP_POV_PRESETS[0];
+}
+
+export function styleKey(style: string): string {
+  return style;
 }
 
 /** @deprecated use stylePreset */
@@ -111,7 +214,7 @@ export function getMapboxToken(): string | null {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim();
   if (
     !token ||
-    token === "YOUR_MAPBOX_ACCESS_TOKEN" ||
+    token === "YOUR_MAPBOX_PUBLIC_TOKEN" ||
     !token.startsWith("pk.")
   ) {
     return null;
@@ -119,30 +222,31 @@ export function getMapboxToken(): string | null {
   return token;
 }
 
+export function isMapboxConfigured(): boolean {
+  return Boolean(getMapboxToken());
+}
+
 export function distanceKm(
   a: { lat: number; lng: number },
   b: { lat: number; lng: number },
 ): number {
-  const toRad = (d: number) => (d * Math.PI) / 180;
   const R = 6371;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const h =
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const x =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
 export function formatDistanceKm(km: number): string {
-  if (!Number.isFinite(km)) return " - ";
   if (km < 1) return `${Math.round(km * 1000)} m`;
   return `${km.toFixed(km < 10 ? 1 : 0)} km`;
 }
 
 export function formatDuration(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return " - ";
   const m = Math.round(seconds / 60);
   if (m < 60) return `${m} min`;
   const h = Math.floor(m / 60);

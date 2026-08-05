@@ -25,6 +25,7 @@ import { useWishlist } from "@/lib/hooks/useWishlist";
 
 const NAV = [
   { name: "Shop", href: "/shop" },
+  { name: "Maps", href: "/maps" },
   { name: "Vendors", href: "/brands" },
   { name: "Deals", href: "/todays-deals" },
   { name: "Saved", href: "/saved" },
@@ -33,6 +34,7 @@ const NAV = [
 
 /** Extra destinations after bottom-bar pages in the mobile burger */
 const MOBILE_MENU_EXTRA = [
+  { name: "Maps", href: "/maps" },
   { name: "Vendors", href: "/brands" },
   { name: "Deals", href: "/todays-deals" },
   { name: "Saved", href: "/saved" },

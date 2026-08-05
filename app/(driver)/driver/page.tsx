@@ -26,6 +26,7 @@ import {
   NAIROBI_CENTER,
 } from "@/lib/mapbox";
 import { fetchDirections, forwardGeocode } from "@/lib/mapbox-search";
+import { openExternalMaps } from "@/lib/external-maps";
 
 const ONLINE_KEY = "klikcollect:driver-online";
 const ACTIVE_KEY = "klikcollect:driver-active-delivery";
@@ -58,6 +59,10 @@ function DriverMapInner() {
     distanceM: number;
     durationS: number;
   } | null>(null);
+  const [routeSteps, setRouteSteps] = useState<
+    { instruction: string; distanceM: number; durationS: number }[]
+  >([]);
+  const [showSteps, setShowSteps] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
@@ -197,16 +202,19 @@ function DriverMapInner() {
     if (!active || active.lat == null || active.lng == null || !coords) {
       setRoute(null);
       setRouteMeta(null);
+      setRouteSteps([]);
       return;
     }
     let cancelled = false;
     void fetchDirections(
       { lng: coords.lng, lat: coords.lat },
       { lng: active.lng, lat: active.lat },
+      "driving-traffic",
     ).then((dir) => {
       if (cancelled || !dir) return;
       setRoute(dir.geometry);
       setRouteMeta({ distanceM: dir.distanceM, durationS: dir.durationS });
+      setRouteSteps(dir.steps || []);
     });
     return () => {
       cancelled = true;
@@ -311,9 +319,10 @@ function DriverMapInner() {
 
   const openExternalNav = () => {
     if (!active || active.lat == null || active.lng == null) return;
-    window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${active.lat},${active.lng}`,
-      "_blank",
+    openExternalMaps(
+      { lat: active.lat, lng: active.lng, label: active.address_text || undefined },
+      "directions",
+      coords ? { lat: coords.lat, lng: coords.lng } : null,
     );
   };
 
@@ -350,20 +359,20 @@ function DriverMapInner() {
       userLngLat={userLngLat}
       markers={markers}
       routeGeoJSON={showingActive ? route : null}
+      routeMeta={showingActive ? routeMeta : null}
+      cameraKey={cameraBump}
       onRecenter={() => {
         track();
         setCameraBump((n) => n + 1);
       }}
     >
-      <span className="hidden" data-camera={cameraBump} />
-
-      <DriverBottomSheet expanded={!!showingActive || !!offerJob}>
+      <DriverBottomSheet expanded={!!showingActive || !!offerJob || showSteps}>
         {!online ? (
           <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/[0.05]">
-              <span className="h-3 w-3 rounded-full bg-black/25" />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center bg-black/[0.05]">
+              <span className="h-2.5 w-2.5 bg-black/25" />
             </div>
-            <h2 className="mt-4 text-[24px] font-semibold tracking-tight">
+            <h2 className="mt-4 text-[22px] font-medium tracking-tight">
               You&apos;re offline
             </h2>
             <p className="mx-auto mt-2 max-w-[30ch] text-[14px] leading-relaxed text-black/50">
@@ -378,7 +387,7 @@ function DriverMapInner() {
             <button
               type="button"
               onClick={() => void setOnlineState(true)}
-              className="mt-6 w-full rounded-[18px] bg-[#111] px-4 py-4 text-[15px] font-semibold text-white shadow-[0_10px_28px_rgba(0,0,0,0.18)]"
+              className="mt-6 w-full bg-black/90 px-4 py-4 text-[13px] font-medium uppercase tracking-[0.14em] text-white hover:bg-black"
             >
               Go online
             </button>
@@ -386,7 +395,7 @@ function DriverMapInner() {
         ) : showingActive && active ? (
           <>
             {msg ? (
-              <p className="mb-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-[13px] font-medium text-emerald-800">
+              <p className="mb-3 bg-emerald-500/10 px-3 py-2 text-[13px] font-medium text-emerald-800">
                 {msg}
               </p>
             ) : null}
@@ -408,32 +417,67 @@ function DriverMapInner() {
               onPrimary={() => void onPrimary()}
               onNavigate={openExternalNav}
             />
+            {routeSteps.length ? (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSteps((v) => !v)}
+                  className="w-full bg-black/[0.05] px-4 py-3 text-left text-[12px] font-medium uppercase tracking-[0.12em] text-black"
+                >
+                  {showSteps ? "Hide" : "Show"} turn-by-turn ·{" "}
+                  {routeSteps.length} steps
+                </button>
+                {showSteps ? (
+                  <ol className="mt-3 max-h-48 space-y-1.5 overflow-y-auto">
+                    {routeSteps.slice(0, 24).map((step, i) => (
+                      <li
+                        key={`${i}-${step.instruction.slice(0, 24)}`}
+                        className="flex gap-3 bg-black/[0.03] px-3 py-2.5"
+                      >
+                        <span className="text-[12px] font-medium tabular-nums text-black/35">
+                          {i + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] leading-snug text-black/80">
+                            {step.instruction}
+                          </p>
+                          <p className="mt-0.5 text-[11px] tabular-nums text-black/40">
+                            {formatDistanceKm(step.distanceM / 1000)} ·{" "}
+                            {formatDuration(step.durationS)}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : null}
+              </div>
+            ) : null}
           </>
         ) : offerJob ? (
           <div>
             <div className="flex items-center justify-between gap-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#111] px-3 py-1 text-[12px] font-semibold text-white">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+              <span className="inline-flex items-center gap-1.5 bg-black/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white">
+                <span className="h-1.5 w-1.5 animate-pulse bg-emerald-400" />
                 New stop
               </span>
-              <span className="text-[13px] font-semibold tabular-nums text-black/45">
+              <span className="text-[12px] font-medium tabular-nums uppercase tracking-[0.12em] text-black/45">
                 {activeJobs.length} queued
               </span>
             </div>
-            <h2 className="mt-3 text-[24px] font-semibold tracking-tight">
+            <h2 className="mt-3 text-[22px] font-medium tracking-tight">
               {offerJob.customer_name || "Delivery"}
             </h2>
-            <p className="mt-1.5 text-[14px] leading-snug text-black/55">
+            <p className="mt-1.5 text-[14px] leading-snug text-black/50">
               {offerJob.address_text || "Address pending"}
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-xl bg-black/[0.04] px-3 py-2 text-[13px] font-semibold tabular-nums">
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              <span className="bg-black/[0.05] px-3 py-2 text-[13px] font-medium tabular-nums">
                 {distForOffer(offerJob) != null
                   ? formatDistanceKm(distForOffer(offerJob)!)
                   : " - km"}
               </span>
               {routeMeta && offerJob.id === active?.id ? (
-                <span className="rounded-xl bg-black/[0.04] px-3 py-2 text-[13px] font-medium text-black/55">
+                <span className="bg-black/[0.05] px-3 py-2 text-[13px] font-medium text-black/50">
                   {formatDuration(routeMeta.durationS)}
                 </span>
               ) : null}
@@ -442,7 +486,7 @@ function DriverMapInner() {
               type="button"
               disabled={busy}
               onClick={() => void acceptJob(offerJob.id)}
-              className="mt-5 w-full rounded-[18px] bg-[#111] px-4 py-4 text-[15px] font-semibold text-white shadow-[0_10px_28px_rgba(0,0,0,0.18)] disabled:opacity-40"
+              className="mt-5 w-full bg-black/90 px-4 py-4 text-[13px] font-medium uppercase tracking-[0.14em] text-white hover:bg-black disabled:opacity-40"
             >
               {busy ? "Starting…" : "Accept & start"}
             </button>
@@ -452,7 +496,7 @@ function DriverMapInner() {
                 setActiveId(offerJob.id);
                 localStorage.setItem(ACTIVE_KEY, offerJob.id);
               }}
-              className="mt-2 w-full rounded-[18px] bg-black/[0.05] px-4 py-3.5 text-[13px] font-semibold text-[#111]"
+              className="mt-1.5 w-full bg-black/[0.05] px-4 py-3.5 text-[12px] font-medium uppercase tracking-[0.12em] text-black hover:bg-black/[0.08]"
             >
               Preview on map
             </button>
@@ -460,15 +504,15 @@ function DriverMapInner() {
         ) : (
           <div>
             <div className="flex items-center gap-3">
-              <span className="relative flex h-10 w-10 items-center justify-center">
-                <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/25" />
-                <span className="relative h-3 w-3 rounded-full bg-emerald-500" />
+              <span className="relative flex h-9 w-9 items-center justify-center bg-black/[0.04]">
+                <span className="absolute inset-0 animate-ping bg-emerald-400/20" />
+                <span className="relative h-2.5 w-2.5 bg-emerald-500" />
               </span>
               <div>
-                <h2 className="text-[22px] font-semibold tracking-tight">
+                <h2 className="text-[20px] font-medium tracking-tight">
                   Looking for jobs
                 </h2>
-                <p className="text-[13px] text-black/45">
+                <p className="text-[12px] uppercase tracking-[0.12em] text-black/40">
                   Online · {coords ? "GPS locked" : "Finding GPS…"}
                 </p>
               </div>
@@ -478,23 +522,23 @@ function DriverMapInner() {
               guidance.
             </p>
             {activeJobs.length ? (
-              <ul className="mt-4 space-y-2">
+              <ul className="mt-4 space-y-1.5">
                 {activeJobs.slice(0, 4).map((d) => (
                   <li key={d.id}>
                     <button
                       type="button"
                       onClick={() => void acceptJob(d.id)}
-                      className="flex w-full items-center justify-between gap-3 rounded-2xl bg-black/[0.04] px-3.5 py-3.5 text-left transition active:bg-black/[0.07]"
+                      className="flex w-full items-center justify-between gap-3 bg-black/[0.04] px-3.5 py-3.5 text-left transition hover:bg-black/[0.07]"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-[14px] font-semibold">
+                        <p className="truncate text-[14px] font-medium">
                           {d.customer_name || d.public_id}
                         </p>
                         <p className="mt-0.5 truncate text-[12px] text-black/45">
                           {d.address_text || d.status}
                         </p>
                       </div>
-                      <span className="shrink-0 text-[12px] font-semibold text-[#1a73e8]">
+                      <span className="shrink-0 text-[11px] font-medium uppercase tracking-[0.12em] text-black/70">
                         Start
                       </span>
                     </button>
@@ -502,7 +546,7 @@ function DriverMapInner() {
                 ))}
               </ul>
             ) : (
-              <div className="mt-4 rounded-2xl border border-dashed border-black/12 bg-black/[0.02] px-4 py-5 text-center">
+              <div className="mt-4 border border-dashed border-black/12 bg-black/[0.02] px-4 py-5 text-center">
                 <p className="text-[13px] text-black/40">
                   No assigned stops yet
                 </p>

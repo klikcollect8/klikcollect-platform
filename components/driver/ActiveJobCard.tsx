@@ -59,89 +59,89 @@ export default function ActiveJobCard({
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex items-center rounded-full bg-amber-500/12 px-3 py-1 text-[12px] font-semibold text-amber-800">
+        <span className="inline-flex items-center bg-amber-500/15 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-amber-900">
           {stepLabel(delivery.status)}
         </span>
-        <span className="rounded-full bg-black/[0.04] px-2.5 py-1 text-[11px] font-medium tabular-nums text-black/45">
+        <span className="bg-black/[0.05] px-2.5 py-1 text-[11px] font-medium tabular-nums text-black/45">
           {delivery.public_id}
         </span>
       </div>
 
       <div className="mt-3 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[24px] font-semibold tracking-tight text-[#111]">
+          <h2 className="truncate text-[22px] font-medium tracking-tight text-black">
             {delivery.customer_name || "Customer"}
           </h2>
-          <p className="mt-1.5 text-[14px] leading-snug text-black/55">
+          <p className="mt-1.5 text-[14px] leading-snug text-black/50">
             {delivery.address_text || "Address pending"}
           </p>
         </div>
         <button
           type="button"
           onClick={onNavigate}
-          className="flex h-[52px] w-[52px] shrink-0 flex-col items-center justify-center rounded-2xl bg-[#1a73e8] text-white shadow-[0_8px_20px_rgba(26,115,232,0.35)] transition active:scale-95"
+          className="flex h-12 w-12 shrink-0 flex-col items-center justify-center bg-black/90 text-white transition hover:bg-black active:scale-95"
           aria-label="Navigate"
         >
-          <Navigation className="h-5 w-5" fill="currentColor" />
-          <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wide">
+          <Navigation className="h-4 w-4" fill="currentColor" />
+          <span className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.12em]">
             Go
           </span>
         </button>
       </div>
 
       {(distanceKm != null || durationS != null) && (
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex gap-1.5">
           {distanceKm != null ? (
-            <span className="rounded-xl bg-black/[0.04] px-3 py-2 text-[13px] font-semibold tabular-nums text-[#111]">
+            <span className="bg-black/[0.05] px-3 py-2 text-[13px] font-medium tabular-nums text-black">
               {formatDistanceKm(distanceKm)}
             </span>
           ) : null}
           {durationS != null ? (
-            <span className="rounded-xl bg-black/[0.04] px-3 py-2 text-[13px] font-medium text-black/55">
+            <span className="bg-black/[0.05] px-3 py-2 text-[13px] font-medium text-black/50">
               {formatDuration(durationS)}
             </span>
           ) : null}
         </div>
       )}
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex gap-1.5">
         {delivery.customer_phone ? (
           <a
             href={`tel:${delivery.customer_phone}`}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-black/[0.04] px-3 py-3.5 text-[13px] font-semibold text-[#111] transition active:bg-black/[0.07]"
+            className="inline-flex flex-1 items-center justify-center gap-2 bg-black/[0.05] px-3 py-3.5 text-[12px] font-medium uppercase tracking-[0.12em] text-black transition hover:bg-black/[0.08]"
           >
             <Phone className="h-4 w-4" />
             Call
           </a>
         ) : (
-          <div className="flex-1 rounded-2xl bg-black/[0.03] px-3 py-3.5 text-center text-[12px] text-black/35">
+          <div className="flex-1 bg-black/[0.03] px-3 py-3.5 text-center text-[12px] text-black/35">
             No phone on file
           </div>
         )}
       </div>
 
       {(delivery.status === "in_transit" || showPod) && (
-        <div className="mt-5 space-y-3 border-t border-black/[0.06] pt-5">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-black/35">
+        <div className="mt-5 space-y-2.5 border-t border-black/[0.06] pt-5">
+          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-black/35">
             Proof of delivery
           </p>
           <input
-            className="w-full rounded-2xl bg-black/[0.04] px-4 py-3.5 text-[15px] outline-none ring-black/10 transition focus:bg-white focus:ring-2"
+            className="w-full bg-black/[0.05] px-4 py-3.5 text-[15px] outline-none transition focus:bg-white/50"
             placeholder="OTP code"
             inputMode="numeric"
             value={otp}
             onChange={(e) => onOtpChange(e.target.value)}
           />
           <input
-            className="w-full rounded-2xl bg-black/[0.04] px-4 py-3.5 text-[15px] outline-none ring-black/10 transition focus:bg-white focus:ring-2"
+            className="w-full bg-black/[0.05] px-4 py-3.5 text-[15px] outline-none transition focus:bg-white/50"
             placeholder="Delivery note"
             value={note}
             onChange={(e) => onNoteChange(e.target.value)}
           />
-          <div className="grid grid-cols-2 gap-2">
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-black/15 bg-black/[0.02] px-3 py-4 text-center transition hover:bg-black/[0.04]">
+          <div className="grid grid-cols-2 gap-1.5">
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-black/15 bg-black/[0.02] px-3 py-4 text-center transition hover:bg-black/[0.05]">
               <Camera className="h-5 w-5 text-black/40" />
-              <span className="text-[12px] font-medium text-black/55">
+              <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-black/50">
                 Photo
               </span>
               <input
@@ -156,9 +156,9 @@ export default function ActiveJobCard({
                 }}
               />
             </label>
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-black/15 bg-black/[0.02] px-3 py-4 text-center transition hover:bg-black/[0.04]">
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-black/15 bg-black/[0.02] px-3 py-4 text-center transition hover:bg-black/[0.05]">
               <PenLine className="h-5 w-5 text-black/40" />
-              <span className="text-[12px] font-medium text-black/55">
+              <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-black/50">
                 Signature
               </span>
               <input
@@ -178,7 +178,7 @@ export default function ActiveJobCard({
             <img
               src={photoUrl}
               alt="POD"
-              className="h-24 w-full rounded-2xl object-cover"
+              className="h-24 w-full object-cover"
             />
           ) : null}
         </div>
@@ -188,7 +188,7 @@ export default function ActiveJobCard({
         type="button"
         disabled={busy}
         onClick={onPrimary}
-        className="mt-5 w-full rounded-[18px] bg-[#111] px-4 py-4 text-[15px] font-semibold text-white shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition active:scale-[0.99] disabled:opacity-40"
+        className="mt-5 w-full bg-black/90 px-4 py-4 text-[13px] font-medium uppercase tracking-[0.14em] text-white transition hover:bg-black active:scale-[0.99] disabled:opacity-40"
       >
         {busy ? "Updating…" : primaryLabel}
       </button>

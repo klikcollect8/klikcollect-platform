@@ -9,6 +9,7 @@ export function showsMobileBottomNav(
     pathname.startsWith("/code-admin") ||
     pathname.startsWith("/app") ||
     pathname.startsWith("/driver") ||
+    pathname.startsWith("/maps") ||
     pathname.startsWith("/sign-in") ||
     pathname.startsWith("/sign-up") ||
     pathname.startsWith("/checkout") ||
