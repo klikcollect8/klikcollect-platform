@@ -27,7 +27,6 @@ Engineering Bible: `Desktop/klikcollect/docs/`. This document describes the **cu
 | Storefront     | `app/(storefront)/` | Customer marketplace - theme untouched by panels work |
 | Vendor OS      | `/app`              | Commerce + finance + delivery + warehouse             |
 | Platform admin | `/admin`            | Ops, finance, KYC, security                           |
-| Driver         | `/driver`           | Assigned deliveries, OTP, POD, scan                   |
 
 ## Data truth
 
@@ -39,7 +38,7 @@ Engineering Bible: `Desktop/klikcollect/docs/`. This document describes the **cu
 
 ## Middleware
 
-`proxy.ts` - Clerk auth for `/admin`, `/app`, `/account`, `/driver`.
+`proxy.ts` - Clerk auth for `/admin`, `/app`, `/account`.
 
 ## Feature flags
 

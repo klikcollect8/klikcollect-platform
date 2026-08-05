@@ -10,7 +10,7 @@ export default function OsSettingsPage() {
     { label: "Launch city", value: "Nairobi" },
     { label: "Auth", value: "Clerk" },
     { label: "Payments", value: "Paystack (card + M-Pesa)" },
-    { label: "Delivery", value: "Driver panel · /driver" },
+    { label: "Delivery", value: "OS Delivery · /app/couriers" },
     { label: "Receipts", value: "POS print · store branding on Store" },
     { label: "Tax", value: "Kenya VAT - configure with your accountant" },
   ];

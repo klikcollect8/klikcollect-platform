@@ -13,11 +13,10 @@ export default function ConditionalHeader() {
     return null;
   }
 
-  // Don't show storefront header on OS / driver shells (they have their own chrome)
+  // Don't show storefront header on OS / admin shells (they have their own chrome)
   if (
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/app") ||
-    pathname?.startsWith("/driver") ||
     pathname?.startsWith("/account")
   ) {
     return null;
@@ -38,11 +37,10 @@ export default function ConditionalHeader() {
 export function ConditionalFooter() {
   const pathname = usePathname();
 
-  // Don't show footer on OS / driver shells or branded auth pages
+  // Don't show footer on OS / admin shells or branded auth pages
   if (
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/app") ||
-    pathname?.startsWith("/driver") ||
     pathname?.startsWith("/account") ||
     pathname?.startsWith("/sign-in") ||
     pathname?.startsWith("/sign-up") ||

@@ -5,7 +5,6 @@ const isAdminPublic = createRouteMatcher(["/admin/login(.*)"]);
 const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
 const isOsRoute = createRouteMatcher(["/app(.*)"]);
 const isAccountRoute = createRouteMatcher(["/account(.*)"]);
-const isDriverRoute = createRouteMatcher(["/driver(.*)"]);
 
 /** Platform-only legacy /app paths - bounce before page render. */
 const OS_PLATFORM_REDIRECTS: Record<string, string> = {
@@ -19,7 +18,7 @@ const OS_PLATFORM_REDIRECTS: Record<string, string> = {
 };
 
 /**
- * Clerk authenticates admin, vendor OS, driver, and customer account.
+ * Clerk authenticates admin, vendor OS, and customer account.
  * Do NOT await Supabase session refresh here - it was blocking every request
  * when the network/API was slow and made the whole site appear stuck loading.
  */
@@ -33,8 +32,7 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
   const needsAuth =
     (isAdminRoute(request) && !isAdminPublic(request)) ||
     isOsRoute(request) ||
-    isAccountRoute(request) ||
-    isDriverRoute(request);
+    isAccountRoute(request);
 
   if (needsAuth) {
     const { userId } = await auth();

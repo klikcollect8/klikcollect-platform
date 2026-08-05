@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import CommerceMapPage from "@/components/maps/CommerceMapPage";
+import CommerceMapLazy from "@/components/maps/CommerceMapLazy";
 
 export const metadata: Metadata = {
   title: "Maps · KlikCollect",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function MapsPage() {
-  return <CommerceMapPage />;
+  return <CommerceMapLazy />;
 }

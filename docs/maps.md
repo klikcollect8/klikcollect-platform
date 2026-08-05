@@ -9,14 +9,13 @@ Visual language matches Obscura: warm canvas, black ink, zero radius, translucen
 | Route | Audience |
 |-------|----------|
 | `/maps` | Storefront discovery |
-| `/driver` | Courier live map |
 | `/app/couriers` | Vendor dispatch |
 
 Shared engine: `components/map/MapCanvas.tsx` · chrome: `components/map/MapChrome.tsx` · APIs: `lib/mapbox-api.ts`
 
 ## Map styles (4)
 
-Both `/maps` and `/driver` expose the same presets via `MapChrome`:
+`/maps` exposes these presets via `MapChrome`:
 - **Street** — branded marketplace streets
 - **Perfect** — classic Mapbox Streets (perfect street map)
 - **Satellite** — aerial + tilt

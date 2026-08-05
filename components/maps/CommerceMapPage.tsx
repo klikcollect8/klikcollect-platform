@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import mapboxgl from "mapbox-gl";
+import type { Map as MapboxMap } from "mapbox-gl";
 import { X } from "lucide-react";
 import { useUserLocation } from "@/components/providers/LocationProvider";
 import type { MapMarker } from "@/components/map/MapCanvas";
@@ -83,13 +83,27 @@ const MapCanvas = dynamic(() => import("@/components/map/MapCanvas"), {
 
 const frost = mapGlass;
 
+async function fitMapToPoints(
+  map: MapboxMap,
+  points: Array<{ lng: number; lat: number }>,
+  padding: { top: number; bottom: number; left: number; right: number },
+  maxZoom = 15.5,
+) {
+  if (!points.length) return;
+  const mapboxgl = await import("mapbox-gl");
+  const b = new mapboxgl.LngLatBounds();
+  for (const p of points) b.extend([p.lng, p.lat]);
+  if (b.isEmpty()) return;
+  map.fitBounds(b, { padding, maxZoom, duration: 700 });
+}
+
 type CommercePayload = { vendors: MapCommerceVendor[] };
 type SortKey = "nearest" | "rating" | "fastest";
 type RadiusKm = 0 | 2 | 5 | 10;
 
 export default function CommerceMapPage() {
   const { coords, track, status: locStatus } = useUserLocation();
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<MapboxMap | null>(null);
   const fittedOnce = useRef(false);
   const searchSession = useRef<string | undefined>(undefined);
   const listRef = useRef<HTMLDivElement>(null);
@@ -738,16 +752,11 @@ export default function CommerceMapPage() {
       requestAnimationFrame(() => {
         const map = mapRef.current;
         if (!map || cancelled) return;
-        const b = new mapboxgl.LngLatBounds();
-        b.extend([origin.lng, origin.lat]);
-        for (const s of tripStops) b.extend([s.lng, s.lat]);
-        if (!b.isEmpty()) {
-          map.fitBounds(b, {
-            padding: { top: 100, bottom: 220, left: 48, right: 80 },
-            maxZoom: 15.5,
-            duration: 700,
-          });
-        }
+        void fitMapToPoints(
+          map,
+          [origin, ...tripStops],
+          { top: 100, bottom: 220, left: 48, right: 80 },
+        );
       });
     });
 
@@ -949,14 +958,12 @@ export default function CommerceMapPage() {
 
       const map = mapRef.current;
       if (map && marked.length) {
-        const b = new mapboxgl.LngLatBounds();
-        if (userPoint) b.extend([userPoint.lng, userPoint.lat]);
-        for (const m of marked) b.extend([m.lng, m.lat]);
-        map.fitBounds(b, {
-          padding: { top: 120, bottom: 160, left: 48, right: 72 },
-          maxZoom: 15.2,
-          duration: 800,
-        });
+        void fitMapToPoints(
+          map,
+          [...(userPoint ? [userPoint] : []), ...marked],
+          { top: 120, bottom: 160, left: 48, right: 72 },
+          15.2,
+        );
       }
     },
     [userPoint],
@@ -1054,9 +1061,15 @@ export default function CommerceMapPage() {
   const fitToRoute = useCallback(() => {
     const map = mapRef.current;
     if (!map || !route?.coordinates?.length) return;
-    const b = new mapboxgl.LngLatBounds();
-    route.coordinates.forEach((c) => b.extend(c as [number, number]));
-    map.fitBounds(b, { padding: 100, duration: 700, maxZoom: 16 });
+    void fitMapToPoints(
+      map,
+      route.coordinates.map((c) => ({
+        lng: c[0] as number,
+        lat: c[1] as number,
+      })),
+      { top: 100, bottom: 100, left: 100, right: 100 },
+      16,
+    );
   }, [route]);
 
   const copyCoords = useCallback(async () => {

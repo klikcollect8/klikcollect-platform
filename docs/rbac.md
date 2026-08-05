@@ -101,7 +101,6 @@ Only `super_admin` retains these (break-glass). **Developer has no finance/ledge
 | -------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Platform admin | `/admin`               | **Platform-only** - curation, CMS, finance, flags, support, security                                                                                          |
 | Vendor store   | `/app`                 | **Vendor-full commerce workspace** - dashboard, store, products, inventory, orders/packing, POS, customers, reviews/Q&A, branches, delivery map, wallet, team |
-| Driver         | `/driver`              | `delivery:*` permissions                                                                                                                                      |
 | Customer       | `/account`, storefront | Clerk session + ownership                                                                                                                                     |
 
 Phase 1 defaults `store_ops` and `couriers` nav surfaces **on** for vendor roles that hold the matching permissions. Admin remains platform-only and must not be used as a vendor god-mode.
