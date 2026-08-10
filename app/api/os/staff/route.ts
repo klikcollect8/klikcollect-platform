@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       { status: 403 },
     );
   }
-  const flags = { store_ops: true, couriers: true, warehouse: false };
+  const flags = { store_ops: true, couriers: false, warehouse: false };
   if (
     !email.includes("@") ||
     !isInviteableStaffRole(role, flags) ||

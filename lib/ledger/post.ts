@@ -95,12 +95,18 @@ export async function postLedgerTransaction(input: {
       accountId = created.id;
     }
 
-    const { error: eErr } = await supabase.from("ledger_entries").insert({
+    const entryRow: Record<string, unknown> = {
       transaction_id: tx.id,
       account_id: accountId,
       currency_code: "KES",
       amount_minor: leg.amountMinor,
-    });
+    };
+    if (leg.vendorPublicId) {
+      entryRow.vendor_public_id = leg.vendorPublicId;
+    }
+    const { error: eErr } = await supabase
+      .from("ledger_entries")
+      .insert(entryRow);
     if (eErr) {
       return { ok: false, error: eErr.message };
     }

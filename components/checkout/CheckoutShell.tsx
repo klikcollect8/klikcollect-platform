@@ -104,13 +104,13 @@ export default function CheckoutShell({
       <div
         className={
           summary
-            ? "mx-auto grid max-w-[1120px] gap-6 px-4 pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] pt-5 sm:gap-8 sm:px-6 sm:pt-8 lg:grid-cols-12 lg:gap-10 lg:px-8 lg:pb-14 lg:pt-10"
-            : "mx-auto max-w-[640px] px-4 pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 sm:pt-8"
+            ? "mx-auto grid max-w-[1120px] gap-6 px-4 pb-[calc(9.5rem+env(safe-area-inset-bottom,0px))] pt-6 sm:gap-8 sm:px-6 sm:pb-[calc(8rem+env(safe-area-inset-bottom,0px))] sm:pt-8 lg:grid-cols-12 lg:gap-10 lg:px-8 lg:pb-14 lg:pt-10"
+            : "mx-auto max-w-[640px] px-4 pb-[calc(9.5rem+env(safe-area-inset-bottom,0px))] pt-6 sm:px-6 sm:pt-8"
         }
       >
-        <div className="min-w-0 space-y-5 sm:space-y-6 lg:col-span-8">
+        <div className="min-w-0 space-y-6 sm:space-y-8 lg:col-span-8">
           {mobileSummary ? (
-            <div className="sticky top-[6.5rem] z-20 -mx-4 border-b border-black/[0.06] bg-[#f7f7f5]/95 px-4 py-3 backdrop-blur-md sm:top-[7.25rem] sm:-mx-0 sm:border sm:border-black/10 sm:bg-[#f7f7f5] sm:px-4 sm:py-4 sm:backdrop-blur-none lg:hidden">
+            <div className="sticky top-[6.5rem] z-20 -mx-4 border-b border-black/[0.06] bg-[#f7f7f5]/95 px-4 py-3.5 backdrop-blur-md sm:top-[7.25rem] sm:-mx-0 sm:border sm:border-black/10 sm:bg-[#f7f7f5] sm:px-4 sm:py-4 sm:backdrop-blur-none lg:hidden">
               {mobileSummary}
             </div>
           ) : null}
@@ -194,7 +194,7 @@ export default function CheckoutShell({
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.08] bg-[#f7f7f5]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)]">
-        <div className="mx-auto max-w-[1120px] px-4 py-3 sm:px-6 sm:py-3.5 lg:px-8">
+        <div className="mx-auto max-w-[1120px] px-4 py-3.5 sm:px-6 sm:py-4 lg:px-8">
           {dock}
         </div>
       </div>

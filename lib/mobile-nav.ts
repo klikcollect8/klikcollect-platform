@@ -11,6 +11,8 @@ export function showsMobileBottomNav(
     pathname.startsWith("/sign-in") ||
     pathname.startsWith("/sign-up") ||
     pathname.startsWith("/checkout") ||
-    pathname.startsWith("/cart")
+    pathname.startsWith("/cart") ||
+    pathname.startsWith("/r/") ||
+    pathname.startsWith("/payment")
   );
 }

@@ -54,6 +54,8 @@ const PLATFORM_ADMIN_PERMS: Permission[] = [
   "brands:manage",
   "attributes:manage",
   "orders:view",
+  "orders:fulfill",
+  "orders:cancel",
   "delivery:view",
   "delivery:track",
   "payments:view",
@@ -187,6 +189,8 @@ const BI_ANALYST_PERMS: Permission[] = [
 
 const SUPPORT_MANAGER_PERMS: Permission[] = [
   ...SUPPORT_AGENT_PERMS,
+  "orders:fulfill",
+  "orders:cancel",
   "orders:refund",
   "users:suspend",
   "support:escalate",

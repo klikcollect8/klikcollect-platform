@@ -961,21 +961,29 @@ export default function MapCanvas({
     const map = mapRef.current;
     if (!map || !userLngLat || !followUser) return;
     const [lng, lat] = userLngLat;
+    const nextBearing =
+      typeof bearing === "number" && Number.isFinite(bearing)
+        ? bearing
+        : MAP_BEARING;
     if (!hasCenteredOnUserRef.current) {
       hasCenteredOnUserRef.current = true;
       map.flyTo({
         center: [lng, lat],
         zoom: Math.max(zoom, 15.8),
         pitch,
-        bearing: MAP_BEARING,
+        bearing: nextBearing,
         essential: true,
         duration: 1200,
       });
       return;
     }
-    // Continuous follow only while explicitly enabled (driver mode)
-    map.easeTo({ center: [lng, lat], duration: 500 });
-  }, [userLngLat, followUser, zoom, pitch]);
+    // Continuous follow — heading-up when bearing is provided (driver nav)
+    map.easeTo({
+      center: [lng, lat],
+      bearing: nextBearing,
+      duration: 500,
+    });
+  }, [userLngLat, followUser, zoom, pitch, bearing]);
 
   useEffect(() => {
     const map = mapRef.current;

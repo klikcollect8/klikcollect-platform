@@ -251,9 +251,11 @@ export default function FinancePage() {
               </p>
             )}
             <p className={cn("mt-2 text-[13px]", osUi.muted)}>
-              Marketplace Paystack refunds are run from Admin → Paystack
-              (platform finance). For POS returns, restock from Inventory and
-              note the customer in CRM.
+              Vendors cannot issue Paystack refunds from this workspace.
+              Marketplace refunds are processed by platform finance (Admin →
+              Paystack). For POS returns, restock from Inventory and note the
+              customer in CRM — then message platform support if a card/M-Pesa
+              refund is needed.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link href="/app/orders" className={osUi.btnSecondary}>
@@ -262,6 +264,25 @@ export default function FinancePage() {
               <Link href="/app/inventory" className={osUi.btnGhost}>
                 Inventory
               </Link>
+              {receipts
+                .filter(
+                  (r) =>
+                    r.order_public_id &&
+                    (r.order_public_id === refundOrder ||
+                      r.order_public_id === refundInfo?.id),
+                )
+                .slice(0, 1)
+                .map((r) => (
+                  <Link
+                    key={r.public_id}
+                    href={`/r/${encodeURIComponent(r.public_id)}`}
+                    className={osUi.btnGhost}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open receipt
+                  </Link>
+                ))}
             </div>
           </div>
         ) : null}

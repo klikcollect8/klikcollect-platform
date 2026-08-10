@@ -22,18 +22,12 @@ import CheckoutShell, {
   type CheckoutShellStep,
 } from "@/components/checkout/CheckoutShell";
 import OrderSummaryBlock from "@/components/checkout/OrderSummaryBlock";
-import DeliveryLocationStep, {
-  type DeliveryLocationValue,
-} from "@/components/checkout/DeliveryLocationStep";
 import PickupCollectStep from "@/components/checkout/PickupCollectStep";
 import PhoneField, {
   toKenyaPhoneE164,
 } from "@/components/checkout/PhoneField";
-import SameDayTiming, {
-  type TimingMode,
-} from "@/components/checkout/SameDayTiming";
+import { type TimingMode } from "@/components/checkout/SameDayTiming";
 import {
-  DELIVERY_FLOW,
   PICKUP_FLOW,
   fulfilmentLabel,
   resolveAreaLabel,
@@ -41,16 +35,14 @@ import {
   type FulfilmentMethod,
 } from "@/components/checkout/fulfilment";
 import { cartVendorIds } from "@/lib/checkout/cart-vendors";
-import { getDeliveryZone } from "@/lib/checkout/delivery-zones";
 import {
-  availablePayMethods,
   defaultPayMethod,
   getPayMethodMeta,
   isMpesaPayMethod,
   isPaystackHostedMethod,
-  isStripePayMethod,
   type PayMethod,
 } from "@/components/checkout/payment-methods";
+import PaymentStep from "@/components/checkout/PaymentStep";
 import type { CheckoutVendor, CollectMode } from "@/lib/checkout/types";
 import {
   quoteClassicPickup,
@@ -101,9 +93,8 @@ function dedupeCart(raw: CartItem[]): CartItem[] {
 }
 
 /**
- * Full-page stepped checkout.
- * Delivery: location → contact → pay → review
- * Pickup: collect → when → contact → pay → review
+ * Full-page stepped checkout — click & collect only (receipt-based).
+ * Flow: collect → contact → pay
  */
 export default function CheckoutWizard() {
   const router = useRouter();
@@ -112,25 +103,25 @@ export default function CheckoutWizard() {
   const { isSignedIn, loading: authLoading, user } = useUserAuth();
   const { showSignInModal } = useSignInModal();
   const { cartItems, loading: cartLoading, clearCart } = useCart();
-  const [step, setStep] = useState<CheckoutStepId>("method");
+  const [step, setStep] = useState<CheckoutStepId>("collect");
   const [stepError, setStepError] = useState<string | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const cancelled = searchParams.get("cancelled") === "1";
 
-  const [fulfilment, setFulfilment] = useState<FulfilmentMethod | null>(null);
+  const fulfilment = "pickup" as FulfilmentMethod;
 
-  // Delivery location
-  const [deliveryArea, setDeliveryArea] = useState("");
-  const [areaOther, setAreaOther] = useState("");
-  const [building, setBuilding] = useState("");
-  const [street, setStreet] = useState("");
-  const [landmark, setLandmark] = useState("");
-  const [deliveryLabel, setDeliveryLabel] = useState("");
-  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
-  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
-  const [gateCode, setGateCode] = useState("");
-  const [deliveryNote, setDeliveryNote] = useState("");
+  // Delivery fields kept empty (pickup-only checkout)
+  const deliveryArea: string = "";
+  const areaOther: string = "";
+  const building: string = "";
+  const street: string = "";
+  const landmark: string = "";
+  const deliveryLabel: string = "";
+  const deliveryLat: number | null = null;
+  const deliveryLng: number | null = null;
+  const gateCode: string = "";
+  const deliveryNote: string = "";
 
   // Pickup / hybrid
   const [collectMode, setCollectMode] = useState<CollectMode>("classic");
@@ -156,37 +147,7 @@ export default function CheckoutWizard() {
 
   const today = todayDateString();
 
-  const deliveryLocation: DeliveryLocationValue = {
-    deliveryArea,
-    areaOther,
-    building,
-    street,
-    landmark,
-    lat: deliveryLat,
-    lng: deliveryLng,
-    label: deliveryLabel,
-    gateCode,
-    deliveryNote,
-  };
-
-  const setDeliveryLocation = (next: DeliveryLocationValue) => {
-    setDeliveryArea(next.deliveryArea);
-    setAreaOther(next.areaOther);
-    setBuilding(next.building);
-    setStreet(next.street);
-    setLandmark(next.landmark);
-    setDeliveryLat(next.lat);
-    setDeliveryLng(next.lng);
-    setDeliveryLabel(next.label);
-    setGateCode(next.gateCode);
-    setDeliveryNote(next.deliveryNote);
-  };
-
-  const flow = useMemo((): CheckoutStepId[] => {
-    if (fulfilment === "delivery") return [...DELIVERY_FLOW];
-    if (fulfilment === "pickup") return [...PICKUP_FLOW];
-    return ["method"];
-  }, [fulfilment]);
+  const flow = useMemo((): CheckoutStepId[] => [...PICKUP_FLOW], []);
 
   const stepIndex = Math.max(0, flow.indexOf(step));
 
@@ -227,33 +188,14 @@ export default function CheckoutWizard() {
     }
   }, [cartItems]);
 
-  // Prefill method + zone from bag when customer already chose on PDP
-  useEffect(() => {
-    const withDelivery = displayCartItems.find(
-      (i) => i.fulfilment === "delivery" && i.deliveryZoneId,
-    );
-    if (withDelivery?.deliveryZoneId) {
-      setFulfilment((prev) => prev ?? "delivery");
-      setDeliveryArea(withDelivery.deliveryZoneId);
-      return;
-    }
-    const pickupOnly =
-      displayCartItems.length > 0 &&
-      displayCartItems.every((i) => i.fulfilment === "pickup");
-    if (pickupOnly) {
-      setFulfilment((prev) => prev ?? "pickup");
-    }
-  }, [displayCartItems]);
-
   const unitPrice = (item: CartItem) =>
     item.offerPrice ?? item.product.price ?? 0;
   const subtotal = displayCartItems.reduce(
     (sum, item) => sum + unitPrice(item) * item.quantity,
     0,
   );
-  const deliveryMajor = deliveryMinor / 100;
+  const deliveryMajor = 0;
   const grandTotal = subtotal + deliveryMajor;
-  const itemCount = displayCartItems.reduce((n, i) => n + i.quantity, 0);
 
   const paymentsAvailable = payConfig.stripeReady || payConfig.paystackReady;
   const payMeta = getPayMethodMeta(payMethod);
@@ -319,8 +261,6 @@ export default function CheckoutWizard() {
         if (!checkoutVendors.length) return false;
         if (collectMode === "hybrid") return !!hubVendorId;
         return true;
-      case "when":
-        return !!pickupDate && !!pickupTime && !dayWindow.isClosed;
       case "contact": {
         const phone = toKenyaPhoneE164(customerPhone);
         return (
@@ -392,18 +332,6 @@ export default function CheckoutWizard() {
     }
   }, [cancelled, showToast]);
 
-  // Prefill fulfilment from bag when every line agrees
-  useEffect(() => {
-    if (fulfilment) return;
-    const modes = displayCartItems
-      .map((i) => i.fulfilment)
-      .filter((m): m is FulfilmentMethod => m === "pickup" || m === "delivery");
-    if (!modes.length) return;
-    if (modes.every((m) => m === modes[0])) {
-      setFulfilment(modes[0]!);
-    }
-  }, [displayCartItems, fulfilment]);
-
   // Load vendor details for cart
   useEffect(() => {
     const ids = cartVendorIds(displayCartItems);
@@ -457,87 +385,11 @@ export default function CheckoutWizard() {
     };
   }, [displayCartItems]);
 
-  // Road-distance pricing via /api/checkout/delivery-quote (zone fallback)
+  // Pickup-only — no delivery fee
   useEffect(() => {
-    if (!fulfilment) {
-      setDeliveryMinor(0);
-      setActiveQuote(null);
-      return;
-    }
-
-    const shopCoords = checkoutVendors
-      .filter((v) => v.lat != null && v.lng != null)
-      .map((v) => ({ lat: v.lat as number, lng: v.lng as number }));
-
-    const hubIndex = Math.max(
-      0,
-      checkoutVendors.findIndex((v) => v.vendorId === hubVendorId),
-    );
-
-    let cancelled = false;
-    const controller = new AbortController();
-
-    (async () => {
-      try {
-        const res = await fetch("/api/checkout/delivery-quote", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            fulfilment,
-            collectMode,
-            hubIndex,
-            zoneId:
-              fulfilment === "delivery"
-                ? deliveryArea === "other"
-                  ? "flat_rate"
-                  : getDeliveryZone(deliveryArea)?.id || null
-                : null,
-            areaLabel:
-              fulfilment === "delivery"
-                ? resolveAreaLabel(deliveryArea, areaOther) ||
-                  deliveryLabel ||
-                  null
-                : null,
-            drop:
-              fulfilment === "delivery" &&
-              deliveryLat != null &&
-              deliveryLng != null
-                ? { lat: deliveryLat, lng: deliveryLng }
-                : null,
-            shops: shopCoords,
-          }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        const q = (json?.data || {}) as DeliveryQuote;
-        if (typeof q.deliveryMinor === "number") {
-          setActiveQuote(q);
-          setDeliveryMinor(q.deliveryMinor);
-        }
-      } catch (e) {
-        if (cancelled) return;
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        // Soft fallback: keep previous quote
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [
-    fulfilment,
-    deliveryArea,
-    deliveryLat,
-    deliveryLng,
-    deliveryArea,
-    areaOther,
-    deliveryLabel,
-    checkoutVendors,
-    collectMode,
-    hubVendorId,
-  ]);
+    setDeliveryMinor(0);
+    setActiveQuote(null);
+  }, []);
 
   useEffect(() => {
     fetch("/api/payments/config")
@@ -564,29 +416,25 @@ export default function CheckoutWizard() {
   }, []);
 
   useEffect(() => {
-    if (!flow.includes(step)) setStep(flow[0] || "method");
+    if (!flow.includes(step)) setStep(flow[0] || "collect");
   }, [flow, step]);
 
-  // Ensure same-day date
+  // Ensure same-day date + ASAP pickup time (short checkout)
   useEffect(() => {
     if (pickupDate !== today) setValue("pickupDate", today);
-  }, [pickupDate, today, setValue]);
-
-  const selectFulfilment = (m: FulfilmentMethod) => {
-    setFulfilment(m);
-    if (m === "pickup" && checkoutVendors.length <= 1) {
-      setCollectMode("classic");
+    if (!pickupTime) {
+      setValue("pickupTime", "asap", { shouldValidate: true });
     }
-  };
+  }, [pickupDate, pickupTime, today, setValue]);
 
   const goNext = async () => {
     setStepError(null);
-    if (step === "method" && !fulfilment) {
-      setStepError("Choose delivery or click & collect");
+    if (step === "method") {
+      setStep("collect");
       return;
     }
-    if (step === "location" && !canContinue) {
-      setStepError("Confirm location and a same-day delivery time");
+    if (step === "location") {
+      setStep("collect");
       return;
     }
     if (step === "collect" && !canContinue) {
@@ -596,12 +444,6 @@ export default function CheckoutWizard() {
           : "Shop details are still loading",
       );
       return;
-    }
-    if (step === "when") {
-      if (!canContinue) {
-        setStepError("Choose a collection time for today");
-        return;
-      }
     }
     if (step === "contact") {
       const ok = await trigger([
@@ -678,7 +520,7 @@ export default function CheckoutWizard() {
       return;
     }
     if (!fulfilment) {
-      setStep("method");
+      setStep("collect");
       return;
     }
     if (!payMethod) {
@@ -949,81 +791,69 @@ export default function CheckoutWizard() {
     return quoteHybridConsolidate(shopCoords, idx);
   }, [checkoutVendors, hubVendorId]);
 
-  const payOptions = availablePayMethods(
-    payConfig.stripeReady,
-    payConfig.paystackReady,
-  );
-
   const primaryDisabled =
-    step === "review"
+    step === "payment"
       ? submitting ||
         payState === "awaiting_auth" ||
         payState === "verifying" ||
         payState === "success" ||
-        !paymentsAvailable
+        !paymentsAvailable ||
+        !canContinue
       : !canContinue;
 
   const primaryLabel =
-    step === "review"
+    step === "payment"
       ? placeLabel
-      : step === "location"
-        ? "Confirm address"
-        : step === "payment"
-          ? "Review order"
-          : "Continue";
+      : step === "contact"
+        ? "Continue to pay"
+        : "Continue";
 
   const onPrimary = () => {
-    if (step === "review") return;
+    if (step === "payment") {
+      void handleSubmit(onSubmit)();
+      return;
+    }
     void goNext();
   };
 
   const dock =
     displayCartItems.length > 0 && !authLoading && !cartLoading ? (
-      <div className="flex items-center gap-3 sm:gap-4">
-        {step === "method" ? (
-          <button
-            type="button"
-            onClick={goToCart}
-            className="min-h-11 shrink-0 px-1 text-[13px] text-black/45 hover:text-black"
-          >
-            Bag
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={goBack}
-            className="min-h-11 shrink-0 px-1 text-[13px] text-black/45 hover:text-black"
-          >
-            Back
-          </button>
+      <div
+        className={cn(
+          "flex gap-3 sm:gap-4",
+          step === "payment"
+            ? "flex-col sm:flex-row sm:items-center"
+            : "items-center",
         )}
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-black/35">
-            Total
-          </p>
-          <p className="truncate text-[17px] font-semibold tabular-nums tracking-tight sm:text-[18px]">
-            {formatPrice(grandTotal)}
-          </p>
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <button
+            type="button"
+            onClick={stepIndex <= 0 ? goToCart : goBack}
+            className="min-h-11 shrink-0 px-1 text-[13px] text-black/45 hover:text-black"
+          >
+            {stepIndex <= 0 ? "Bag" : "Back"}
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-black/35">
+              {step === "payment" && payMeta ? payMeta.shortLabel : "Total"}
+            </p>
+            <p className="truncate text-[18px] font-semibold tabular-nums tracking-tight sm:text-[19px]">
+              {formatPrice(grandTotal)}
+            </p>
+          </div>
         </div>
-        {step === "review" ? (
-          <button
-            type="submit"
-            form="kc-checkout-wizard"
-            disabled={primaryDisabled}
-            className="inline-flex min-h-12 shrink-0 items-center bg-black px-5 text-[12px] font-medium uppercase tracking-[0.14em] text-white hover:opacity-80 disabled:opacity-40 sm:px-7"
-          >
-            {primaryLabel}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onPrimary}
-            disabled={primaryDisabled}
-            className="inline-flex min-h-12 shrink-0 items-center bg-black px-5 text-[12px] font-medium uppercase tracking-[0.14em] text-white hover:opacity-80 disabled:opacity-40 sm:px-7"
-          >
-            {primaryLabel}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onPrimary}
+          disabled={primaryDisabled}
+          className={cn(
+            "inline-flex min-h-12 shrink-0 items-center justify-center bg-black px-5 text-[12px] font-medium uppercase tracking-[0.14em] text-white hover:opacity-80 disabled:opacity-40 sm:px-7",
+            step === "payment" && "w-full sm:w-auto",
+          )}
+        >
+          {primaryLabel}
+        </button>
       </div>
     ) : (
       <div className="flex justify-end">
@@ -1090,7 +920,7 @@ export default function CheckoutWizard() {
         (payState === "starting" ||
           payState === "awaiting_auth" ||
           payState === "verifying") ? (
-          <div className="mb-6 border border-black/10 bg-white/60 px-4 py-3 text-[13px] text-black/55">
+          <div className="mb-6 border border-black/10 bg-white px-4 py-4 text-[14px] leading-relaxed text-black/60 sm:px-5">
             {payMessage}
           </div>
         ) : null}
@@ -1113,96 +943,6 @@ export default function CheckoutWizard() {
             </div>
           ) : (
             <form id="kc-checkout-wizard" onSubmit={handleSubmit(onSubmit)}>
-              {step === "method" ? (
-                <div>
-                  {heading(
-                    "How do you want it?",
-                    "Same-day only in Nairobi — pick up at the shop, or get it delivered.",
-                  )}
-                  <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                    {(
-                      [
-                        {
-                          id: "pickup" as const,
-                          label: "Click & collect",
-                          detail:
-                            checkoutVendors.length > 1
-                              ? "Collect from each shop, or consolidate to one hub."
-                              : "Collect from the vendor — usually no delivery fee.",
-                        },
-                        {
-                          id: "delivery" as const,
-                          label: "Delivery",
-                          detail: activeQuote
-                            ? `${formatPrice(activeQuote.deliveryMinor / 100)} · ~${activeQuote.etaMinutes} min${
-                                activeQuote.distanceKm > 0
-                                  ? ` · ${activeQuote.distanceKm.toFixed(1)} km`
-                                  : ""
-                              }`
-                            : "Priced by road distance from your live location.",
-                        },
-                      ] as const
-                    ).map((opt) => {
-                      const selected = fulfilment === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => selectFulfilment(opt.id)}
-                          className={cn(
-                            "flex flex-col items-start border px-4 py-4 text-left transition-colors",
-                            selected
-                              ? "border-black bg-white"
-                              : "border-black/10 bg-white/40 hover:border-black/25",
-                          )}
-                        >
-                          <span className="flex w-full items-center justify-between gap-3">
-                            <span className="text-[15px] font-semibold tracking-tight">
-                              {opt.label}
-                            </span>
-                            <span
-                              className={cn(
-                                "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                                selected
-                                  ? "border-black bg-black"
-                                  : "border-black/25",
-                              )}
-                              aria-hidden
-                            >
-                              {selected ? (
-                                <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                              ) : null}
-                            </span>
-                          </span>
-                          <span className="mt-2 text-[13px] leading-relaxed text-black/45">
-                            {opt.detail}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-
-              {step === "location" ? (
-                <DeliveryLocationStep
-                  value={deliveryLocation}
-                  onChange={setDeliveryLocation}
-                  vendors={checkoutVendors}
-                  quote={activeQuote}
-                  dayWindow={dayWindow}
-                  timingMode={timingMode}
-                  pickupDate={pickupDate}
-                  pickupTime={pickupTime}
-                  onTimingModeChange={setTimingMode}
-                  onTimingChange={({ date, time, mode }) => {
-                    setTimingMode(mode);
-                    setValue("pickupDate", date);
-                    setValue("pickupTime", time, { shouldValidate: true });
-                  }}
-                />
-              ) : null}
-
               {step === "collect" ? (
                 <PickupCollectStep
                   vendors={checkoutVendors}
@@ -1216,33 +956,11 @@ export default function CheckoutWizard() {
                 />
               ) : null}
 
-              {step === "when" ? (
-                <div>
-                  {heading(
-                    "When will you collect?",
-                    "Same day only — during the shop’s working hours.",
-                  )}
-                  <SameDayTiming
-                    window={dayWindow}
-                    mode={timingMode}
-                    time={pickupTime}
-                    etaMinutes={activeQuote?.etaMinutes || 30}
-                    onModeChange={setTimingMode}
-                    onChange={({ date, time, mode }) => {
-                      setTimingMode(mode);
-                      setValue("pickupDate", date);
-                      setValue("pickupTime", time, { shouldValidate: true });
-                    }}
-                    fulfilment="pickup"
-                  />
-                </div>
-              ) : null}
-
               {step === "contact" ? (
                 <div>
                   {heading(
                     "Your details",
-                    "We’ll use these for order updates and delivery calls.",
+                    "We’ll use these for pickup alerts. You’ll get a receipt after pay.",
                   )}
                   <div className="mt-10 space-y-6">
                     <label className="block space-y-2">
@@ -1287,216 +1005,22 @@ export default function CheckoutWizard() {
               ) : null}
 
               {step === "payment" ? (
-                <div>
-                  {heading(
-                    "How you’ll pay",
-                    "M-Pesa, cards, wallets, bank, or USSD — pick one rail to continue.",
+                <PaymentStep
+                  payMethod={payMethod}
+                  onSelect={setPayMethod}
+                  mpesaPhone={mpesaPhone}
+                  onMpesaPhoneChange={setMpesaPhone}
+                  customerPhone={customerPhone}
+                  stripeReady={payConfig.stripeReady}
+                  paystackReady={payConfig.paystackReady}
+                  paymentsAvailable={paymentsAvailable}
+                  configError={configError}
+                  grandTotal={grandTotal}
+                  itemCount={displayCartItems.reduce(
+                    (n, i) => n + i.quantity,
+                    0,
                   )}
-                  {!paymentsAvailable ? (
-                    <p className="mt-10 text-[14px] text-black/40">
-                      {configError || "Payments are unavailable right now."}
-                    </p>
-                  ) : (
-                    <div className="mt-8 space-y-6">
-                      {(["paystack", "stripe"] as const).map((group) => {
-                        const groupMethods = payOptions.filter(
-                          (m) => m.group === group,
-                        );
-                        if (!groupMethods.length) return null;
-                        return (
-                          <div key={group}>
-                            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-black/35">
-                              {group === "stripe"
-                                ? "International · Stripe"
-                                : "Kenya · Paystack"}
-                            </p>
-                            <ul className="mt-3 space-y-2">
-                              {groupMethods.map((m) => {
-                                const selected = payMethod === m.id;
-                                return (
-                                  <li key={m.id}>
-                                    <button
-                                      type="button"
-                                      onClick={() => setPayMethod(m.id)}
-                                      className={cn(
-                                        "flex w-full items-start gap-3 border px-4 py-3.5 text-left transition-colors",
-                                        selected
-                                          ? "border-black bg-white"
-                                          : "border-black/10 bg-white/40 hover:border-black/25",
-                                      )}
-                                    >
-                                      <span
-                                        className={cn(
-                                          "mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                                          selected
-                                            ? "border-black bg-black"
-                                            : "border-black/25",
-                                        )}
-                                        aria-hidden
-                                      >
-                                        {selected ? (
-                                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                                        ) : null}
-                                      </span>
-                                      <span className="min-w-0 flex-1">
-                                        <span className="block text-[15px] font-medium tracking-tight">
-                                          {m.label}
-                                        </span>
-                                        <span className="mt-0.5 block text-[13px] text-black/40">
-                                          {m.description}
-                                        </span>
-                                      </span>
-                                    </button>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                        );
-                      })}
-                      {isMpesaPayMethod(payMethod) ? (
-                        <div className="border border-black/10 bg-white/50 px-4 py-4">
-                          <p className="mb-3 text-[12px] text-black/40">
-                            M-Pesa number for the STK push
-                          </p>
-                          <PhoneField
-                            value={mpesaPhone || customerPhone}
-                            onChange={setMpesaPhone}
-                            id="mpesaPhone"
-                          />
-                        </div>
-                      ) : null}
-                      {isStripePayMethod(payMethod) ? (
-                        <p className="text-[13px] text-black/40">
-                          You’ll finish on Stripe Checkout — card, Apple Pay,
-                          Google Pay, or Link when available.
-                        </p>
-                      ) : null}
-                      {isPaystackHostedMethod(payMethod) ? (
-                        <p className="text-[13px] text-black/40">
-                          You’ll finish on Paystack’s secure payment page.
-                        </p>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              ) : null}
-
-              {step === "review" ? (
-                <div className="space-y-8">
-                  {heading(
-                    "Review & place order",
-                    fulfilment === "delivery"
-                      ? "Confirm delivery details before paying."
-                      : "Confirm collect details before paying.",
-                  )}
-                  <section className="border border-black/[0.08] bg-white/60 px-4 py-1 sm:px-5">
-                    <dl className="divide-y divide-black/[0.06] text-[15px]">
-                      <div className="flex justify-between gap-4 py-4">
-                        <dt className="text-black/40">Method</dt>
-                        <dd className="text-right font-medium">
-                          {fulfilmentLabel(fulfilment)}
-                          {fulfilment === "pickup" &&
-                          collectMode === "hybrid" &&
-                          checkoutVendors.length > 1
-                            ? " · Hybrid"
-                            : ""}
-                        </dd>
-                      </div>
-                      {fulfilment === "pickup" ? (
-                        <div className="flex justify-between gap-4 py-4">
-                          <dt className="text-black/40">Collect</dt>
-                          <dd className="max-w-[60%] text-right font-medium">
-                            {collectHubLabel}
-                          </dd>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex justify-between gap-4 py-4">
-                            <dt className="text-black/40">Deliver to</dt>
-                            <dd className="max-w-[60%] text-right font-medium">
-                              <span className="block">{areaLabel}</span>
-                              {composedAddress ? (
-                                <span className="mt-1 block text-[13px] font-normal text-black/45">
-                                  {composedAddress}
-                                </span>
-                              ) : null}
-                              {gateCode.trim() ? (
-                                <span className="mt-1 block text-[13px] font-normal text-black/45">
-                                  Gate {gateCode.trim()}
-                                </span>
-                              ) : null}
-                            </dd>
-                          </div>
-                          {activeQuote ? (
-                            <div className="flex justify-between gap-4 py-4">
-                              <dt className="text-black/40">Trip</dt>
-                              <dd className="max-w-[60%] text-right text-[13px] text-black/55">
-                                {activeQuote.breakdown} · ~
-                                {activeQuote.etaMinutes} min
-                              </dd>
-                            </div>
-                          ) : null}
-                          {deliveryNote.trim() ? (
-                            <div className="flex justify-between gap-4 py-4">
-                              <dt className="text-black/40">Instructions</dt>
-                              <dd className="max-w-[60%] text-right text-[13px] text-black/55">
-                                {deliveryNote.trim()}
-                              </dd>
-                            </div>
-                          ) : null}
-                        </>
-                      )}
-                      <div className="flex justify-between gap-4 py-4">
-                        <dt className="text-black/40">When</dt>
-                        <dd className="text-right font-medium">{whenSummary}</dd>
-                      </div>
-                      <div className="flex justify-between gap-4 py-4">
-                        <dt className="text-black/40">Contact</dt>
-                        <dd className="max-w-[60%] text-right font-medium">
-                          <span className="block">{customerName}</span>
-                          <span className="mt-0.5 block text-[13px] font-normal text-black/45">
-                            {customerEmail}
-                          </span>
-                          <span className="mt-0.5 block text-[13px] font-normal text-black/45">
-                            +254 {customerPhone.replace(/\D/g, "")}
-                          </span>
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-4 py-4">
-                        <dt className="text-black/40">Payment</dt>
-                        <dd className="text-right font-medium">
-                          {payMeta?.shortLabel ?? "—"}
-                        </dd>
-                      </div>
-                    </dl>
-                  </section>
-
-                  {/* Bag lines live in the sidebar / mobile accordion — keep a compact total here */}
-                  <section className="flex items-end justify-between gap-4 border-t border-black/10 pt-6">
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-black/35">
-                        Amount due
-                      </p>
-                      <p className="mt-1 text-[13px] text-black/45">
-                        {displayCartItems.reduce((n, i) => n + i.quantity, 0)}{" "}
-                        {displayCartItems.reduce((n, i) => n + i.quantity, 0) ===
-                        1
-                          ? "item"
-                          : "items"}
-                        {deliveryMinor > 0
-                          ? ` · ${fulfilment === "delivery" ? "incl. delivery" : "incl. consolidate"}`
-                          : ""}
-                      </p>
-                    </div>
-                    <p className="text-[22px] font-semibold tabular-nums tracking-tight">
-                      {formatPrice(grandTotal)}
-                    </p>
-                  </section>
-                  {payMessage ? (
-                    <p className="text-[13px] text-black/45">{payMessage}</p>
-                  ) : null}
-                </div>
+                />
               ) : null}
 
               {stepError ? (

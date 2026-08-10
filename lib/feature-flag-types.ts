@@ -22,7 +22,7 @@ export type FeatureFlags = Record<FeatureFlagKey, boolean>;
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   pos: true,
-  couriers: true,
+  couriers: false,
   warehouse: false,
   store_ops: true,
   marketing: true,
@@ -51,8 +51,8 @@ export const FEATURE_FLAG_META: Record<
     group: "modules",
   },
   couriers: {
-    label: "Delivery",
-    description: "Courier jobs, fleet, and driver roles",
+    label: "Delivery (retired)",
+    description: "Legacy courier plane — marketplace is pickup / receipt only",
     group: "planes",
   },
   warehouse: {
@@ -120,7 +120,6 @@ export const FEATURE_FLAG_META: Record<
 /** Map nav href → flag that must be on (undefined = always available). */
 export const NAV_FEATURE_FLAGS: Record<string, FeatureFlagKey | undefined> = {
   "/app/pos": "pos",
-  "/app/couriers": "couriers",
   "/app/warehouse": "warehouse",
   "/app/marketing": "marketing",
   "/app/finance": "finance",

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import Header from "./Header";
 import Footer from "./Footer";
+import WorkspaceAccessBanner from "./WorkspaceAccessBanner";
 
 export default function ConditionalHeader() {
   const pathname = usePathname();
@@ -13,7 +14,7 @@ export default function ConditionalHeader() {
     return null;
   }
 
-  // Don't show storefront header on OS / admin shells (they have their own chrome)
+  // Don't show storefront header on OS / admin / account shells
   if (
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/app") ||
@@ -29,7 +30,11 @@ export default function ConditionalHeader() {
 
   return (
     <Suspense fallback={null}>
-      <Header />
+      {/* Sticky stack so the workspace banner stays visible on mobile scroll */}
+      <div className="sticky top-0 z-40">
+        <WorkspaceAccessBanner />
+        <Header />
+      </div>
     </Suspense>
   );
 }

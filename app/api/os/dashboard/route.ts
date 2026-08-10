@@ -238,7 +238,7 @@ export async function GET(request: NextRequest) {
     { label: "Out / ready", value: buckets.out, color: "rgba(0,0,0,0.35)" },
     { label: "Delivered", value: buckets.delivered, color: "rgba(0,0,0,0.2)" },
     {
-      label: "Returned",
+      label: "Cancelled",
       value: buckets.returned,
       color: "rgba(142,27,13,0.55)",
     },

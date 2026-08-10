@@ -4,6 +4,41 @@ import { captureSuccessfulPayment } from "@/lib/payments/capture";
 import { getServiceSupabase } from "@/lib/supabase/admin";
 import { retrieveCheckoutSession } from "@/lib/stripe/checkout";
 
+type IntentMeta = {
+  source?: string | null;
+  fulfilment?: string | null;
+  returnPath?: string | null;
+  orderIds?: string[];
+  lineItems?: unknown[];
+};
+
+function enrichVerify(input: {
+  reference: string;
+  status: string;
+  amount: number;
+  receiptPublicId: string | null;
+  provider: "stripe" | "paystack";
+  orderPublicId?: string | null;
+  meta?: IntentMeta | null;
+}) {
+  const meta = input.meta || {};
+  const orderPublicId =
+    input.orderPublicId ||
+    (Array.isArray(meta.orderIds) ? meta.orderIds[0] : null) ||
+    null;
+
+  return {
+    reference: input.reference,
+    status: input.status,
+    amount: input.amount,
+    receiptPublicId: input.receiptPublicId,
+    provider: input.provider,
+    orderPublicId,
+    fulfilment: "pickup" as const,
+    returnPath: meta.returnPath || null,
+  };
+}
+
 async function verifyStripe(reference: string, sessionId?: string | null) {
   const sb = getServiceSupabase();
   let sessionIdResolved = sessionId || null;
@@ -18,28 +53,40 @@ async function verifyStripe(reference: string, sessionId?: string | null) {
   }
 
   if (!sessionIdResolved) {
-    return {
+    return enrichVerify({
       reference,
       status: "pending",
       amount: 0,
-      receiptPublicId: null as string | null,
-      provider: "stripe" as const,
-    };
+      receiptPublicId: null,
+      provider: "stripe",
+    });
   }
 
   const session = await retrieveCheckoutSession(sessionIdResolved);
   const paid =
-    session.payment_status === "paid" ||
-    session.status === "complete";
+    session.payment_status === "paid" || session.status === "complete";
+
+  const { data: intent } = await sb
+    .from("payment_intents")
+    .select("metadata, clerk_user_id")
+    .eq("paystack_reference", reference)
+    .maybeSingle();
+
+  const meta =
+    intent?.metadata && typeof intent.metadata === "object"
+      ? (intent.metadata as IntentMeta)
+      : null;
 
   if (!paid) {
-    return {
+    return enrichVerify({
       reference,
       status: session.payment_status || session.status || "pending",
       amount: session.amount_total || 0,
-      receiptPublicId: null as string | null,
-      provider: "stripe" as const,
-    };
+      receiptPublicId: null,
+      provider: "stripe",
+      orderPublicId: session.metadata?.orderPublicId || null,
+      meta,
+    });
   }
 
   const pi =
@@ -51,18 +98,8 @@ async function verifyStripe(reference: string, sessionId?: string | null) {
         ? String((session.payment_intent as { id: string }).id)
         : null;
 
-  const { data: intent } = await sb
-    .from("payment_intents")
-    .select("metadata, clerk_user_id")
-    .eq("paystack_reference", reference)
-    .maybeSingle();
-
   const lineItems =
-    intent?.metadata &&
-    typeof intent.metadata === "object" &&
-    Array.isArray((intent.metadata as { lineItems?: unknown }).lineItems)
-      ? (intent.metadata as { lineItems: unknown[] }).lineItems
-      : [];
+    meta && Array.isArray(meta.lineItems) ? meta.lineItems : [];
 
   const capture = await captureSuccessfulPayment({
     reference:
@@ -81,27 +118,49 @@ async function verifyStripe(reference: string, sessionId?: string | null) {
     stripePaymentIntentId: pi,
   });
 
-  return {
+  return enrichVerify({
     reference,
     status: "success",
     amount: session.amount_total || 0,
     receiptPublicId: capture.receiptPublicId,
-    provider: "stripe" as const,
-  };
+    provider: "stripe",
+    orderPublicId: session.metadata?.orderPublicId || null,
+    meta,
+  });
 }
 
 async function verifyPaystack(reference: string) {
   const verified = await verifyTransaction(reference);
   const success = verified.status === "success";
 
+  const { data: intent } = await getServiceSupabase()
+    .from("payment_intents")
+    .select("metadata, clerk_user_id, order_public_id")
+    .eq("paystack_reference", reference)
+    .maybeSingle();
+
+  const meta =
+    intent?.metadata && typeof intent.metadata === "object"
+      ? (intent.metadata as IntentMeta)
+      : null;
+
+  const orderPublicId =
+    (typeof verified.metadata?.orderPublicId === "string"
+      ? verified.metadata.orderPublicId
+      : null) ||
+    intent?.order_public_id ||
+    null;
+
   if (!success) {
-    return {
+    return enrichVerify({
       reference,
       status: verified.status,
       amount: verified.amount,
-      receiptPublicId: null as string | null,
-      provider: "paystack" as const,
-    };
+      receiptPublicId: null,
+      provider: "paystack",
+      orderPublicId,
+      meta,
+    });
   }
 
   const channel =
@@ -111,23 +170,8 @@ async function verifyPaystack(reference: string) {
       : null) ||
     "card";
 
-  const orderPublicId =
-    typeof verified.metadata?.orderPublicId === "string"
-      ? verified.metadata.orderPublicId
-      : null;
-
-  const { data: intent } = await getServiceSupabase()
-    .from("payment_intents")
-    .select("metadata, clerk_user_id")
-    .eq("paystack_reference", reference)
-    .maybeSingle();
-
   const lineItems =
-    intent?.metadata &&
-    typeof intent.metadata === "object" &&
-    Array.isArray((intent.metadata as { lineItems?: unknown }).lineItems)
-      ? (intent.metadata as { lineItems: unknown[] }).lineItems
-      : [];
+    meta && Array.isArray(meta.lineItems) ? meta.lineItems : [];
 
   const capture = await captureSuccessfulPayment({
     reference,
@@ -140,13 +184,15 @@ async function verifyPaystack(reference: string) {
     provider: "paystack",
   });
 
-  return {
+  return enrichVerify({
     reference,
     status: verified.status,
     amount: verified.amount,
     receiptPublicId: capture.receiptPublicId,
-    provider: "paystack" as const,
-  };
+    provider: "paystack",
+    orderPublicId,
+    meta,
+  });
 }
 
 async function verifyAndCapture(

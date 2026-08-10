@@ -83,7 +83,7 @@ export function CurationClient() {
       await load();
       setMessage(
         outcome === "admitted"
-          ? "Vendor admitted."
+          ? "Vendor admitted — account, storefront, and owner membership created."
           : "Vendor rejected - recorded.",
       );
     } finally {

@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Heart, LifeBuoy, Package, User } from "lucide-react";
+import { Heart, LifeBuoy, Package, Store, Shield, User } from "lucide-react";
 import { useUserAuth } from "@/lib/hooks/useUserAuth";
+import { useWorkspaceAccess } from "@/lib/hooks/useWorkspaceAccess";
 import { Order } from "@/types";
 import { formatPrice } from "@/lib/currency";
 import { ui } from "@/components/system/tokens";
@@ -14,6 +15,7 @@ const ACTIVE_STATUSES = new Set(["pending", "confirmed", "ready"]);
 
 export default function AccountOverviewPage() {
   const { user } = useUserAuth();
+  const { vendor, admin, roleLabel, platformRoleLabel } = useWorkspaceAccess();
   const [orders, setOrders] = useState<Order[]>([]);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,55 @@ export default function AccountOverviewPage() {
           Orders, wishlist, and settings.
         </p>
       </div>
+
+      {vendor || admin ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {vendor ? (
+            <Link
+              href="/app"
+              className="group border border-black/10 bg-white px-5 py-5 transition-colors hover:border-black/25"
+            >
+              <div className="flex items-start gap-3">
+                <Store className="mt-0.5 h-5 w-5 text-black/40" strokeWidth={1.5} />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-black/35">
+                    Workspace
+                  </p>
+                  <p className="mt-1 text-[17px] font-medium tracking-tight text-black">
+                    My business
+                  </p>
+                  <p className="mt-1 text-[13px] text-black/45">
+                    Orders, products, staff
+                    {roleLabel ? ` · ${roleLabel}` : ""}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ) : null}
+          {admin ? (
+            <Link
+              href="/admin"
+              className="group border border-black/10 bg-white px-5 py-5 transition-colors hover:border-black/25"
+            >
+              <div className="flex items-start gap-3">
+                <Shield className="mt-0.5 h-5 w-5 text-black/40" strokeWidth={1.5} />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-black/35">
+                    Platform
+                  </p>
+                  <p className="mt-1 text-[17px] font-medium tracking-tight text-black">
+                    Admin
+                  </p>
+                  <p className="mt-1 text-[13px] text-black/45">
+                    Catalogue, reports, finance
+                    {platformRoleLabel ? ` · ${platformRoleLabel}` : ""}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile

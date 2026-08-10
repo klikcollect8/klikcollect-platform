@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Capacitor } from "@capacitor/core";
 import { CloseIcon } from "@/components/NavIcons";
 import { getPublicAppUrl } from "@/lib/public-app-url";
 import { useIsClient } from "@/lib/hooks/useIsClient";
@@ -95,32 +94,44 @@ export default function InstallAppPrompt() {
   }, [open]);
 
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) return;
-    if (isStandaloneDisplay()) return;
-
-    const onOpen = () => show();
-    window.addEventListener(OPEN_INSTALL_APP_EVENT, onOpen);
-
+    let cancelled = false;
     let autoTimer: number | undefined;
-    try {
-      if (localStorage.getItem(STORAGE_KEY) !== "1") {
-        autoTimer = window.setTimeout(show, 2200);
-      }
-    } catch {
-      autoTimer = window.setTimeout(show, 2200);
-    }
+    let onOpen: (() => void) | undefined;
+    let onBip: ((e: Event) => void) | undefined;
 
-    const onBip = (e: Event) => {
-      e.preventDefault();
-      const ev = e as BeforeInstallPromptEvent;
-      setDeferred(ev);
-      deferredRef.current = ev;
-    };
-    window.addEventListener("beforeinstallprompt", onBip);
+    void (async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (cancelled || Capacitor.isNativePlatform()) return;
+      } catch {
+        /* web without Capacitor */
+      }
+      if (cancelled || isStandaloneDisplay()) return;
+
+      onOpen = () => show();
+      window.addEventListener(OPEN_INSTALL_APP_EVENT, onOpen);
+
+      try {
+        if (localStorage.getItem(STORAGE_KEY) !== "1") {
+          autoTimer = window.setTimeout(show, 8000);
+        }
+      } catch {
+        autoTimer = window.setTimeout(show, 8000);
+      }
+
+      onBip = (e: Event) => {
+        e.preventDefault();
+        const ev = e as BeforeInstallPromptEvent;
+        setDeferred(ev);
+        deferredRef.current = ev;
+      };
+      window.addEventListener("beforeinstallprompt", onBip);
+    })();
 
     return () => {
-      window.removeEventListener(OPEN_INSTALL_APP_EVENT, onOpen);
-      window.removeEventListener("beforeinstallprompt", onBip);
+      cancelled = true;
+      if (onOpen) window.removeEventListener(OPEN_INSTALL_APP_EVENT, onOpen);
+      if (onBip) window.removeEventListener("beforeinstallprompt", onBip);
       if (autoTimer) window.clearTimeout(autoTimer);
     };
   }, [show]);

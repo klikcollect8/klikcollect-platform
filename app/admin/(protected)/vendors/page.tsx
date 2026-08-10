@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listApplications } from "@/lib/m1-store";
 import { StatusBadge } from "@/components/os/StatusBadge";
+import { CurationClient } from "@/app/(os)/app/curation/CurationClient";
 
 export const dynamic = "force-dynamic";
 
@@ -18,15 +19,15 @@ export default async function AdminVendorsPage() {
             Vendors
           </h1>
           <p className="mt-1 text-[13px] text-[var(--kc-mute)]">
-            Admit or reject applicants with a recorded reason. Full decision UI
-            lives in Commerce OS Curation.
+            Admit or reject applicants with a recorded reason. Admission creates
+            the vendor account, storefront, and owner membership.
           </p>
         </div>
         <Link
-          href="/app/curation"
+          href="#curation-queue"
           className="rounded-[var(--kc-radius-sm)] bg-[var(--kc-ink)] px-3.5 py-2 text-[13px] font-medium text-white hover:bg-black"
         >
-          Open curation queue
+          Jump to queue
         </Link>
       </div>
 
@@ -34,6 +35,13 @@ export default async function AdminVendorsPage() {
         <Stat label="Pending" value={pending.length} />
         <Stat label="Admitted" value={admitted.length} />
         <Stat label="Rejected" value={rejected.length} />
+      </div>
+
+      <div id="curation-queue" className="scroll-mt-6">
+        <h2 className="mb-3 text-[15px] font-semibold text-[var(--kc-ink)]">
+          Curation queue
+        </h2>
+        <CurationClient />
       </div>
 
       <div className="overflow-hidden rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white">

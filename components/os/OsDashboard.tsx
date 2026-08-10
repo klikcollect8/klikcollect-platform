@@ -11,7 +11,6 @@ import {
   ScanBarcode,
   ShoppingBag,
   Star,
-  Truck,
   Users,
   Wallet,
 } from "lucide-react";
@@ -31,6 +30,11 @@ import {
 import { osUi } from "@/components/os/os-ui";
 import { OsStat } from "@/components/os/OsPanel";
 import { cn } from "@/lib/utils";
+import {
+  resolveRoleChrome,
+  softDashboardLinks,
+  type RoleChromePlane,
+} from "@/lib/workspace/role-chrome";
 
 type Activity = {
   id: number;
@@ -133,7 +137,6 @@ const LINKS = [
   { href: "/app/questions", label: "Questions", icon: MessageCircleQuestion },
   { href: "/app/reviews", label: "Reviews", icon: Star },
   { href: "/app/staff", label: "Manage staff", icon: Users },
-  { href: "/app/couriers", label: "Delivery", icon: Truck },
 ];
 
 const tooltipStyle = {
@@ -146,6 +149,39 @@ export function OsDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [chartsReady, setChartsReady] = useState(false);
+  const [chromePlane, setChromePlane] = useState<RoleChromePlane | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/os/me")
+      .then((r) => r.json())
+      .then((body) => {
+        if (cancelled) return;
+        const role = body?.data?.role ? String(body.data.role) : null;
+        const platformRole = body?.data?.platformRole
+          ? String(body.data.platformRole)
+          : null;
+        const membershipRole = Array.isArray(body?.data?.memberships)
+          ? body.data.memberships[0]?.role
+            ? String(body.data.memberships[0].role)
+            : null
+          : null;
+        const staffRole =
+          membershipRole || (role === "platform_admin" ? null : role);
+        const chrome = resolveRoleChrome({
+          staffRole,
+          platformRole: platformRole || (role === "platform_admin" ? role : null),
+          hasVendor: true,
+        });
+        setChromePlane(chrome.plane);
+      })
+      .catch(() => {
+        if (!cancelled) setChromePlane("vendor");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +214,17 @@ export function OsDashboard() {
     return () => cancelAnimationFrame(id);
   }, []);
 
+  const softLinks = chromePlane ? softDashboardLinks(chromePlane) : null;
+  const chrome = resolveRoleChrome({
+    staffRole:
+      chromePlane === "driver"
+        ? "vendor_driver"
+        : chromePlane === "store"
+          ? "cashier"
+          : null,
+    hasVendor: true,
+  });
+
   const charts = data?.charts;
   const salesSeries = charts?.salesSeries || [];
   const ordersSeries = charts?.ordersSeries || [];
@@ -201,6 +248,79 @@ export function OsDashboard() {
 
   const delta = charts?.salesDeltaPct ?? 0;
 
+  if (softLinks) {
+    return (
+      <div className="w-full space-y-10">
+        <div
+          className={cn(
+            "px-5 py-6 text-white sm:px-7",
+            chrome.accentBg,
+          )}
+        >
+          <p className="text-[11px] uppercase tracking-[0.16em] text-white/60">
+            {chrome.label}
+          </p>
+          <h1
+            className="mt-2 text-[clamp(1.6rem,4vw,2.2rem)] font-medium tracking-tight"
+            style={{ fontFamily: "var(--font-display), sans-serif" }}
+          >
+            {data?.storeName
+              ? `${greeting()}, ${data.storeName}`
+              : greeting()}
+          </h1>
+          <p className="mt-2 text-[14px] text-white/70">
+            {chromePlane === "driver"
+              ? "Orders and packing handoff for pickup."
+              : "Floor tools for packing and checkout."}
+          </p>
+        </div>
+        {error ? <p className="text-[14px] text-[#8e1b0d]">{error}</p> : null}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {softLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex min-h-20 items-center justify-between border border-black/10 bg-white px-5 py-4 transition-colors hover:bg-black/[0.02]"
+            >
+              <span className="text-[16px] font-medium tracking-tight">
+                {link.label}
+              </span>
+              <ArrowUpRight className="h-4 w-4 text-black/30" strokeWidth={1.5} />
+            </Link>
+          ))}
+        </div>
+        {data ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="border border-black/10 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-black/35">
+                Waiting
+              </p>
+              <p className="mt-1 text-[22px] font-medium tabular-nums">
+                {data.buckets.waiting}
+              </p>
+            </div>
+            <div className="border border-black/10 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-black/35">
+                Packing
+              </p>
+              <p className="mt-1 text-[22px] font-medium tabular-nums">
+                {data.buckets.packing}
+              </p>
+            </div>
+            <div className="border border-black/10 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-black/35">
+                Ready / out
+              </p>
+              <p className="mt-1 text-[22px] font-medium tabular-nums">
+                {data.buckets.out}
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-12">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -210,10 +330,12 @@ export function OsDashboard() {
             className={cn("mt-2", osUi.pageTitle)}
             style={{ fontFamily: "var(--font-display), sans-serif" }}
           >
-            {greeting()}
+            {data?.storeName
+              ? `${greeting()}, ${data.storeName}`
+              : greeting()}
           </h1>
           <p className={cn("mt-2", osUi.pageDesc)}>
-            {data?.storeName || "Your store"} · how is business today?
+            How is business today?
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -333,17 +455,44 @@ export function OsDashboard() {
             label="Sales"
             value={data ? kes(data.today.salesMinor) : " - "}
             icon={Wallet}
-            hint={`${data?.today.orders ?? 0} orders`}
+            hint={
+              data
+                ? `${data.today.completed} completed · AOV ${kes(data.aovMinor)}`
+                : " - "
+            }
           />
           <OsStat
-            label="Est. after fees"
-            value={data ? kes(data.today.profitMinor) : " - "}
-            icon={Package}
-            hint="Rough estimate · not COGS"
-            tone="good"
+            label="Orders"
+            value={data ? data.today.orders : " - "}
+            icon={ShoppingBag}
+            hint={
+              data
+                ? `${data.buckets.waiting} waiting · ${data.buckets.packing} packing`
+                : " - "
+            }
           />
           <OsStat
-            label="Wallet available"
+            label="Low / out of stock"
+            value={
+              data
+                ? (data.attention?.lowStock ?? data.stock.low + data.stock.out)
+                : " - "
+            }
+            icon={Boxes}
+            hint={
+              data
+                ? `${data.stock.low} low · ${data.stock.out} out`
+                : " - "
+            }
+            tone={
+              data &&
+              (data.attention?.lowStock ?? data.stock.low + data.stock.out) > 0
+                ? "warn"
+                : "default"
+            }
+          />
+          <OsStat
+            label="Available balance"
             value={data ? kes(data.wallet.availableMinor) : " - "}
             icon={Wallet}
             hint={
@@ -351,12 +500,6 @@ export function OsDashboard() {
                 ? `Pending ${kes(data.wallet.pendingMinor)} · Held ${kes(data.wallet.heldMinor)}`
                 : " - "
             }
-          />
-          <OsStat
-            label="AOV"
-            value={data ? kes(data.aovMinor) : " - "}
-            icon={ShoppingBag}
-            hint={data ? `${Math.round(data.repeatRate * 100)}% repeat` : " - "}
           />
         </div>
       </section>

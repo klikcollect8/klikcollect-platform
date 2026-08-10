@@ -12,11 +12,27 @@ export async function createStripeCheckoutSession(input: {
   orderIds: string[];
   origin: string;
   lineItems?: Array<{ name?: string; quantity?: number; price?: number }>;
+  callbackQuery?: Record<string, string | undefined | null>;
+  cancelUrl?: string;
 }) {
   const stripe = getStripe();
   const currency = stripeCurrency();
-  const successUrl = `${input.origin}/payment/callback?reference=${encodeURIComponent(input.reference)}&provider=stripe&session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = `${input.origin}/checkout?cancelled=1`;
+  const params = new URLSearchParams({
+    reference: input.reference,
+    provider: "stripe",
+    session_id: "{CHECKOUT_SESSION_ID}",
+  });
+  for (const [key, value] of Object.entries(input.callbackQuery || {})) {
+    if (value) params.set(key, String(value));
+  }
+  // Stripe requires the literal `{CHECKOUT_SESSION_ID}` placeholder unencoded
+  const successUrl = `${input.origin}/payment/callback?${params
+    .toString()
+    .replace(
+      encodeURIComponent("{CHECKOUT_SESSION_ID}"),
+      "{CHECKOUT_SESSION_ID}",
+    )}`;
+  const cancelUrl = input.cancelUrl || `${input.origin}/checkout?cancelled=1`;
 
   const description =
     input.orderIds.length > 1
@@ -54,6 +70,8 @@ export async function createStripeCheckoutSession(input: {
       orderPublicId: input.orderPublicId || "",
       orderIds: input.orderIds.join(","),
       provider: "stripe",
+      source: input.callbackQuery?.source || "",
+      fulfilment: input.callbackQuery?.fulfilment || "",
     },
     payment_intent_data: {
       metadata: {
@@ -61,6 +79,8 @@ export async function createStripeCheckoutSession(input: {
         orderPublicId: input.orderPublicId || "",
         orderIds: input.orderIds.join(","),
         provider: "stripe",
+        source: input.callbackQuery?.source || "",
+        fulfilment: input.callbackQuery?.fulfilment || "",
       },
     },
   });

@@ -4,10 +4,15 @@ import { useState, useEffect, useCallback } from "react";
 import { Product } from "@/types";
 import { useUserAuth } from "./useUserAuth";
 
-export function useWishlist() {
+/**
+ * Wishlist hydration is deferred until `enabled` (e.g. drawer open)
+ * so Header does not fire N product fetches on every page load.
+ */
+export function useWishlist(opts?: { enabled?: boolean }) {
   const { isSignedIn, user } = useUserAuth();
   const [wishlist, setWishlist] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const enabled = opts?.enabled === true;
 
   const loadWishlist = useCallback(async () => {
     if (!isSignedIn || !user) {
@@ -16,6 +21,7 @@ export function useWishlist() {
       return;
     }
 
+    setLoading(true);
     try {
       const res = await fetch("/api/user/wishlist");
       if (!res.ok) {
@@ -29,21 +35,29 @@ export function useWishlist() {
         return;
       }
 
+      const ids = wishlistData
+        .slice(0, 24)
+        .map((item: { product_id: string }) => item.product_id)
+        .filter(Boolean) as string[];
+
       const products: Product[] = [];
-      await Promise.all(
-        wishlistData.slice(0, 24).map(async (item: { product_id: string }) => {
-          try {
-            const productResponse = await fetch(
-              `/api/products/${item.product_id}`,
-            );
-            if (productResponse.ok) {
-              products.push(await productResponse.json());
+      for (let i = 0; i < ids.length; i += 4) {
+        const chunk = ids.slice(i, i + 4);
+        const part = await Promise.all(
+          chunk.map(async (id) => {
+            try {
+              const productResponse = await fetch(`/api/products/${id}`);
+              if (productResponse.ok) {
+                return (await productResponse.json()) as Product;
+              }
+            } catch {
+              return null;
             }
-          } catch {
-            /* skip missing product */
-          }
-        }),
-      );
+            return null;
+          }),
+        );
+        for (const p of part) if (p) products.push(p);
+      }
 
       setWishlist(products);
       localStorage.setItem("wishlist", JSON.stringify(products));
@@ -107,8 +121,9 @@ export function useWishlist() {
   );
 
   useEffect(() => {
+    if (!enabled) return;
     void loadWishlist();
-  }, [loadWishlist]);
+  }, [enabled, loadWishlist]);
 
   return {
     wishlist,

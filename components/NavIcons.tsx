@@ -8,6 +8,7 @@ import {
   List,
   MagnifyingGlass,
   Package,
+  Storefront,
   User,
   X,
   type Icon,
@@ -65,6 +66,10 @@ export function BagIcon(props: NavIconProps) {
 
 export function AccountIcon(props: NavIconProps) {
   return <NavGlyph icon={User} {...props} />;
+}
+
+export function StoreIcon(props: NavIconProps) {
+  return <NavGlyph icon={Storefront} {...props} />;
 }
 
 export function BellIcon(props: NavIconProps) {

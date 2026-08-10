@@ -17,7 +17,11 @@ export async function GET() {
       .order("sort_order", { ascending: true });
 
     if (error || !data) {
-      return NextResponse.json([]);
+      return NextResponse.json([], {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      });
     }
 
     const slides = data.map((slide: Record<string, unknown>) => ({
@@ -34,7 +38,11 @@ export async function GET() {
       displayOrder: slide.sort_order,
     }));
 
-    return NextResponse.json(slides);
+    return NextResponse.json(slides, {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+      },
+    });
   } catch {
     return NextResponse.json([]);
   }

@@ -18,15 +18,25 @@ import {
   REJECTION_CLASSES,
 } from "@/lib/curation-policy";
 import { appendUsageEvent } from "@/lib/m1-store";
-import { requireVendorActor } from "@/lib/auth/require-vendor";
 import {
   requireClerkUser,
   unauthorizedJson,
 } from "@/lib/auth/require-clerk-user";
+import {
+  handleRequireAdminError,
+  requireAdminPermission,
+} from "@/lib/auth/require-admin";
+import {
+  provisionAdmittedVendor,
+  suspendVendor,
+} from "@/lib/vendors/provision";
 
 export async function GET() {
-  const gate = await requireVendorActor();
-  if (!gate.ok) return gate.response;
+  try {
+    await requireAdminPermission("vendors:approve");
+  } catch (e) {
+    return handleRequireAdminError(e);
+  }
 
   const applications = await listApplications();
   return NextResponse.json({
@@ -166,12 +176,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** Record admit/reject decision (who / when / why) - M1 DoD */
+/** Record admit/reject/suspend — platform admin only; admit provisions tenant. */
 export async function PATCH(request: NextRequest) {
   try {
-    const gate = await requireVendorActor();
-    if (!gate.ok) return gate.response;
-    const actor = gate.actor.email || gate.actor.userId;
+    const admin = await requireAdminPermission("vendors:approve");
+    const actor = admin.user.email || admin.user.id;
 
     const body = await request.json();
     const id = String(body?.id || "");
@@ -180,7 +189,9 @@ export async function PATCH(request: NextRequest) {
         ? "admitted"
         : body?.outcome === "rejected"
           ? "rejected"
-          : null;
+          : body?.outcome === "suspended"
+            ? "suspended"
+            : null;
     const reason = String(body?.reason || "").trim();
     const decidedBy = String(body?.decidedBy || actor).trim();
 
@@ -208,20 +219,30 @@ export async function PATCH(request: NextRequest) {
     const decision: CurationDecision = {
       decidedAt: new Date().toISOString(),
       decidedBy,
-      outcome,
+      outcome: outcome === "suspended" ? "rejected" : outcome,
       criteriaChecked: Array.isArray(body?.criteriaChecked)
         ? body.criteriaChecked
         : [],
       rejectionClasses:
-        outcome === "rejected" && Array.isArray(body?.rejectionClasses)
+        (outcome === "rejected" || outcome === "suspended") &&
+        Array.isArray(body?.rejectionClasses)
           ? body.rejectionClasses
           : undefined,
       reason,
     };
 
+    let provision: Awaited<ReturnType<typeof provisionAdmittedVendor>> | null =
+      null;
+
+    if (outcome === "admitted") {
+      provision = await provisionAdmittedVendor(apps[idx]);
+    } else if (outcome === "suspended") {
+      await suspendVendor(apps[idx].id).catch(() => undefined);
+    }
+
     const updated: CurationApplication = {
       ...apps[idx],
-      status: outcome,
+      status: outcome === "suspended" ? "rejected" : outcome,
       decision,
       updatedAt: new Date().toISOString(),
     };
@@ -232,21 +253,34 @@ export async function PATCH(request: NextRequest) {
 
     await appendUsageEvent({
       id: publicId("evt"),
-      name: outcome === "admitted" ? "vendor.admitted" : "vendor.rejected",
+      name:
+        outcome === "admitted"
+          ? "vendor.admitted"
+          : outcome === "suspended"
+            ? "vendor.suspended"
+            : "vendor.rejected",
       properties: {
         applicationId: id,
         businessName: updated.businessName,
         decidedBy,
         reason,
+        vendorPublicId: provision?.vendorPublicId,
       },
       actorType: "admin",
       createdAt: new Date().toISOString(),
     });
 
-    return NextResponse.json({ data: updated });
-  } catch {
+    return NextResponse.json({
+      data: updated,
+      provision,
+    });
+  } catch (e) {
+    if (e instanceof Error && "status" in e) {
+      return handleRequireAdminError(e);
+    }
+    const msg = e instanceof Error ? e.message : "Could not record decision";
     return NextResponse.json(
-      { error: { code: "WRITE_FAILED", message: "Could not record decision" } },
+      { error: { code: "WRITE_FAILED", message: msg } },
       { status: 500 },
     );
   }

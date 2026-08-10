@@ -16,7 +16,6 @@ import {
   listStaffMembershipsForClerkUser,
 } from "@/lib/authz/memberships";
 import { DEMO_VENDOR_ID } from "@/lib/tenancy";
-import { getAdmittedVendors } from "@/lib/admitted-vendors";
 
 function platformAdminEmails(): string[] {
   return (process.env.PLATFORM_ADMIN_EMAILS || "")
@@ -25,26 +24,37 @@ function platformAdminEmails(): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Soft-open demo memberships are NEVER allowed in production.
+ * Opt-in only via RBAC_SOFT_OPEN_DEMO=true in non-production.
+ */
 function softOpenDemoVendor(): boolean {
-  if (process.env.RBAC_SOFT_OPEN_DEMO === "true") return true;
-  if (process.env.RBAC_SOFT_OPEN_DEMO === "false") return false;
-  return process.env.NODE_ENV !== "production";
+  if (process.env.NODE_ENV === "production") return false;
+  return process.env.RBAC_SOFT_OPEN_DEMO === "true";
 }
 
 function shouldUseFileMembershipFallback(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
   return process.env.RBAC_FILE_MEMBERSHIPS === "true";
 }
 
+/**
+ * Metadata vendor grants only when explicitly enabled (dev/bootstrap).
+ * Never in production — memberships must come from staff_memberships.
+ */
+function allowMetadataVendorShortcut(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  return process.env.RBAC_ALLOW_METADATA_VENDOR === "true";
+}
+
 async function resolvePlatformRole(user: User): Promise<PlatformRole | null> {
-  // 1. Postgres platform_memberships
   try {
     const row = await listPlatformMembership(user.id);
     if (row && isPlatformRole(row.role)) return row.role;
   } catch {
-    // DB may be unavailable in local M1 - fall through
+    /* DB may be unavailable */
   }
 
-  // 2. Clerk publicMetadata.role (with legacy cutover)
   const meta = user.publicMetadata?.role;
   if (typeof meta === "string") {
     const migrated = migrateLegacyPlatformRole(meta);
@@ -66,7 +76,6 @@ async function resolvePlatformRole(user: User): Promise<PlatformRole | null> {
     }
   }
 
-  // 3. Email allowlist → super_admin (seed membership)
   const email = clerkEmail(user);
   if (email && platformAdminEmails().includes(email)) {
     try {
@@ -106,7 +115,7 @@ async function loadVendorMemberships(
         }));
     }
   } catch {
-    // fall through
+    /* fall through */
   }
 
   if (shouldUseFileMembershipFallback()) {
@@ -122,27 +131,28 @@ async function loadVendorMemberships(
     }));
   }
 
-  // Clerk metadata shortcut
-  const metaVendorId =
-    typeof user.publicMetadata?.vendorId === "string"
-      ? user.publicMetadata.vendorId.trim()
-      : null;
-  const metaRoleRaw = user.publicMetadata?.vendorRole;
-  const metaRole =
-    typeof metaRoleRaw === "string" && isStaffMembershipRole(metaRoleRaw)
-      ? metaRoleRaw
-      : metaVendorId
-        ? ("vendor_owner" as StaffMembershipRole)
+  if (allowMetadataVendorShortcut()) {
+    const metaVendorId =
+      typeof user.publicMetadata?.vendorId === "string"
+        ? user.publicMetadata.vendorId.trim()
         : null;
-  if (metaVendorId && metaRole) {
-    return [
-      {
-        vendorId: metaVendorId,
-        storeId: null,
-        role: metaRole,
-        status: "active",
-      },
-    ];
+    const metaRoleRaw = user.publicMetadata?.vendorRole;
+    const metaRole =
+      typeof metaRoleRaw === "string" && isStaffMembershipRole(metaRoleRaw)
+        ? metaRoleRaw
+        : metaVendorId
+          ? ("vendor_owner" as StaffMembershipRole)
+          : null;
+    if (metaVendorId && metaRole) {
+      return [
+        {
+          vendorId: metaVendorId,
+          storeId: null,
+          role: metaRole,
+          status: "active",
+        },
+      ];
+    }
   }
 
   if (softOpenDemoVendor()) {
@@ -177,32 +187,13 @@ function mergePermissions(
 /**
  * Resolve the full Actor for a Clerk user.
  * Clerk authenticates; this authorizes.
+ *
+ * Platform staff do NOT receive synthetic vendor memberships —
+ * platform ops use /api/admin/*; vendor OS requires real staff_memberships.
  */
 export async function resolveActor(user: User): Promise<Actor> {
   const platformRole = await resolvePlatformRole(user);
   const vendorMemberships = await loadVendorMemberships(user);
-
-  // Platform staff get oversight across admitted vendors + demo (no inventory edit
-  // unless their platform role grants the relevant permission).
-  if (platformRole) {
-    try {
-      const admitted = await getAdmittedVendors();
-      const oversightIds = [DEMO_VENDOR_ID, ...admitted.map((v) => v.id)];
-      const existing = new Set(vendorMemberships.map((m) => m.vendorId));
-      for (const vendorId of oversightIds) {
-        if (!existing.has(vendorId)) {
-          vendorMemberships.push({
-            vendorId,
-            storeId: null,
-            role: "vendor_staff",
-            status: "active",
-          });
-        }
-      }
-    } catch {
-      // ignore admitted-vendor failures
-    }
-  }
 
   const isSuperAdmin = platformRole === "super_admin";
   const permissions = mergePermissions(platformRole, vendorMemberships);

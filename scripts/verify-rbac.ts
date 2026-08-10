@@ -423,6 +423,10 @@ assert(
     "owner inviteable includes vendor_admin",
   );
   assert(
+    inviteableRolesForActor(ownerActor, vid).includes("vendor_driver"),
+    "owner inviteable includes vendor_driver",
+  );
+  assert(
     !canInviteRole(managerActor, vid, "vendor_owner"),
     "store_manager ↛ invite vendor_owner",
   );

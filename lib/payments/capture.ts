@@ -185,6 +185,32 @@ export async function captureSuccessfulPayment(
     throw new Error(ledger.error || "Ledger post failed");
   }
 
+  // Paystack primary: allocate clearing → vendor_payable_* + platform_fees
+  if (provider === "paystack" && orderIds.length) {
+    try {
+      await allocateVendorPayables({
+        supabase,
+        orderIds,
+        amountMinor: amount,
+        reference,
+        feeQuote: intentMeta.feeQuote as
+          | {
+              byVendor?: Array<{
+                vendorPublicId: string;
+                goodsMinor: number;
+                commissionMinor: number;
+                deliveryMinor: number;
+                netMinor: number;
+              }>;
+              commissionMinor?: number;
+            }
+          | undefined,
+      });
+    } catch (e) {
+      console.error("[capture] vendor payable allocation", e);
+    }
+  }
+
   const receiptPublic = publicId("rcpt");
   const { data: receipt, error } = await supabase
     .from("payment_receipts")
@@ -256,4 +282,156 @@ export async function captureSuccessfulPayment(
     receiptPublicId: receipt?.public_id || receiptPublic,
     already: false,
   };
+}
+
+const DEFAULT_COMMISSION_BPS = 1000; // 10%
+
+async function allocateVendorPayables(input: {
+  supabase: ReturnType<typeof getServiceSupabase>;
+  orderIds: string[];
+  amountMinor: number;
+  reference: string;
+  feeQuote?: {
+    byVendor?: Array<{
+      vendorPublicId: string;
+      goodsMinor: number;
+      commissionMinor: number;
+      deliveryMinor: number;
+      netMinor: number;
+    }>;
+    commissionMinor?: number;
+  };
+}): Promise<void> {
+  const { supabase, orderIds, amountMinor, reference, feeQuote } = input;
+
+  type VendorSplit = {
+    vendorPublicId: string;
+    goodsMinor: number;
+    commissionMinor: number;
+    netMinor: number;
+  };
+
+  let splits: VendorSplit[] = [];
+
+  if (feeQuote?.byVendor?.length) {
+    splits = feeQuote.byVendor
+      .filter((v) => v.vendorPublicId && v.netMinor > 0)
+      .map((v) => ({
+        vendorPublicId: v.vendorPublicId,
+        goodsMinor: v.goodsMinor,
+        commissionMinor: v.commissionMinor,
+        netMinor: v.netMinor,
+      }));
+  } else {
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("public_id, vendor_id, total_minor, subtotal_minor")
+      .in("public_id", orderIds);
+
+    const byVendor = new Map<string, number>();
+    for (const o of orders || []) {
+      const vid = o.vendor_id ? String(o.vendor_id) : "";
+      if (!vid) continue;
+      const goods = Math.round(
+        Number(o.subtotal_minor ?? o.total_minor ?? 0),
+      );
+      if (goods <= 0) continue;
+      byVendor.set(vid, (byVendor.get(vid) || 0) + goods);
+    }
+
+    // Fallback: order_items if orders lack vendor totals
+    if (!byVendor.size) {
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("vendor_public_id, line_total_minor, unit_price_minor, quantity")
+        .in("order_public_id", orderIds);
+      for (const it of items || []) {
+        const vid = it.vendor_public_id ? String(it.vendor_public_id) : "";
+        if (!vid) continue;
+        const line =
+          it.line_total_minor != null
+            ? Math.round(Number(it.line_total_minor))
+            : Math.round(
+                Number(it.unit_price_minor || 0) * Number(it.quantity || 0),
+              );
+        if (line <= 0) continue;
+        byVendor.set(vid, (byVendor.get(vid) || 0) + line);
+      }
+    }
+
+    for (const [vendorPublicId, goodsMinor] of byVendor) {
+      const commissionMinor = Math.round(
+        (goodsMinor * DEFAULT_COMMISSION_BPS) / 10_000,
+      );
+      const netMinor = Math.max(0, goodsMinor - commissionMinor);
+      if (netMinor <= 0) continue;
+      splits.push({
+        vendorPublicId,
+        goodsMinor,
+        commissionMinor,
+        netMinor,
+      });
+    }
+  }
+
+  if (!splits.length) return;
+
+  const totalNet = splits.reduce((s, v) => s + v.netMinor, 0);
+  const totalFee = splits.reduce((s, v) => s + v.commissionMinor, 0);
+  const allocate = totalNet + totalFee;
+  if (allocate <= 0) return;
+
+  // Cap allocation to captured amount (fees may leave remainder in clearing)
+  const scale =
+    allocate > amountMinor && allocate > 0 ? amountMinor / allocate : 1;
+
+  const legs: {
+    accountCode: string;
+    amountMinor: number;
+    vendorPublicId?: string | null;
+    ownerType?: string;
+  }[] = [
+    {
+      accountCode: "revenue_clearing",
+      amountMinor: Math.round(allocate * scale),
+      ownerType: "platform",
+    },
+  ];
+
+  for (const s of splits) {
+    const net = Math.round(s.netMinor * scale);
+    if (net <= 0) continue;
+    legs.push({
+      accountCode: `vendor_payable_${s.vendorPublicId}`,
+      amountMinor: -net,
+      vendorPublicId: s.vendorPublicId,
+      ownerType: "vendor",
+    });
+  }
+
+  const fee = Math.round(totalFee * scale);
+  if (fee > 0) {
+    legs.push({
+      accountCode: "platform_fees",
+      amountMinor: -fee,
+      ownerType: "platform",
+    });
+  }
+
+  // Fix rounding so legs balance
+  const sum = legs.reduce((a, l) => a + l.amountMinor, 0);
+  if (sum !== 0) {
+    legs[0] = {
+      ...legs[0],
+      amountMinor: legs[0].amountMinor - sum,
+    };
+  }
+
+  await postLedgerTransaction({
+    type: "vendor_payable_allocate",
+    referenceType: "paystack",
+    referenceId: null,
+    idempotencyKey: `paystack:vendor_payable:${reference}`,
+    legs,
+  });
 }

@@ -2,10 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { addProduct } from "@/lib/data";
 import { getUnifiedCatalogue } from "@/lib/commerce-truth";
 
-export async function GET() {
+export const revalidate = 60;
+
+export async function GET(request: NextRequest) {
   try {
+    const limitParam = request.nextUrl.searchParams.get("limit");
+    const limit = limitParam ? Math.min(200, Math.max(1, Number(limitParam))) : null;
     const unique = await getUnifiedCatalogue();
-    return NextResponse.json(unique);
+    const body = limit ? unique.slice(0, limit) : unique;
+    return NextResponse.json(body, {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
+    });
   } catch (error) {
     console.error("Error in products API:", error);
     return NextResponse.json([]);

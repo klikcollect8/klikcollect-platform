@@ -1,21 +1,50 @@
 /**
  * Storefront read path - unique products + vendor offers (Supabase).
  */
+import { unstable_cache } from "next/cache";
 import {
   sbGetOfferByPublicId,
   sbGetProductDetail,
   sbGetUnifiedCatalogue,
   sbGetVendorStorefrontProducts,
+  sbListCategories,
   sbListPublishedOffers,
   type ProductDetail,
   type StorefrontProduct,
 } from "@/lib/supabase-catalogue";
-import type { Product, ProductOffer } from "@/types";
+import type { Category, Product, ProductOffer } from "@/types";
 
 export type { StorefrontProduct, ProductDetail };
 
+const getCachedCatalogue = unstable_cache(
+  async () => sbGetUnifiedCatalogue(),
+  ["unified-catalogue-v1"],
+  { revalidate: 60, tags: ["catalogue"] },
+);
+
+const getCachedCategories = unstable_cache(
+  async () => sbListCategories(),
+  ["categories-v1"],
+  { revalidate: 120, tags: ["categories"] },
+);
+
 export async function getUnifiedCatalogue(): Promise<StorefrontProduct[]> {
-  return sbGetUnifiedCatalogue();
+  return getCachedCatalogue();
+}
+
+/** Slim home payload — fewer cards, shared cache. */
+export async function getHomeCatalogue(limit = 40): Promise<{
+  products: StorefrontProduct[];
+  categories: Category[];
+}> {
+  const [products, categories] = await Promise.all([
+    getCachedCatalogue(),
+    getCachedCategories(),
+  ]);
+  return {
+    products: products.slice(0, limit),
+    categories: categories.slice(0, 12),
+  };
 }
 
 export async function getProductDetail(

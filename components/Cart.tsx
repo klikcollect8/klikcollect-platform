@@ -20,7 +20,10 @@ interface CartProps {
     quantity: number,
   ) => void | Promise<void>;
   onRemoveItem: (productId: string) => void | Promise<void>;
-  onAddToCart?: (product: Product, quantity: number) => void | Promise<void>;
+  onAddToCart?: (
+    product: Product,
+    quantity: number,
+  ) => void | Promise<void | boolean>;
   onClose: () => void;
 }
 

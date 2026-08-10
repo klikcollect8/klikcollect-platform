@@ -10,9 +10,11 @@ import {
   ExploreIcon,
   HomeIcon,
   OrdersIcon,
+  StoreIcon,
 } from "@/components/NavIcons";
 import { useCart } from "@/lib/hooks/useCart";
 import { useSignInModal } from "@/components/SignInModalProvider";
+import { useWorkspaceAccess } from "@/lib/hooks/useWorkspaceAccess";
 import { showsMobileBottomNav } from "@/lib/mobile-nav";
 import { useIsClient } from "@/lib/hooks/useIsClient";
 
@@ -34,6 +36,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { showSignInModal } = useSignInModal();
   const { cartItems } = useCart();
+  const { vendor, admin } = useWorkspaceAccess();
   const mounted = useIsClient();
 
   if (!mounted) return null;
@@ -45,6 +48,12 @@ export default function BottomNav() {
   const ordersActive = Boolean(
     pathname?.startsWith("/account/orders") || pathname === "/orders",
   );
+  // Prefer vendor workspace on the dock; admin-only accounts get Admin.
+  const workspaceHref = vendor ? "/app" : admin ? "/admin" : null;
+  const workspaceActive = Boolean(
+    workspaceHref && pathname?.startsWith(workspaceHref),
+  );
+  const workspaceLabel = vendor ? "My business" : "Admin";
 
   const tabClass = (active: boolean) =>
     `relative flex h-12 flex-1 items-center justify-center transition-colors ${
@@ -77,6 +86,17 @@ export default function BottomNav() {
           <ExploreIcon active={exploreActive} />
         </Link>
 
+        {workspaceHref ? (
+          <Link
+            href={workspaceHref}
+            className={tabClass(workspaceActive)}
+            aria-label={workspaceLabel}
+            aria-current={workspaceActive ? "page" : undefined}
+          >
+            <StoreIcon active={workspaceActive} />
+          </Link>
+        ) : null}
+
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent("toggleCart"))}
@@ -84,6 +104,11 @@ export default function BottomNav() {
           aria-label={cartCount > 0 ? `Cart, ${cartCount} items` : "Cart"}
         >
           <BagIcon />
+          {cartCount > 0 ? (
+            <span className="absolute right-[18%] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[9px] font-medium tabular-nums leading-none text-white">
+              {cartCount > 99 ? "99+" : cartCount}
+            </span>
+          ) : null}
         </button>
 
         <Show when="signed-in">

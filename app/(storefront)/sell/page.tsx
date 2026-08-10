@@ -9,6 +9,7 @@ import Reveal from "@/components/obscura/Reveal";
 import SellApplicationPanel from "@/components/SellApplicationPanel";
 import { openSellApplicationTracker } from "@/components/SellApplicationTrackerPanel";
 import { useUserAuth } from "@/lib/hooks/useUserAuth";
+import { useWorkspaceAccess } from "@/lib/hooks/useWorkspaceAccess";
 import { useSignInModal } from "@/components/SignInModalProvider";
 
 const HERO_IMAGE = HERO_ASSETS[2] || HERO_ASSETS[0];
@@ -68,6 +69,7 @@ const LOOK_FOR = [
 export default function SellPage() {
   const heroRef = useRef<HTMLElement>(null);
   const { isSignedIn, loading: authLoading } = useUserAuth();
+  const { vendor, admin } = useWorkspaceAccess();
   const { showSignInModal } = useSignInModal();
   const [applyOpen, setApplyOpen] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -159,20 +161,38 @@ export default function SellPage() {
               data-hero
               className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4 sm:mt-10"
             >
-              <button
-                type="button"
-                onClick={() => void startApplication()}
-                disabled={starting}
-                className="inline-flex min-h-12 items-center bg-black px-7 py-3.5 text-[12px] font-medium uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-80 disabled:opacity-50 sm:px-8"
-              >
-                {starting ? "Checking..." : "Start application"}
-              </button>
-              <a
-                href="#how"
-                className="text-[13px] font-medium underline underline-offset-[6px] decoration-black/25 transition-colors hover:decoration-black"
-              >
-                How it works
-              </a>
+              {vendor ? (
+                <Link
+                  href="/app"
+                  className="inline-flex min-h-12 items-center bg-black px-7 py-3.5 text-[12px] font-medium uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-80 sm:px-8"
+                >
+                  Open my business
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void startApplication()}
+                  disabled={starting}
+                  className="inline-flex min-h-12 items-center bg-black px-7 py-3.5 text-[12px] font-medium uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-80 disabled:opacity-50 sm:px-8"
+                >
+                  {starting ? "Checking..." : "Start application"}
+                </button>
+              )}
+              {admin ? (
+                <Link
+                  href="/admin"
+                  className="text-[13px] font-medium underline underline-offset-[6px] decoration-black/25 transition-colors hover:decoration-black"
+                >
+                  Platform admin
+                </Link>
+              ) : (
+                <a
+                  href="#how"
+                  className="text-[13px] font-medium underline underline-offset-[6px] decoration-black/25 transition-colors hover:decoration-black"
+                >
+                  How it works
+                </a>
+              )}
             </div>
           </div>
 

@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
 import { Product } from "@/types";
-import { resolveProductImage } from "@/lib/product-image";
-import { track } from "@/lib/track";
+import ProductCard from "@/components/ProductCard";
 
 type ProductRailProps = {
   title: string;
@@ -73,40 +71,19 @@ export default function ProductRail({
         ref={scroller}
         className="scrollbar-hide -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-6 sm:px-0 lg:gap-8"
       >
-        {products.map((product, index) => {
+        {products.map((product) => {
           const offerId = (product as { offerId?: string }).offerId;
-          const href = offerId
-            ? `/products/${product.id}?offer=${encodeURIComponent(offerId)}`
-            : `/products/${product.id}`;
           return (
-            <Link
-              key={`${offerId || product.id}-${index}`}
-              href={href}
-              onClick={() =>
-                track(
-                  "storefront.product_clicked",
-                  { productId: product.id },
-                  "customer",
-                )
-              }
-              className="group w-[160px] shrink-0 sm:w-[220px] lg:w-[260px]"
+            <div
+              key={product.id}
+              className="w-[42vw] max-w-[220px] shrink-0 sm:w-[200px]"
             >
-              <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-black/[0.03]">
-                <Image
-                  src={resolveProductImage(product.image)}
-                  alt={product.name || "Product"}
-                  fill
-                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-                  sizes="260px"
-                />
-              </div>
-              <p className="mb-1 text-[11px] uppercase tracking-[0.14em] text-black/35">
-                {product.category || "Catalogue"}
-              </p>
-              <p className="line-clamp-2 text-[15px] font-medium leading-snug text-black">
-                {product.name}
-              </p>
-            </Link>
+              <ProductCard
+                product={product}
+                offerId={offerId}
+                offerPrice={product.price}
+              />
+            </div>
           );
         })}
       </div>

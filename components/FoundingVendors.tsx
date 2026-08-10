@@ -1,33 +1,13 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
+import type { HomeVendorCard } from "@/lib/home-page-data";
 
-type VendorRow = {
-  id: string;
-  name: string;
-  slug: string;
-  neighbourhood: string;
-  tagline: string;
-};
-
-/** Homepage section - admitted vendors only, matches brands directory style */
-export default function FoundingVendors() {
-  const [vendors, setVendors] = useState<VendorRow[]>([]);
-
-  useEffect(() => {
-    fetch("/api/vendors")
-      .then((r) => r.json())
-      .then((payload) => {
-        const rows = Array.isArray(payload?.data?.vendors)
-          ? payload.data.vendors
-          : [];
-        setVendors(rows.slice(0, 6));
-      })
-      .catch(() => setVendors([]));
-  }, []);
-
+/** Homepage vendors — data from SSR (no client waterfall). */
+export default function FoundingVendors({
+  vendors,
+}: {
+  vendors: HomeVendorCard[];
+}) {
   if (!vendors.length) return null;
 
   return (
@@ -49,7 +29,6 @@ export default function FoundingVendors() {
         </Link>
       </div>
 
-      {/* Mobile: horizontal snap rail */}
       <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:hidden">
         {vendors.map((v) => (
           <Link
@@ -77,7 +56,6 @@ export default function FoundingVendors() {
         ))}
       </div>
 
-      {/* Tablet / desktop: grid */}
       <div className="hidden border-t border-black/[0.06] sm:grid sm:grid-cols-2 lg:grid-cols-3">
         {vendors.map((v) => (
           <Link

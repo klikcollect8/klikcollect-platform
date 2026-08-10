@@ -352,6 +352,10 @@ function VendorStoreHomeInner() {
               product={p}
               offerPrice={typeof p.price === "number" ? p.price : undefined}
               offerId={p.offerId}
+              vendorId={vendor.id}
+              vendorName={vendor.name}
+              neighbourhood={vendor.neighbourhood}
+              stock={typeof p.stock === "number" ? p.stock : undefined}
             />
           ))}
             </div>

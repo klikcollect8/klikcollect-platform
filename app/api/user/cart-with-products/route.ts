@@ -7,7 +7,7 @@ import { listCart } from "@/lib/customer-store";
 import { getOfferById } from "@/lib/offers-store";
 import { getProductById } from "@/lib/products-store";
 import { resolveProductImage } from "@/lib/product-image";
-import type { CartItem } from "@/types";
+import type { CartItem, FulfilmentMethod } from "@/types";
 
 export async function GET() {
   try {
@@ -28,6 +28,10 @@ export async function GET() {
       const product = await getProductById(offer.productId);
       if (!product) continue;
       seen.add(offer.id);
+      const fulfilment: FulfilmentMethod | undefined =
+        item.fulfilment === "delivery" || item.fulfilment === "pickup"
+          ? item.fulfilment
+          : undefined;
       items.push({
         product: {
           ...product,
@@ -43,6 +47,10 @@ export async function GET() {
         vendorId: offer.vendorId,
         vendorName: offer.vendorName,
         neighbourhood: offer.neighbourhood,
+        fulfilment,
+        deliveryZoneId: item.delivery_zone_id,
+        deliveryZoneLabel: item.delivery_zone_label,
+        deliveryFee: item.delivery_fee,
       });
     }
 

@@ -3,78 +3,30 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { gsap } from "gsap";
 import { HERO_ASSETS, HERO_COPY } from "@/lib/hero-assets";
+import type { HomeHero } from "@/lib/home-page-data";
 
 const INTERVAL_MS = 3500;
 
-type HeroCms = {
-  eyebrow: string;
-  headline: string;
-  sub: string;
-  cta: string;
-  ctaHref: string;
-  images: string[];
+const DEFAULT_HERO: HomeHero = {
+  eyebrow: HERO_COPY.eyebrow,
+  headline: HERO_COPY.headline,
+  sub: HERO_COPY.sub,
+  cta: HERO_COPY.cta,
+  ctaHref: HERO_COPY.ctaHref,
+  images: [...HERO_ASSETS],
 };
 
-/** Full-bleed marketplace hero: 1/3 copy · 2/3 image, soft left fade */
-export default function HomepageBanner() {
-  const slidesRef = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(0);
-  const prevActive = useRef(0);
-  const paused = useRef(false);
-  const [cms, setCms] = useState<HeroCms>({
-    eyebrow: HERO_COPY.eyebrow,
-    headline: HERO_COPY.headline,
-    sub: HERO_COPY.sub,
-    cta: HERO_COPY.cta,
-    ctaHref: HERO_COPY.ctaHref,
-    images: [...HERO_ASSETS],
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [settingsRes, slidesRes] = await Promise.all([
-          fetch("/api/settings/homepage"),
-          fetch("/api/banner-slides"),
-        ]);
-        const settings = settingsRes.ok ? await settingsRes.json() : null;
-        const slides = slidesRes.ok ? await slidesRes.json() : [];
-        if (cancelled) return;
-
-        const fromSlides = Array.isArray(slides)
-          ? slides.map((s: { imageUrl?: string }) => s.imageUrl).filter(Boolean)
-          : [];
-        const fromSettings = Array.isArray(settings?.heroImages)
-          ? settings.heroImages.filter(Boolean)
-          : [];
-        const images =
-          fromSlides.length > 0
-            ? fromSlides
-            : fromSettings.length > 0
-              ? fromSettings
-              : HERO_ASSETS;
-
-        setCms({
-          eyebrow: settings?.eyebrow || HERO_COPY.eyebrow,
-          headline: settings?.headline || HERO_COPY.headline,
-          sub: settings?.sub || HERO_COPY.sub,
-          cta: settings?.cta || HERO_COPY.cta,
-          ctaHref: settings?.ctaHref || HERO_COPY.ctaHref,
-          images,
-        });
-      } catch {
-        /* keep local defaults */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+/** Full-bleed marketplace hero — CSS fades (no GSAP on critical path). */
+export default function HomepageBanner({
+  initial,
+}: {
+  initial?: HomeHero | null;
+}) {
+  const cms = initial?.images?.length ? initial : DEFAULT_HERO;
   const images = cms.images.length ? cms.images : HERO_ASSETS;
+  const [active, setActive] = useState(0);
+  const paused = useRef(false);
 
   const goTo = useCallback(
     (next: number) => {
@@ -85,36 +37,6 @@ export default function HomepageBanner() {
     },
     [images.length],
   );
-
-  useEffect(() => {
-    const root = slidesRef.current;
-    if (!root) return;
-    const slides = root.querySelectorAll<HTMLElement>(".kc-hero-slide");
-    gsap.set(slides, { autoAlpha: 0 });
-    if (slides[0]) gsap.set(slides[0], { autoAlpha: 1 });
-    prevActive.current = 0;
-    setActive(0);
-  }, [images]);
-
-  useEffect(() => {
-    const root = slidesRef.current;
-    if (!root) return;
-    const slides = root.querySelectorAll<HTMLElement>(".kc-hero-slide");
-    const prev = prevActive.current;
-    if (prev === active) return;
-
-    const prevSlide = slides[prev];
-    const nextSlide = slides[active];
-    if (!prevSlide || !nextSlide) return;
-
-    gsap.killTweensOf([prevSlide, nextSlide]);
-    gsap
-      .timeline()
-      .to(prevSlide, { autoAlpha: 0, duration: 1.3, ease: "power2.inOut" })
-      .to(nextSlide, { autoAlpha: 1, duration: 1.3, ease: "power2.inOut" }, 0);
-
-    prevActive.current = active;
-  }, [active]);
 
   useEffect(() => {
     if (images.length < 2) return;
@@ -176,17 +98,21 @@ export default function HomepageBanner() {
         </div>
 
         <div className="relative min-h-[36svh] w-full sm:min-h-[42svh] lg:col-span-8 lg:min-h-[78svh]">
-          <div ref={slidesRef} className="absolute inset-0">
+          <div className="absolute inset-0">
             {images.map((src, i) => (
               <div
                 key={`${src}-${i}`}
-                className="kc-hero-slide absolute inset-0"
+                className={`absolute inset-0 transition-opacity duration-[1200ms] ease-in-out ${
+                  i === active ? "opacity-100" : "opacity-0"
+                }`}
+                aria-hidden={i !== active}
               >
                 <Image
                   src={src}
                   alt=""
                   fill
-                  priority={i < 2}
+                  priority={i === 0}
+                  loading={i === 0 ? "eager" : "lazy"}
                   className="object-cover object-center"
                   sizes="(max-width: 1024px) 100vw, 70vw"
                   unoptimized={src.startsWith("http")}

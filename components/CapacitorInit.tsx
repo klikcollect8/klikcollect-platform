@@ -2,11 +2,6 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Capacitor } from "@capacitor/core";
-import { App } from "@capacitor/app";
-import { StatusBar, Style } from "@capacitor/status-bar";
-import { Keyboard } from "@capacitor/keyboard";
-import { SplashScreen } from "@capacitor/splash-screen";
 
 /**
  * Map custom-scheme / universal-link opens into in-app routes.
@@ -16,8 +11,6 @@ function pathFromAppUrl(raw: string): string | null {
   try {
     const url = new URL(raw);
     if (url.protocol === "klikcollect:") {
-      // klikcollect://sso-callback?x=1  → host is path segment
-      // klikcollect:///account/orders → pathname only
       let path = url.pathname || "";
       if (url.hostname) {
         path = `/${url.hostname}${path.startsWith("/") ? path : path ? `/${path}` : ""}`;
@@ -35,17 +28,28 @@ function pathFromAppUrl(raw: string): string | null {
   return null;
 }
 
+/** Capacitor plugins load only on native — keeps web first paint light. */
 export default function CapacitorInit() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) {
-      return;
-    }
-
+    let cancelled = false;
     const handles: { remove: () => Promise<void> }[] = [];
 
-    const initNativeFeatures = async () => {
+    void (async () => {
+      const { Capacitor } = await import("@capacitor/core");
+      if (cancelled || !Capacitor.isNativePlatform()) return;
+
+      const [{ App }, { StatusBar, Style }, { Keyboard }, { SplashScreen }] =
+        await Promise.all([
+          import("@capacitor/app"),
+          import("@capacitor/status-bar"),
+          import("@capacitor/keyboard"),
+          import("@capacitor/splash-screen"),
+        ]);
+
+      if (cancelled) return;
+
       try {
         await StatusBar.setStyle({ style: Style.Dark });
         await StatusBar.setBackgroundColor({ color: "#f7f7f5" });
@@ -53,9 +57,7 @@ export default function CapacitorInit() {
       } catch (error) {
         console.log("Native features not available:", error);
       }
-    };
 
-    const wireListeners = async () => {
       handles.push(
         await App.addListener("appStateChange", ({ isActive }) => {
           if (process.env.NODE_ENV === "development") {
@@ -68,7 +70,6 @@ export default function CapacitorInit() {
         await App.addListener("appUrlOpen", (data) => {
           const next = pathFromAppUrl(data.url);
           if (!next) return;
-          // Clerk SSO, payment callbacks, shared links
           router.push(next);
         }),
       );
@@ -95,12 +96,10 @@ export default function CapacitorInit() {
           }),
         );
       }
-    };
-
-    void initNativeFeatures();
-    void wireListeners();
+    })();
 
     return () => {
+      cancelled = true;
       document.documentElement.classList.remove("kc-keyboard-open");
       for (const h of handles) {
         void h.remove();

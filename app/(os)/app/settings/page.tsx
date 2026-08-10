@@ -1,80 +1,64 @@
 import Link from "next/link";
 import { ModuleShell } from "@/components/os/ModuleShell";
-import { OsPanel, OsStat } from "@/components/os/OsPanel";
 import { messages } from "@/messages/en-KE";
+import { osUi } from "@/components/os/os-ui";
+import { cn } from "@/lib/utils";
+
+const LINKS = [
+  {
+    href: "/app/store",
+    label: "Storefront",
+    desc: "Name, story, hours, and public store profile",
+  },
+  {
+    href: "/app/finance",
+    label: "Balance & payouts",
+    desc: "Paystack wallet, settlements, receipts, and withdrawals",
+  },
+  {
+    href: "/app/staff",
+    label: "Staff",
+    desc: "Invite owners, managers, cashiers, dispatch, and drivers",
+  },
+  {
+    href: "/app/kyc",
+    label: "KYC / compliance",
+    desc: "Verification status for payouts",
+  },
+] as const;
 
 export default function OsSettingsPage() {
-  const rows = [
-    { label: "Locale", value: "en-KE" },
-    { label: "Currency", value: "KES" },
-    { label: "Launch city", value: "Nairobi" },
-    { label: "Auth", value: "Clerk" },
-    { label: "Payments", value: "Paystack (card + M-Pesa)" },
-    { label: "Delivery", value: "OS Delivery · /app/couriers" },
-    { label: "Receipts", value: "POS print · store branding on Store" },
-    { label: "Tax", value: "Kenya VAT - configure with your accountant" },
-  ];
-
   return (
     <ModuleShell
       title={messages.os.settings}
-      description="Workspace defaults. Profile and opening hours live on Store."
+      description="Shortcuts into live workspace settings. Nothing here is a fake toggle."
       live
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/app/store"
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50"
-          >
-            Store profile
-          </Link>
-          <Link
-            href="/app/finance"
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50"
-          >
-            Wallet
-          </Link>
-          <Link
-            href="/app/staff"
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50"
-          >
-            Team
-          </Link>
-        </div>
-      }
     >
-      <p className="mb-6 text-[14px] text-neutral-500">
-        Branding, story, and weekly hours are on{" "}
-        <Link
-          href="/app/store"
-          className="font-medium text-neutral-900 underline"
-        >
-          Store
-        </Link>
-        . Payout KYC and freezes are reviewed by platform compliance - check
-        Wallet if withdrawals are blocked.
+      <p className={cn("mb-6 text-[14px]", osUi.muted)}>
+        Branding and opening hours live on Store. Money and team live on Wallet
+        and Staff.
       </p>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <OsStat label="Market" value="Nairobi" />
-        <OsStat label="Currency" value="KES" />
-        <OsStat label="Locale" value="en-KE" />
-        <OsStat label="Identity" value="Clerk" />
+      <div className="divide-y divide-black/10 border-t border-black/10">
+        {LINKS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex flex-col gap-0.5 py-4 transition-colors hover:bg-black/[0.02] sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+          >
+            <span className="text-[15px] font-medium text-black">
+              {item.label}
+            </span>
+            <span className={cn("text-[13px] sm:text-right", osUi.muted)}>
+              {item.desc}
+            </span>
+          </Link>
+        ))}
       </div>
 
-      <OsPanel padded={false}>
-        <div className="divide-y divide-neutral-100">
-          {rows.map((row) => (
-            <div
-              key={row.label}
-              className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm sm:px-5"
-            >
-              <span className="text-neutral-500">{row.label}</span>
-              <span className="font-medium text-neutral-900">{row.value}</span>
-            </div>
-          ))}
-        </div>
-      </OsPanel>
+      <p className={cn("mt-8 text-[12px]", osUi.muted)}>
+        Market · Nairobi · KES · en-KE · Paystack (card + M-Pesa)
+      </p>
     </ModuleShell>
   );
 }

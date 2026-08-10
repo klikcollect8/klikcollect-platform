@@ -9,10 +9,10 @@ import CapacitorInit from "@/components/CapacitorInit";
 import InstallAppPrompt from "@/components/InstallAppPrompt";
 import AccountRestrictionCheck from "@/components/AccountRestrictionCheck";
 import AppChrome from "@/components/AppChrome";
-import ObscuraLoader from "@/components/obscura/ObscuraLoader";
 import { cn } from "@/lib/utils";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { LocationProvider } from "@/components/providers/LocationProvider";
+import { CartProvider } from "@/components/providers/CartProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import { clerkAppearance } from "@/lib/clerk-appearance";
@@ -20,8 +20,9 @@ import { clerkAppearance } from "@/lib/clerk-appearance";
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600"],
   display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -71,18 +72,19 @@ export default function RootLayout({
           <PostHogProvider>
             <QueryProvider>
               <LocationProvider>
-                <CapacitorInit />
-                <InstallAppPrompt />
-                <MaintenanceCheck>
-                  <ToastProvider>
-                    <SignInModalProvider>
-                      <AccountRestrictionCheck />
-                      <ObscuraLoader />
-                      <AppChrome>{children}</AppChrome>
-                    </SignInModalProvider>
-                  </ToastProvider>
-                </MaintenanceCheck>
-                <Toaster position="top-right" richColors />
+                <CartProvider>
+                  <CapacitorInit />
+                  <InstallAppPrompt />
+                  <MaintenanceCheck>
+                    <ToastProvider>
+                      <SignInModalProvider>
+                        <AccountRestrictionCheck />
+                        <AppChrome>{children}</AppChrome>
+                      </SignInModalProvider>
+                    </ToastProvider>
+                  </MaintenanceCheck>
+                  <Toaster position="top-right" richColors />
+                </CartProvider>
               </LocationProvider>
             </QueryProvider>
           </PostHogProvider>

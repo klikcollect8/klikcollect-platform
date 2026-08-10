@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useWorkspaceAccess } from "@/lib/hooks/useWorkspaceAccess";
 
 const LINKS = [
   { label: "Shop", href: "/shop" },
@@ -12,6 +15,12 @@ const LINKS = [
 /** Desktop storefront footer — quiet, canvas-matched; hidden on mobile. */
 export default function Footer() {
   const year = new Date().getFullYear();
+  const { vendor, admin } = useWorkspaceAccess();
+  const links = [
+    ...LINKS,
+    ...(vendor ? [{ label: "My business", href: "/app" as const }] : []),
+    ...(admin ? [{ label: "Admin", href: "/admin" as const }] : []),
+  ];
 
   return (
     <footer className="hidden border-t border-black/[0.06] bg-[#f7f7f5] lg:block">
@@ -29,7 +38,7 @@ export default function Footer() {
             aria-label="Footer"
             className="flex flex-wrap items-center gap-x-7 gap-y-3"
           >
-            {LINKS.map((link) => (
+            {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

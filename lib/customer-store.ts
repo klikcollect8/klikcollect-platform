@@ -9,8 +9,83 @@ export type CartRow = {
   product_id: string;
   quantity: number;
   offer_id?: string;
+  fulfilment?: "pickup" | "delivery";
+  delivery_zone_id?: string;
+  delivery_zone_label?: string;
+  delivery_fee?: number;
   updated_at: string;
 };
+
+export type CartFulfilmentFields = {
+  fulfilment?: "pickup" | "delivery";
+  deliveryZoneId?: string | null;
+  deliveryZoneLabel?: string | null;
+  deliveryFee?: number | null;
+};
+
+/** Cached: whether cart_items has delivery meta columns (schema may lag). */
+let cartDeliveryColumns: boolean | null = null;
+
+async function cartItemsSupportDeliveryColumns(): Promise<boolean> {
+  if (cartDeliveryColumns != null) return cartDeliveryColumns;
+  const sb = getServiceSupabase();
+  const { error } = await sb
+    .from("cart_items")
+    .select("delivery_zone_id, delivery_zone_label, delivery_fee")
+    .limit(0);
+  cartDeliveryColumns = !error;
+  return cartDeliveryColumns;
+}
+
+function mapCartRow(
+  userId: string,
+  r: Record<string, unknown>,
+): CartRow {
+  return {
+    id: String(r.id),
+    user_id: userId,
+    product_id: String(r.product_public_id),
+    quantity: Number(r.quantity) || 0,
+    offer_id: r.offer_public_id ? String(r.offer_public_id) : undefined,
+    fulfilment:
+      r.fulfilment === "delivery" || r.fulfilment === "pickup"
+        ? r.fulfilment
+        : undefined,
+    delivery_zone_id: r.delivery_zone_id
+      ? String(r.delivery_zone_id)
+      : undefined,
+    delivery_zone_label: r.delivery_zone_label
+      ? String(r.delivery_zone_label)
+      : undefined,
+    delivery_fee:
+      r.delivery_fee != null && Number.isFinite(Number(r.delivery_fee))
+        ? Number(r.delivery_fee)
+        : undefined,
+    updated_at: String(r.updated_at),
+  };
+}
+
+async function buildCartWritePayload(
+  base: Record<string, unknown>,
+  meta?: CartFulfilmentFields,
+): Promise<Record<string, unknown>> {
+  const payload = { ...base };
+  if (meta?.fulfilment === "pickup" || meta?.fulfilment === "delivery") {
+    payload.fulfilment = meta.fulfilment;
+  }
+  if (meta && (await cartItemsSupportDeliveryColumns())) {
+    if (meta.deliveryZoneId !== undefined) {
+      payload.delivery_zone_id = meta.deliveryZoneId;
+    }
+    if (meta.deliveryZoneLabel !== undefined) {
+      payload.delivery_zone_label = meta.deliveryZoneLabel;
+    }
+    if (meta.deliveryFee !== undefined) {
+      payload.delivery_fee = meta.deliveryFee ?? 0;
+    }
+  }
+  return payload;
+}
 
 export type WishlistRow = {
   id: string;
@@ -94,14 +169,7 @@ export async function listCart(userId: string): Promise<CartRow[]> {
       prev.quantity += Number(r.quantity) || 0;
       continue;
     }
-    byKey.set(key, {
-      id: String(r.id),
-      user_id: userId,
-      product_id: productId,
-      quantity: Number(r.quantity) || 0,
-      offer_id: offerId,
-      updated_at: String(r.updated_at),
-    });
+    byKey.set(key, mapCartRow(userId, r as Record<string, unknown>));
   }
   return [...byKey.values()];
 }
@@ -111,6 +179,7 @@ export async function upsertCartItem(
   productId: string,
   quantity: number,
   offerId?: string,
+  fulfilmentMeta?: CartFulfilmentFields,
 ): Promise<CartRow> {
   const sb = getServiceSupabase();
   const cartId = await ensureCart(userId);
@@ -129,6 +198,7 @@ export async function upsertCartItem(
       product_id: lineProductId,
       quantity: 0,
       offer_id: lineOfferId,
+      fulfilment: fulfilmentMeta?.fulfilment,
       updated_at: now,
     };
   }
@@ -170,37 +240,38 @@ export async function upsertCartItem(
   }
 
   if (existingId) {
-    const { data, error } = await sb
-      .from("cart_items")
-      .update({
+    const updatePayload = await buildCartWritePayload(
+      {
         quantity,
         updated_at: now,
         product_public_id: lineProductId,
         offer_public_id: lineOfferId || null,
-      })
+      },
+      fulfilmentMeta,
+    );
+    const { data, error } = await sb
+      .from("cart_items")
+      .update(updatePayload)
       .eq("id", existingId)
       .select("*")
       .single();
     if (error) throw error;
-    return {
-      id: data.id,
-      user_id: userId,
-      product_id: data.product_public_id,
-      quantity: data.quantity,
-      offer_id: data.offer_public_id || undefined,
-      updated_at: data.updated_at,
-    };
+    return mapCartRow(userId, data as Record<string, unknown>);
   }
 
-  const { data, error } = await sb
-    .from("cart_items")
-    .insert({
+  const insertPayload = await buildCartWritePayload(
+    {
       cart_id: cartId,
       product_public_id: lineProductId,
       offer_public_id: lineOfferId || null,
       quantity,
       updated_at: now,
-    })
+    },
+    fulfilmentMeta,
+  );
+  const { data, error } = await sb
+    .from("cart_items")
+    .insert(insertPayload)
     .select("*")
     .single();
   if (error) {
@@ -213,21 +284,18 @@ export async function upsertCartItem(
         .eq("offer_public_id", lineOfferId)
         .maybeSingle();
       if (raced) {
+        const racePayload = await buildCartWritePayload(
+          { quantity, updated_at: now },
+          fulfilmentMeta,
+        );
         const { data: updated, error: uErr } = await sb
           .from("cart_items")
-          .update({ quantity, updated_at: now })
+          .update(racePayload)
           .eq("id", raced.id)
           .select("*")
           .single();
         if (uErr) throw uErr;
-        return {
-          id: updated.id,
-          user_id: userId,
-          product_id: updated.product_public_id,
-          quantity: updated.quantity,
-          offer_id: updated.offer_public_id || undefined,
-          updated_at: updated.updated_at,
-        };
+        return mapCartRow(userId, updated as Record<string, unknown>);
       }
     }
     const { data: racedNull } = await sb
@@ -238,37 +306,27 @@ export async function upsertCartItem(
       .is("offer_public_id", null)
       .maybeSingle();
     if (racedNull) {
-      const { data: updated, error: uErr } = await sb
-        .from("cart_items")
-        .update({
+      const racePayload = await buildCartWritePayload(
+        {
           quantity,
           updated_at: now,
           offer_public_id: lineOfferId || null,
-        })
+        },
+        fulfilmentMeta,
+      );
+      const { data: updated, error: uErr } = await sb
+        .from("cart_items")
+        .update(racePayload)
         .eq("id", racedNull.id)
         .select("*")
         .single();
       if (uErr) throw uErr;
-      return {
-        id: updated.id,
-        user_id: userId,
-        product_id: updated.product_public_id,
-        quantity: updated.quantity,
-        offer_id: updated.offer_public_id || undefined,
-        updated_at: updated.updated_at,
-      };
+      return mapCartRow(userId, updated as Record<string, unknown>);
     }
     throw error;
   }
   await sb.from("carts").update({ updated_at: now }).eq("id", cartId);
-  return {
-    id: data.id,
-    user_id: userId,
-    product_id: data.product_public_id,
-    quantity: data.quantity,
-    offer_id: data.offer_public_id || undefined,
-    updated_at: data.updated_at,
-  };
+  return mapCartRow(userId, data as Record<string, unknown>);
 }
 
 export async function clearCart(userId: string) {

@@ -9,6 +9,13 @@ export type SavedAddress = {
   zip: string;
   country: string;
   isDefault: boolean;
+  /** Eats map pin (optional; storefront ignores) */
+  lat?: number | null;
+  lng?: number | null;
+  unit?: string;
+  dropoffOption?: "meet" | "leave";
+  notes?: string;
+  label?: "home" | "work" | "other";
 };
 
 export type SavedPayment = {

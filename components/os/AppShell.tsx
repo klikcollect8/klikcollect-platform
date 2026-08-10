@@ -69,8 +69,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setActorRole(body.data.role || null);
         setActorEmail(body.data.email || null);
         const vids = body.data.vendorIds as string[] | undefined;
+        const name =
+          typeof body.data.storeName === "string" && body.data.storeName.trim()
+            ? body.data.storeName.trim()
+            : null;
         setVendorLabel(
-          vids?.[0] ? `Store · ${vids[0].slice(0, 12)}` : "Your store",
+          name ||
+            (vids?.[0] ? `Store · ${vids[0].slice(0, 12)}` : "Your store"),
         );
       })
       .catch(() => {
@@ -147,41 +152,82 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileOpen]);
+
   const renderSidebar = (onNavigate?: () => void, mobileDrawer = false) => (
     <div className="flex h-full flex-col bg-[var(--kc-canvas)]">
-      <div className={cn("px-6 pb-6", mobileDrawer ? "pt-6 pr-14" : "pt-9")}>
-        <Link href="/app" onClick={onNavigate} className="block min-w-0">
-          <p className={osUi.pageEyebrow}>
-            {mobileDrawer ? "Menu" : "My business"}
-          </p>
-          <p
-            className="mt-2 truncate text-[17px] font-medium tracking-tight text-black"
-            style={{ fontFamily: "var(--font-display), sans-serif" }}
-          >
-            {mobileDrawer ? workspaceLabel : "klikcollect"}
-          </p>
-          <p className="mt-1 truncate text-[12px] text-black/35">
-            {mobileDrawer
-              ? "Vendor workspace"
-              : vendorLabel || "Your store"}
-          </p>
-        </Link>
-      </div>
+      {!mobileDrawer ? (
+        <div className="px-6 pb-6 pt-9">
+          <Link href="/app" onClick={onNavigate} className="block min-w-0">
+            <p className={osUi.pageEyebrow}>My business</p>
+            <p
+              className="mt-2 truncate text-[17px] font-medium tracking-tight text-black"
+              style={{ fontFamily: "var(--font-display), sans-serif" }}
+            >
+              klikcollect
+            </p>
+            <p className="mt-1 truncate text-[12px] text-black/35">
+              {vendorLabel || "Your store"}
+            </p>
+          </Link>
+        </div>
+      ) : null}
 
-      <nav className="scrollbar-hide flex-1 overflow-y-auto px-5 pb-8">
+      <nav
+        className={cn(
+          "scrollbar-hide flex-1 overflow-y-auto",
+          mobileDrawer
+            ? "px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-2 sm:px-10"
+            : "px-5 pb-8",
+        )}
+      >
         {OS_NAV_GROUPS.map((group) => {
           const items = filteredNav.filter((i) => i.group === group.id);
           if (!items.length) return null;
           return (
-            <div key={group.id} className="mb-7">
-              <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-black/30">
+            <div key={group.id} className={mobileDrawer ? "mb-8" : "mb-7"}>
+              <p
+                className={cn(
+                  "mb-2 font-medium uppercase tracking-[0.16em] text-black/30",
+                  mobileDrawer
+                    ? "text-[11px] tracking-[0.2em] text-black/40"
+                    : "px-2 text-[10px]",
+                )}
+              >
                 {group.label}
               </p>
-              <div className="space-y-0.5">
+              <div className={mobileDrawer ? "" : "space-y-0.5"}>
                 {items.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(pathname, item.href);
                   const count = counts[item.href];
+                  if (mobileDrawer) {
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={onNavigate}
+                        className={cn(
+                          "flex min-h-12 items-center justify-between gap-3 border-b border-black/10 py-3.5",
+                          active ? "text-black" : "text-black/80",
+                        )}
+                      >
+                        <span className="text-[clamp(1.35rem,5.5vw,1.65rem)] font-medium tracking-tight">
+                          {item.label}
+                        </span>
+                        {typeof count === "number" && count > 0 ? (
+                          <span className={osUi.badge}>{count}</span>
+                        ) : null}
+                      </Link>
+                    );
+                  }
                   return (
                     <Link
                       key={item.href}
@@ -212,7 +258,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      <div className="shrink-0 border-t border-black/10 px-5 py-4">
+      <div
+        className={cn(
+          "shrink-0 border-t border-black/10",
+          mobileDrawer ? "px-4 py-4 sm:px-10" : "px-5 py-4",
+        )}
+      >
         <p className="truncate text-[13px] font-medium text-black">
           {actorEmail || "Vendor staff"}
         </p>
@@ -238,24 +289,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="Close menu"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside className="absolute inset-y-0 left-0 w-[min(300px,90vw)] bg-[var(--kc-canvas)]">
+        <div className="fixed inset-0 z-50 flex flex-col bg-[var(--kc-canvas)] lg:hidden">
+          <div className="mx-auto flex h-14 w-full max-w-[1600px] shrink-0 items-center justify-between px-4 sm:px-10">
+            <div className="min-w-0">
+              <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-black/35">
+                {workspaceLabel}
+              </p>
+              <p
+                className="truncate text-[17px] font-medium tracking-tight text-black"
+                style={{ fontFamily: "var(--font-display), sans-serif" }}
+              >
+                {vendorLabel || "klikcollect"}
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center text-black/40 hover:text-black"
+              className="flex h-11 w-11 items-center justify-center text-black/40 hover:text-black"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>
-            {renderSidebar(() => setMobileOpen(false), true)}
-          </aside>
+          </div>
+          {renderSidebar(() => setMobileOpen(false), true)}
         </div>
       ) : null}
 

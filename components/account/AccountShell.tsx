@@ -5,8 +5,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
 import { LogOut, Menu, X } from "lucide-react";
+import { Store, Shield } from "lucide-react";
 import { accountNav, isAccountNavActive } from "./account-nav";
 import { useUserAuth } from "@/lib/hooks/useUserAuth";
+import { useWorkspaceAccess } from "@/lib/hooks/useWorkspaceAccess";
 import { useSignInModal } from "@/components/SignInModalProvider";
 import { cn } from "@/lib/utils";
 import { ui } from "@/components/system/tokens";
@@ -17,6 +19,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const { signOut } = useClerk();
   const { showSignInModal } = useSignInModal();
   const { user, isSignedIn, loading } = useUserAuth();
+  const { vendor, admin } = useWorkspaceAccess();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -58,6 +61,39 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="scrollbar-hide flex-1 space-y-0.5 overflow-y-auto px-5 pb-6">
+        {vendor || admin ? (
+          <div className="mb-5 space-y-0.5">
+            <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-black/30">
+              Workspaces
+            </p>
+            {vendor ? (
+              <Link
+                href="/app"
+                onClick={onNavigate}
+                className={cn(
+                  "flex min-h-11 items-center gap-2.5 px-2 py-3 text-[14px]",
+                  ui.navIdle,
+                )}
+              >
+                <Store className="h-4 w-4 shrink-0 text-black/30" strokeWidth={1.5} />
+                <span className="truncate">My business</span>
+              </Link>
+            ) : null}
+            {admin ? (
+              <Link
+                href="/admin"
+                onClick={onNavigate}
+                className={cn(
+                  "flex min-h-11 items-center gap-2.5 px-2 py-3 text-[14px]",
+                  ui.navIdle,
+                )}
+              >
+                <Shield className="h-4 w-4 shrink-0 text-black/30" strokeWidth={1.5} />
+                <span className="truncate">Platform admin</span>
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
         {accountNav.map((item) => {
           const Icon = item.icon;
           const active = isAccountNavActive(pathname, item.href);

@@ -1,19 +1,42 @@
 "use client";
 
-import posthog from "posthog-js";
-import { PostHogProvider as PHProvider } from "posthog-js/react";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 
-if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://app.posthog.com",
-    capture_pageview: false, // Handled manually or via middleware
-  });
-}
+/**
+ * Load PostHog after idle — never blocks first paint.
+ * Children always render immediately.
+ */
+export function PostHogProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    if (!key) return;
 
-export function PostHogProvider({ children }: { children: React.ReactNode }) {
-  if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-    return <>{children}</>;
-  }
-  return <PHProvider client={posthog}>{children}</PHProvider>;
+    let cancelled = false;
+
+    const boot = () => {
+      void import("posthog-js").then(({ default: posthog }) => {
+        if (cancelled || posthog.__loaded) return;
+        posthog.init(key, {
+          api_host:
+            process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://app.posthog.com",
+          capture_pageview: false,
+        });
+      });
+    };
+
+    const ric = window.requestIdleCallback?.(boot, { timeout: 5000 });
+    if (ric == null) {
+      const t = window.setTimeout(boot, 2500);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(t);
+      };
+    }
+    return () => {
+      cancelled = true;
+      window.cancelIdleCallback?.(ric);
+    };
+  }, []);
+
+  return <>{children}</>;
 }

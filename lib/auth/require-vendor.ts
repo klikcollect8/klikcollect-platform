@@ -61,7 +61,8 @@ export async function requireVendorActor(): Promise<
   const actor = await resolveActor(user);
   const vendorIds = actorVendorIds(actor);
 
-  if (!actor.isPlatformStaff && !vendorIds.length) {
+  // OS APIs require a real staff_membership — platform staff use /api/admin/*
+  if (!vendorIds.length) {
     return {
       ok: false,
       response: forbiddenJson("No vendor membership for this account"),

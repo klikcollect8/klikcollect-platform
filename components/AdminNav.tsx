@@ -30,6 +30,7 @@ import {
   Tag,
   Ticket,
   TrendingUp,
+  Truck,
   Users,
   Wallet,
   X,
@@ -163,6 +164,14 @@ const allNavItems: NavItem[] = [
       "finance_admin",
     ],
     permission: "orders:view",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/deliveries",
+    label: "Deliveries",
+    icon: Truck,
+    roles: ["super_admin", "platform_admin"],
+    permission: "delivery:view",
     group: "marketplace",
   },
   {

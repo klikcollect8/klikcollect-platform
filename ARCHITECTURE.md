@@ -44,4 +44,4 @@ Engineering Bible: `Desktop/klikcollect/docs/`. This document describes the **cu
 
 ## Feature flags
 
-`pos`, `couriers`, `marketing`, `finance` default **on** in `lib/feature-flag-types.ts`.
+`pos`, `marketing`, `finance` default **on** in `lib/feature-flag-types.ts`. Delivery/`couriers` and the `/eats` Uber-style plane are retired — marketplace is **pickup + receipt** (`/r/{publicId}`).

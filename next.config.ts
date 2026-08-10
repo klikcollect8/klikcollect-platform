@@ -9,16 +9,20 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   transpilePackages: ["mapbox-gl"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "@clerk/nextjs", "sonner"],
+  },
   images: {
-    unoptimized: process.env.CAPACITOR === 'true',
+    unoptimized: process.env.CAPACITOR === "true",
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: '**',
+        protocol: "https",
+        hostname: "**",
       },
       {
-        protocol: 'http',
-        hostname: '**',
+        protocol: "http",
+        hostname: "**",
       },
     ],
   },

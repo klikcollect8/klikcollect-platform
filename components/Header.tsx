@@ -1,14 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Show } from "@clerk/nextjs";
-import Cart from "./Cart";
-import WishlistSidebar from "./WishlistSidebar";
-import MobileSearch from "./MobileSearch";
-import NotificationsPanel from "./NotificationsPanel";
-import OrdersPanel from "./OrdersPanel";
 import ProfileMenu from "./ProfileMenu";
 import {
   BagIcon,
@@ -21,8 +17,19 @@ import { useSignInModal } from "./SignInModalProvider";
 import { openInstallAppPrompt } from "@/components/InstallAppPrompt";
 import { useCart } from "@/lib/hooks/useCart";
 import { useWishlist } from "@/lib/hooks/useWishlist";
+import { useWorkspaceAccess } from "@/lib/hooks/useWorkspaceAccess";
 
-const NAV = [
+const Cart = dynamic(() => import("./Cart"), { ssr: false });
+const WishlistSidebar = dynamic(() => import("./WishlistSidebar"), {
+  ssr: false,
+});
+const MobileSearch = dynamic(() => import("./MobileSearch"), { ssr: false });
+const NotificationsPanel = dynamic(() => import("./NotificationsPanel"), {
+  ssr: false,
+});
+const OrdersPanel = dynamic(() => import("./OrdersPanel"), { ssr: false });
+
+const NAV_BASE = [
   { name: "Shop", href: "/shop" },
   { name: "Vendors", href: "/brands" },
   { name: "Deals", href: "/todays-deals" },
@@ -31,7 +38,7 @@ const NAV = [
 ];
 
 /** Extra destinations after bottom-bar pages in the mobile burger */
-const MOBILE_MENU_EXTRA = [
+const MOBILE_MENU_EXTRA_BASE = [
   { name: "Vendors", href: "/brands" },
   { name: "Deals", href: "/todays-deals" },
   { name: "Saved", href: "/saved" },
@@ -48,9 +55,21 @@ export default function Header() {
   const router = useRouter();
   const { showSignInModal } = useSignInModal();
   const { cartItems, updateQuantity, removeFromCart } = useCart();
-  const { wishlist, removeFromWishlist } = useWishlist();
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const { wishlist, removeFromWishlist } = useWishlist({
+    enabled: isWishlistOpen,
+  });
+  const { vendor, admin, chrome } = useWorkspaceAccess();
+  const nav = [
+    ...NAV_BASE,
+    ...(vendor
+      ? [{ name: chrome?.hrefLabel || "My business", href: chrome?.href || "/app" }]
+      : []),
+    ...(admin ? [{ name: "Admin", href: "/admin" }] : []),
+  ];
+  // Workspace links render in a dedicated burger section above Menu.
+  const mobileMenuExtra = [...MOBILE_MENU_EXTRA_BASE];
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
@@ -108,7 +127,7 @@ export default function Header() {
   return (
     <>
       <header
-        className={`sticky top-0 z-40 transition-colors duration-300 ${
+        className={`transition-colors duration-300 ${
           scrolled ? "bg-[#f7f7f5]/90 backdrop-blur-md" : "bg-transparent"
         }`}
       >
@@ -136,7 +155,7 @@ export default function Header() {
 
           {/* Center - desktop nav */}
           <nav className="hidden items-center justify-center gap-8 md:flex lg:gap-10">
-            {NAV.map((l) => (
+            {nav.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
@@ -233,6 +252,31 @@ export default function Header() {
             </button>
           </div>
           <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-10 sm:pt-10">
+            {vendor || admin ? (
+              <div className="mb-6">
+                <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-black/40">
+                  Workspaces
+                </p>
+                {vendor ? (
+                  <Link
+                    href={chrome?.href || "/app"}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex min-h-12 items-center border-b border-black/10 py-3.5 text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+                  >
+                    {chrome?.hrefLabel || "My business"}
+                  </Link>
+                ) : null}
+                {admin ? (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex min-h-12 items-center border-b border-black/10 py-3.5 text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+                  >
+                    Admin
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
             <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-black/40">
               Menu
             </p>
@@ -304,7 +348,7 @@ export default function Header() {
                 Profile
               </button>
             </Show>
-            {MOBILE_MENU_EXTRA.map((l) => (
+            {mobileMenuExtra.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
@@ -343,18 +387,21 @@ export default function Header() {
           onRemoveItem={removeFromWishlist}
         />
       ) : null}
-      <MobileSearch
-        isOpen={isMobileSearchOpen}
-        onClose={() => setIsMobileSearchOpen(false)}
-      />
-      <NotificationsPanel
-        isOpen={isNotificationsOpen}
-        onClose={() => setIsNotificationsOpen(false)}
-      />
-      <OrdersPanel
-        isOpen={isOrdersOpen}
-        onClose={() => setIsOrdersOpen(false)}
-      />
+      {isMobileSearchOpen ? (
+        <MobileSearch
+          isOpen
+          onClose={() => setIsMobileSearchOpen(false)}
+        />
+      ) : null}
+      {isNotificationsOpen ? (
+        <NotificationsPanel
+          isOpen
+          onClose={() => setIsNotificationsOpen(false)}
+        />
+      ) : null}
+      {isOrdersOpen ? (
+        <OrdersPanel isOpen onClose={() => setIsOrdersOpen(false)} />
+      ) : null}
     </>
   );
 }

@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import PhoneField from "@/components/checkout/PhoneField";
 import {
   availablePayMethods,
   isMpesaPayMethod,
@@ -35,7 +36,7 @@ const ICONS: Record<string, React.ReactNode> = {
   paystack_ussd: <Hash className="h-5 w-5" strokeWidth={1.5} />,
 };
 
-/** Full dual-rail payment chooser (legacy sheet; page checkout uses inline list). */
+/** Bottom-sheet payment chooser — mobile-first, large targets. */
 export default function PaymentMethodSheet({
   open,
   onClose,
@@ -86,7 +87,7 @@ export default function PaymentMethodSheet({
     <div className="fixed inset-0 z-[10050] flex items-end justify-center sm:items-center sm:p-6">
       <button
         type="button"
-        className="absolute inset-0 bg-black/25"
+        className="absolute inset-0 bg-black/30"
         aria-label="Close payment methods"
         onClick={onClose}
       />
@@ -94,73 +95,95 @@ export default function PaymentMethodSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="pay-sheet-title"
-        className="relative z-10 w-full max-w-md border border-black/10 bg-[#f7f7f5] p-6 shadow-xl sm:rounded-sm"
+        className="relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col border border-black/10 bg-[#f7f7f5] shadow-[-8px_0_40px_rgba(0,0,0,0.12)] sm:max-h-[85dvh]"
       >
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="pay-sheet-title" className="text-[17px] font-medium">
-            Payment method
-          </h2>
+        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-black/15 sm:hidden" />
+        <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-2 pt-4 sm:px-6 sm:pt-6">
+          <div className="min-w-0">
+            <h2
+              id="pay-sheet-title"
+              className="text-[20px] font-medium tracking-tight"
+            >
+              Payment method
+            </h2>
+            <p className="mt-1 text-[13px] text-black/40">
+              Choose how you’ll pay for this order.
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center text-black/45"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center text-black/45"
             aria-label="Close"
           >
             <X className="h-5 w-5" strokeWidth={1.5} />
           </button>
         </div>
-        <ul className="mt-5 space-y-2">
-          {methods.map((m) => {
-            const selected = draft === m.id;
-            return (
-              <li key={m.id}>
-                <button
-                  type="button"
-                  onClick={() => setDraft(m.id)}
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 sm:px-6">
+          <ul className="mt-4 overflow-hidden border border-black/[0.08] bg-white">
+            {methods.map((m, index) => {
+              const selected = draft === m.id;
+              return (
+                <li
+                  key={m.id}
                   className={cn(
-                    "flex w-full items-center gap-3 border px-4 py-3 text-left",
-                    selected ? "border-black bg-white" : "border-black/10",
+                    index < methods.length - 1 && "border-b border-black/[0.06]",
+                    selected && "bg-[#f7f7f5]",
                   )}
                 >
-                  <span className="text-black/60">{ICONS[m.id] || null}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-medium">
-                      {m.label}
+                  <button
+                    type="button"
+                    onClick={() => setDraft(m.id)}
+                    className="flex w-full min-h-[4.25rem] items-center gap-3.5 px-4 py-4 text-left"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                        selected ? "border-black bg-black" : "border-black/25",
+                      )}
+                      aria-hidden
+                    >
+                      {selected ? (
+                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      ) : null}
                     </span>
-                    <span className="block text-[12px] text-black/40">
-                      {m.description}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-medium">
+                        {m.label}
+                      </span>
+                      <span className="mt-1 block text-[12px] text-black/40">
+                        {m.description}
+                      </span>
                     </span>
-                  </span>
-                  {selected ? (
-                    <span className="text-[11px] uppercase tracking-[0.14em]">
-                      On
-                    </span>
-                  ) : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        {isMpesaPayMethod(draft) ? (
-          <label className="mt-5 block">
-            <span className="text-[12px] text-black/40">M-Pesa number</span>
-            <input
-              value={draftPhone}
-              onChange={(e) => setDraftPhone(e.target.value)}
-              className="mt-2 w-full border-b border-black/15 bg-transparent py-3 text-[16px] outline-none focus:border-black"
-              placeholder="07…"
-              inputMode="tel"
-            />
-          </label>
-        ) : null}
-        <button
-          type="button"
-          disabled={!canConfirm}
-          onClick={confirm}
-          className="mt-6 w-full bg-black py-3.5 text-[12px] font-medium uppercase tracking-[0.16em] text-white disabled:opacity-35"
-        >
-          Confirm
-        </button>
+                    <span className="text-black/35">{ICONS[m.id] || null}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {isMpesaPayMethod(draft) ? (
+            <div className="mt-5 border border-black/10 bg-white/50 px-4 py-5">
+              <PhoneField
+                value={draftPhone}
+                onChange={setDraftPhone}
+                id="sheet-mpesa-phone"
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="shrink-0 border-t border-black/[0.08] px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:px-6">
+          <button
+            type="button"
+            disabled={!canConfirm}
+            onClick={confirm}
+            className="w-full min-h-12 bg-black text-[12px] font-medium uppercase tracking-[0.16em] text-white disabled:opacity-35"
+          >
+            Confirm
+          </button>
+        </div>
       </div>
     </div>
   );

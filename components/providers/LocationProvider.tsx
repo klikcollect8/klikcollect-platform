@@ -205,11 +205,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     );
   }, [applyError, applyPosition, stop]);
 
-  /** Auto-start tracking once on mount (browser will prompt if needed). */
-  useEffect(() => {
-    track();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, []);
+  /** Do not auto-start GPS — only load cached coords. Call track() from checkout/maps. */
+  // (intentionally no mount-time track())
 
   const value = useMemo<LocationContextValue>(
     () => ({ coords, status, error, track, stop, isTracking }),

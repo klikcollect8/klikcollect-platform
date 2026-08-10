@@ -18,6 +18,30 @@ import { withIdempotency, idempotencyKeyFrom } from "@/lib/idempotency";
 import { emitVendorActivity } from "@/lib/vendor-activity";
 import { notifyVendorStaff } from "@/lib/vendor-notifications";
 import { upsertVendorCustomerFromOrder } from "@/lib/vendor-customers";
+import { getServiceSupabase } from "@/lib/supabase/admin";
+
+async function receiptPublicIdsByOrder(
+  orderPublicIds: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (!orderPublicIds.length) return map;
+  try {
+    const sb = getServiceSupabase();
+    const { data } = await sb
+      .from("payment_receipts")
+      .select("public_id, order_public_id")
+      .in("order_public_id", orderPublicIds)
+      .limit(200);
+    for (const row of data || []) {
+      const oid = row.order_public_id ? String(row.order_public_id) : "";
+      const rid = row.public_id ? String(row.public_id) : "";
+      if (oid && rid && !map.has(oid)) map.set(oid, rid);
+    }
+  } catch {
+    /* receipts optional */
+  }
+  return map;
+}
 
 export async function GET(request: NextRequest) {
   const gate = await requireVendorActor();
@@ -36,8 +60,14 @@ export async function GET(request: NextRequest) {
     (o) => allowed.has(o.vendorId) || o.vendorIds.some((id) => allowed.has(id)),
   );
 
+  const receiptMap = await receiptPublicIdsByOrder(orders.map((o) => o.id));
+  const data = orders.map((o) => ({
+    ...o,
+    receiptPublicId: receiptMap.get(o.id) || null,
+  }));
+
   return NextResponse.json({
-    data: orders,
+    data,
     meta: { transitions: ORDER_TRANSITIONS },
   });
 }

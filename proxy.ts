@@ -29,6 +29,18 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
     return NextResponse.redirect(new URL(platformTarget, request.url));
   }
 
+  // Legacy Uber-style surfaces → homepage
+  if (
+    pathname === "/eats" ||
+    pathname.startsWith("/eats/") ||
+    pathname === "/delivery" ||
+    pathname.startsWith("/delivery/") ||
+    pathname === "/app/couriers" ||
+    pathname.startsWith("/app/couriers/")
+  ) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   const needsAuth =
     (isAdminRoute(request) && !isAdminPublic(request)) ||
     isOsRoute(request) ||
@@ -52,7 +64,10 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
 
 export const config = {
   matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
+    /*
+     * Run Clerk on pages + authenticated APIs only.
+     * Public catalogue APIs are excluded so storefront reads stay fast.
+     */
+    "/((?!_next|api/products|api/categories|api/vendors|api/banner-slides|api/settings|api/search|api/changelog|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
   ],
 };

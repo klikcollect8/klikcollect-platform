@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { X } from "lucide-react";
+import { useWorkspaceAccess } from "@/lib/hooks/useWorkspaceAccess";
 
 const LINKS = [
   { href: "/account", label: "Account" },
@@ -28,6 +29,7 @@ export default function ProfileMenu({
 }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const { vendor, admin } = useWorkspaceAccess();
   const [open, setOpen] = useState(false);
   const mounted = useSyncExternalStore(
     subscribe,
@@ -117,6 +119,24 @@ export default function ProfileMenu({
                   ) : null}
 
                   <nav className="mt-10 flex flex-col">
+                    {vendor ? (
+                      <Link
+                        href="/app"
+                        onClick={() => setOpen(false)}
+                        className="border-b border-black/[0.08] py-3.5 text-[13px] font-medium uppercase tracking-[0.14em] text-black transition-colors hover:opacity-60"
+                      >
+                        My business
+                      </Link>
+                    ) : null}
+                    {admin ? (
+                      <Link
+                        href="/admin"
+                        onClick={() => setOpen(false)}
+                        className="border-b border-black/[0.08] py-3.5 text-[13px] font-medium uppercase tracking-[0.14em] text-black transition-colors hover:opacity-60"
+                      >
+                        Platform admin
+                      </Link>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => {

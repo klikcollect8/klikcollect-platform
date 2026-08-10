@@ -18,6 +18,7 @@ function PaymentCallbackInner() {
     const reference = params.get("reference") || params.get("trxref") || "";
     const provider = params.get("provider") || undefined;
     const sessionId = params.get("session_id") || undefined;
+
     if (!reference) {
       setStatus("Missing payment reference");
       router.replace("/account/orders");
@@ -37,7 +38,6 @@ function PaymentCallbackInner() {
           try {
             await clearCart();
           } catch {
-            /* local clear still helps */
             try {
               localStorage.removeItem("cart");
               window.dispatchEvent(new Event("cart-updated"));
@@ -46,9 +46,22 @@ function PaymentCallbackInner() {
             }
           }
         }
-        if (j.data?.receiptPublicId) {
+
+        const receiptId = j.data?.receiptPublicId
+          ? String(j.data.receiptPublicId)
+          : "";
+        const orderId = j.data?.orderPublicId
+          ? String(j.data.orderPublicId)
+          : "";
+
+        if (receiptId) {
+          setStatus("Order received — open your receipt");
+          router.replace(`/r/${encodeURIComponent(receiptId)}`);
+          return;
+        }
+        if (ok && orderId) {
           setStatus("Order received");
-          router.replace(`/account/receipts/${j.data.receiptPublicId}`);
+          router.replace(`/account/orders`);
           return;
         }
         setStatus(ok ? "Order received" : "Payment recorded");
@@ -61,11 +74,13 @@ function PaymentCallbackInner() {
   }, [params, router, clearCart]);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#f7f7f5] px-6 text-center">
-      <p className="text-[22px] font-semibold tracking-tight">{status}</p>
-      <p className="mt-3 max-w-xs text-[14px] text-black/45">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#f7f7f5] px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] text-center sm:px-6">
+      <p className="text-[clamp(1.25rem,5vw,1.5rem)] font-semibold tracking-tight">
+        {status}
+      </p>
+      <p className="mt-3 max-w-xs text-[14px] leading-relaxed text-black/45">
         Hang tight — we&apos;re confirming payment and preparing your pickup
-        details.
+        receipt.
       </p>
     </div>
   );
@@ -75,13 +90,13 @@ export default function PaymentCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#f7f7f5] px-6 text-center">
-          <p className="text-[22px] font-semibold tracking-tight">
+        <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#f7f7f5] px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] text-center sm:px-6">
+          <p className="text-[clamp(1.25rem,5vw,1.5rem)] font-semibold tracking-tight">
             Confirming your order…
           </p>
-          <p className="mt-3 max-w-xs text-[14px] text-black/45">
+          <p className="mt-3 max-w-xs text-[14px] leading-relaxed text-black/45">
             Hang tight — we&apos;re confirming payment and preparing your pickup
-            details.
+            receipt.
           </p>
         </div>
       }

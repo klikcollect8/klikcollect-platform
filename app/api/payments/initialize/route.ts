@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
     const body = await request.json();
     const clientAmount = Number(body?.amountMinor);
-    const deliveryMinorClient = Math.max(0, Number(body?.deliveryMinor) || 0);
+    const deliveryMinorClient = 0;
     let amountMinor = Number.isFinite(clientAmount) ? clientAmount : 0;
     const email =
       String(body?.email || "").trim() ||
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const phoneNormalized = body?.phone
       ? normalizeKenyaPhone(String(body.phone))
       : null;
-    const areaKey = body?.areaKey ? String(body.areaKey) : "pickup";
+    const areaKey = "pickup";
     const collectHub = body?.collectHub ? String(body.collectHub) : null;
 
     if (method === "mpesa" && !phoneNormalized) {
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
           lines: feeLines,
           areaKey,
           collectHub,
-          fulfilment: areaKey === "pickup" ? "pickup" : "delivery",
+          fulfilment: "pickup",
         });
         // Bump to fee-engine total when higher; never drop below client/checkout total.
         if (feeQuote.customerTotalMinor > amountMinor) {
@@ -190,6 +190,11 @@ export async function POST(request: NextRequest) {
           orderIds,
           origin,
           lineItems: body?.lineItems || [],
+          callbackQuery: {
+            fulfilment: "pickup",
+            orderPublicId: orderPublicId || orderIds[0] || undefined,
+          },
+          cancelUrl: undefined,
         });
 
         const piId =
@@ -223,6 +228,8 @@ export async function POST(request: NextRequest) {
             feeQuote,
             areaKey,
             collectHub,
+            fulfilment: "pickup",
+            returnPath: null,
           },
         });
 
@@ -236,6 +243,7 @@ export async function POST(request: NextRequest) {
             publicKey: stripePublishableKey(),
             amountMinor: Math.round(amountMinor),
             feeQuote,
+            returnPath: null,
           },
         });
       } catch (e) {
@@ -253,7 +261,14 @@ export async function POST(request: NextRequest) {
           : method === "ussd"
             ? ["ussd"]
             : ["card"];
-    const callbackUrl = `${origin}/payment/callback?reference=${encodeURIComponent(reference)}&provider=paystack`;
+    const callbackParams = new URLSearchParams({
+      reference,
+      provider: "paystack",
+      fulfilment: "pickup",
+    });
+    const oid = orderPublicId || orderIds[0];
+    if (oid) callbackParams.set("orderPublicId", oid);
+    const callbackUrl = `${origin}/payment/callback?${callbackParams.toString()}`;
 
     const metadata: Record<string, unknown> = {
       orderPublicId: orderPublicId || orderIds[0] || null,
@@ -262,6 +277,8 @@ export async function POST(request: NextRequest) {
       channel: method,
       paymentMethod: method,
       provider: "paystack",
+      fulfilment: "pickup",
+      returnPath: null,
     };
     if (phoneNormalized) metadata.phone = phoneNormalized;
 
@@ -330,6 +347,8 @@ export async function POST(request: NextRequest) {
         orderIds,
         lineItems: body?.lineItems || [],
         feeQuote,
+        fulfilment: "pickup",
+        returnPath: null,
       },
     });
 
@@ -350,6 +369,7 @@ export async function POST(request: NextRequest) {
         amountMinor: Math.round(amountMinor),
         method,
         feeQuote,
+        returnPath: null,
       },
     });
   } catch (e) {

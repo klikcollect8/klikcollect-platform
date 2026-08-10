@@ -8,7 +8,6 @@ import {
   Bell,
   Wallet,
   ScanBarcode,
-  Truck,
   MapPin,
   Store,
   PackageCheck,
@@ -100,14 +99,6 @@ export const osNav: OsNavItem[] = [
     permission: "orders:fulfill",
   },
   {
-    href: "/app/couriers",
-    label: "Delivery",
-    icon: Truck,
-    live: true,
-    group: "fulfilment",
-    permission: "delivery:view",
-  },
-  {
     href: "/app/store",
     label: "Storefront",
     icon: Store,
@@ -163,14 +154,8 @@ export const osNav: OsNavItem[] = [
     group: "money",
     permission: "finance:statements",
   },
-  {
-    href: "/app/payments",
-    label: "Payouts",
-    icon: Wallet,
-    live: true,
-    group: "money",
-    permission: "finance:statements",
-  },
+  // Stripe Connect demoted — Paystack ledger wallet is primary for KE
+  // (route kept at /app/payments for legacy; redirected in OS_PLATFORM_REDIRECTS)
   {
     href: "/app/notifications",
     label: "Notifications",
@@ -250,4 +235,5 @@ export const OS_PLATFORM_REDIRECTS: Record<string, string> = {
   "/app/customers": "/app",
   "/app/products/new": "/app/products",
   "/app/products/import": "/app/products",
+  "/app/payments": "/app/finance",
 };

@@ -22,6 +22,9 @@ type Branch = {
 export default function BranchesPage() {
   const [vendorId, setVendorId] = useState("");
   const [rows, setRows] = useState<Branch[]>([]);
+  const missingPins = rows.filter(
+    (r) => r.lat == null || r.lng == null || !Number.isFinite(Number(r.lat)),
+  );
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [neighbourhood, setNeighbourhood] = useState("");
@@ -124,6 +127,13 @@ export default function BranchesPage() {
     >
       {error ? (
         <p className={cn("mb-4 text-[13px]", osUi.danger)}>{error}</p>
+      ) : null}
+
+      {missingPins.length ? (
+        <div className="mb-4 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-3 text-[13px] text-amber-950">
+          Add store pin (lat/lng) to appear on Eats. {missingPins.length} branch
+          {missingPins.length === 1 ? "" : "es"} missing coordinates.
+        </div>
       ) : null}
 
       <div className="grid gap-3 border-b border-black/10 pb-6 sm:grid-cols-2">

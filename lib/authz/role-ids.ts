@@ -91,6 +91,7 @@ export const MVP_VENDOR_INVITE_ROLES = [
   "inventory_manager",
   "cashier",
   "dispatch_manager",
+  "vendor_driver",
   "finance_manager",
 ] as const satisfies readonly StaffMembershipRole[];
 
@@ -104,6 +105,7 @@ export const MVP_VENDOR_INVITE_LABELS: Record<
   inventory_manager: "Inventory",
   cashier: "Cashier / POS",
   dispatch_manager: "Dispatch",
+  vendor_driver: "Driver",
   finance_manager: "Finance (view)",
 };
 
