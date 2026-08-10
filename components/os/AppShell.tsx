@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/track";
 import { osUi } from "@/components/os/os-ui";
+import { OsBottomTabs } from "@/components/os/OsBottomTabs";
 
 function isActive(pathname: string | null, href: string) {
   if (!pathname) return false;
@@ -397,6 +398,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className={osUi.shellMain}>{children}</main>
       </div>
+
+      {!mobileOpen ? <OsBottomTabs counts={counts} /> : null}
 
       {cmdOpen ? (
         <CommandPalette

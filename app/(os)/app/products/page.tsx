@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { ModuleShell } from "@/components/os/ModuleShell";
-import { OsStat } from "@/components/os/OsPanel";
+import { OsStatStrip } from "@/components/os/OsStatStrip";
 import { ProductsTable } from "./ProductsTable";
 import { listCatalogue } from "@/lib/catalogue-store";
 import { requireVendorActor } from "@/lib/auth/require-vendor";
+import { osUi } from "@/components/os/os-ui";
 
 export default async function OsProductsPage() {
   const gate = await requireVendorActor();
@@ -13,7 +14,9 @@ export default async function OsProductsPage() {
     ? { [vendorId]: "Your store" }
     : ({} as Record<string, string>);
   const published = products.filter((p) => p.status === "published").length;
-  const low = products.filter((p) => (p.stock ?? 0) <= 5).length;
+  const low = products.filter(
+    (p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5,
+  ).length;
   const out = products.filter((p) => (p.stock ?? 0) <= 0).length;
   const rows = products.map((p) => ({
     ...p,
@@ -24,22 +27,23 @@ export default async function OsProductsPage() {
   return (
     <ModuleShell
       title="My products"
-      description="Platform catalogue items assigned to your store. Update your price and stock — product details are managed by KlikCollect."
+      description="Assigned catalogue items — open a product to update your price and stock."
       live
       actions={
-        <Link
-          href="/app/inventory"
-          className="rounded-[var(--kc-radius-sm)] bg-[var(--kc-ink)] px-3 py-2 text-[13px] font-medium text-white hover:bg-black"
-        >
+        <Link href="/app/inventory" className={osUi.btnPrimary}>
           Update stock
         </Link>
       }
     >
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <OsStat label="Assigned" value={products.length} />
-        <OsStat label="Selling" value={published} />
-        <OsStat label="Low stock" value={low} />
-        <OsStat label="Out of stock" value={out} />
+      <div className="mb-8">
+        <OsStatStrip
+          items={[
+            { label: "Assigned", value: products.length },
+            { label: "Selling", value: published },
+            { label: "Low stock", value: low, tone: low > 0 ? "warn" : "default" },
+            { label: "Out of stock", value: out, tone: out > 0 ? "warn" : "default" },
+          ]}
+        />
       </div>
 
       <ProductsTable products={rows} vendors={vendorMap} offerMode />

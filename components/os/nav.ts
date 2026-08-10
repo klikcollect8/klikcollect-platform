@@ -212,6 +212,10 @@ export function resolveOsNavMatch(pathname: string | null): OsNavMatch {
     if (!best || base.length > bestBase.length) best = item;
   }
 
+  if (pathOnly === "/app/more") {
+    return { label: "More", groupLabel: "Home", href: "/app/more" };
+  }
+
   if (best) {
     return {
       label: best.label,

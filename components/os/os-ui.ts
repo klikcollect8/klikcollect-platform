@@ -32,9 +32,12 @@ export const osUi = {
   navIdle: "font-medium text-black/40 transition-colors hover:text-black",
   shellAside: "w-[220px]",
   shellAsidePad: "lg:pl-[220px]",
-  /** Full-bleed content - spans the page */
+  /** Full-bleed content - spans the page; extra bottom pad clears mobile OS tabs */
   shellMain:
-    "w-full max-w-none px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12 xl:px-16",
+    "w-full max-w-none px-4 py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:px-8 sm:py-8 lg:px-12 lg:py-12 lg:pb-12 xl:px-16",
+  /** Mobile vendor tab dock */
+  bottomTabs:
+    "fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-[var(--kc-canvas)] pb-[env(safe-area-inset-bottom,0px)] lg:hidden",
   badge:
     "inline-flex min-w-[18px] items-center justify-center text-[11px] font-medium tabular-nums text-black/40",
   hairline: "border-black/10",

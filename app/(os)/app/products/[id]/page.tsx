@@ -229,28 +229,31 @@ export default function VendorOfferDetailPage() {
   const selling = product.status !== "draft";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 p-4 sm:p-6">
+    <div className="mx-auto max-w-2xl space-y-8 pb-28">
       <div>
         <Link
           href="/app/products"
-          className="text-[13px] text-[var(--kc-mute)] underline"
+          className="inline-flex min-h-11 items-center text-[13px] text-black/45 underline underline-offset-4"
         >
           ← My products
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h1 className="text-[clamp(1.4rem,3vw,1.85rem)] font-semibold tracking-tight">
+          <h1
+            className="text-[24px] font-medium tracking-tight text-black sm:text-[28px]"
+            style={{ fontFamily: "var(--font-display), sans-serif" }}
+          >
             {product.name}
           </h1>
           <StatusBadge status={selling ? "published" : "draft"} />
         </div>
-        <p className="mt-2 text-[14px] text-[var(--kc-mute)]">
+        <p className="mt-2 text-[14px] leading-relaxed text-black/45">
           Catalogue details are owned by KlikCollect. You control your price,
           stock, and whether this offer is selling.
         </p>
       </div>
 
-      <div className="flex gap-4 rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white p-4">
-        <div className="h-20 w-20 shrink-0 overflow-hidden rounded bg-[var(--kc-canvas)]">
+      <div className="flex gap-4 border-y border-black/10 py-5">
+        <div className="h-20 w-20 shrink-0 overflow-hidden bg-black/[0.04]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={
@@ -261,31 +264,31 @@ export default function VendorOfferDetailPage() {
             className="h-full w-full object-cover"
           />
         </div>
-        <div className="min-w-0 text-[13px] text-[var(--kc-mute)]">
+        <div className="min-w-0 text-[13px] text-black/45">
           <p>
-            <span className="text-[var(--kc-faint)]">Category</span> ·{" "}
+            <span className="text-black/30">Category</span> ·{" "}
             {product.category || "—"}
           </p>
           <p className="mt-1">
-            <span className="text-[var(--kc-faint)]">Barcode</span> ·{" "}
+            <span className="text-black/30">Barcode</span> ·{" "}
             {product.barcode || "—"}
           </p>
           {product.guidePriceAvg != null ? (
             <p className="mt-1">
-              <span className="text-[var(--kc-faint)]">Platform guide</span> ·{" "}
+              <span className="text-black/30">Platform guide</span> ·{" "}
               {formatKesMajor(product.guidePriceMin ?? 0)} –{" "}
               {formatKesMajor(product.guidePriceAvg)} –{" "}
               {formatKesMajor(product.guidePriceMax ?? 0)}
               {product.saleUnit ? ` / ${product.saleUnit}` : ""}
             </p>
           ) : null}
-          <p className="mt-2 line-clamp-3">
+          <p className="mt-2 line-clamp-3 text-black/55">
             {product.description || "No description"}
           </p>
         </div>
       </div>
 
-      <section className="space-y-4 rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white p-4">
+      <section className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className={osUi.sectionLabel}>Your offer</p>
           <button
@@ -298,7 +301,7 @@ export default function VendorOfferDetailPage() {
           </button>
         </div>
         <label className="block">
-          <span className="mb-1.5 block text-[12px] text-[var(--kc-mute)]">
+          <span className="mb-1.5 block text-[12px] text-black/40">
             Selling price (KES)
           </span>
           <input
@@ -308,16 +311,8 @@ export default function VendorOfferDetailPage() {
             inputMode="numeric"
           />
         </label>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void savePrice()}
-          className={cn(osUi.btnPrimary, "disabled:opacity-40")}
-        >
-          Save price
-        </button>
-        <label className="block pt-2">
-          <span className="mb-1.5 block text-[12px] text-[var(--kc-mute)]">
+        <label className="block">
+          <span className="mb-1.5 block text-[12px] text-black/40">
             On-hand stock
           </span>
           <input
@@ -327,23 +322,15 @@ export default function VendorOfferDetailPage() {
             inputMode="numeric"
           />
         </label>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void saveStock()}
-          className={cn(osUi.btnSecondary, "disabled:opacity-40")}
-        >
-          Save stock
-        </button>
-        <p className="text-[12px] text-[var(--kc-faint)]">
+        <p className="text-[12px] text-black/35">
           Current: {formatKesMajor(product.price)} · {product.stock} units ·{" "}
           {selling ? "Selling" : "Paused"}
         </p>
       </section>
 
-      <section className="space-y-3 rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white p-4">
+      <section className="space-y-3 border-t border-black/10 pt-8">
         <p className={osUi.sectionLabel}>Request catalogue correction</p>
-        <p className="text-[13px] text-[var(--kc-mute)]">
+        <p className="text-[13px] text-black/45">
           Wrong name, image, or specs? Tell KlikCollect — you cannot edit the
           product record yourself.
         </p>
@@ -351,7 +338,7 @@ export default function VendorOfferDetailPage() {
           {FIELD_KEYS.map((f) => (
             <label
               key={f.id}
-              className="flex items-center gap-2 text-[13px] text-[var(--kc-ink)]"
+              className="flex min-h-11 items-center gap-2 text-[13px] text-black"
             >
               <input
                 type="checkbox"
@@ -383,25 +370,25 @@ export default function VendorOfferDetailPage() {
         </button>
 
         {priorRequests.length ? (
-          <div className="border-t border-[var(--kc-line-soft)] pt-4">
-            <p className="text-[12px] font-medium text-[var(--kc-faint)]">
+          <div className="border-t border-black/10 pt-4">
+            <p className="text-[12px] font-medium text-black/35">
               Your prior requests
             </p>
             <ul className="mt-2 space-y-2">
               {priorRequests.slice(0, 8).map((r) => (
                 <li
                   key={r.public_id}
-                  className="rounded border border-[var(--kc-line-soft)] px-3 py-2 text-[12px]"
+                  className="border border-black/10 px-3 py-2 text-[12px]"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <StatusBadge status={r.status} />
-                    <span className="text-[var(--kc-faint)]">
+                    <span className="text-black/35">
                       {new Date(r.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="mt-1 text-[var(--kc-mute)]">{r.message}</p>
+                  <p className="mt-1 text-black/45">{r.message}</p>
                   {r.fields && Object.keys(r.fields).length ? (
-                    <p className="mt-1 text-[11px] text-[var(--kc-faint)]">
+                    <p className="mt-1 text-[11px] text-black/30">
                       Fields: {Object.keys(r.fields).join(", ")}
                     </p>
                   ) : null}
@@ -412,9 +399,28 @@ export default function VendorOfferDetailPage() {
         ) : null}
       </section>
 
-      {status ? (
-        <p className="text-[13px] text-[var(--kc-mute)]">{status}</p>
-      ) : null}
+      {status ? <p className="text-[13px] text-black/45">{status}</p> : null}
+
+      <div className="fixed inset-x-0 bottom-14 z-30 border-t border-black/10 bg-[var(--kc-canvas)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-0">
+        <div className="mx-auto flex max-w-2xl gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void savePrice()}
+            className={cn(osUi.btnPrimary, "min-h-12 flex-1 disabled:opacity-40")}
+          >
+            Save price
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void saveStock()}
+            className={cn(osUi.btnSecondary, "min-h-12 disabled:opacity-40")}
+          >
+            Save stock
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

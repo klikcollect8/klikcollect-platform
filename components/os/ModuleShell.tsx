@@ -17,22 +17,27 @@ export function ModuleShell({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="w-full space-y-10">
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="w-full space-y-8 sm:space-y-10">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
         <div className="min-w-0 max-w-2xl">
-          <div className="mb-2 flex flex-wrap items-center gap-2.5">
+          <div className="mb-1.5 flex flex-wrap items-center gap-2 sm:mb-2 sm:gap-2.5">
             <p className={osUi.pageEyebrow}>Store</p>
             <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-black/30">
               {live ? "Live" : "Soon"}
             </span>
           </div>
           <h1
-            className={osUi.pageTitle}
+            className={cn(
+              osUi.pageTitle,
+              "text-[24px] sm:text-[28px] lg:text-[32px]",
+            )}
             style={{ fontFamily: "var(--font-display), sans-serif" }}
           >
             {title}
           </h1>
-          <p className={cn("mt-2 max-w-lg", osUi.pageDesc)}>{description}</p>
+          <p className={cn("mt-1.5 max-w-lg text-[14px] sm:mt-2 sm:text-[15px]", osUi.pageDesc)}>
+            {description}
+          </p>
         </div>
         {actions ? (
           <div className="flex shrink-0 flex-wrap items-center gap-2">
