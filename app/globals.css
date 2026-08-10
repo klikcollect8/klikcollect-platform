@@ -216,6 +216,14 @@
     opacity: 0 !important;
   }
 
+  /* Full-screen burger menu — hide bottom nav so it never peeks through */
+  html.kc-burger-open .kc-bottom-nav,
+  html.kc-burger-open [data-kc-bottom-nav] {
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+  }
+
   html.kc-keyboard-open .kc-mobile-nav-pad {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }

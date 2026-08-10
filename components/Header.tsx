@@ -113,8 +113,10 @@ export default function Header() {
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
+    document.documentElement.classList.toggle("kc-burger-open", menuOpen);
     return () => {
       document.body.style.overflow = "";
+      document.documentElement.classList.remove("kc-burger-open");
     };
   }, [menuOpen]);
 
@@ -122,11 +124,157 @@ export default function Header() {
 
   const openNotifications = () => setIsNotificationsOpen(true);
 
+  const mobileMenu =
+    menuOpen && mounted
+      ? createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            className="md:hidden"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 100000,
+              width: "100vw",
+              height: "100dvh",
+              maxHeight: "100dvh",
+              background: "#f7f7f5",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              className="mx-auto flex h-16 w-full max-w-[1600px] shrink-0 items-center justify-between px-4 sm:px-10"
+              style={{ background: "#f7f7f5" }}
+            >
+              <span className="inline-flex h-11 items-center text-[17px] font-medium uppercase tracking-[0.12em] text-black sm:text-[19px]">
+                KLIKCOLLECT
+                <span className="align-super text-[0.55em] tracking-normal">
+                  ™
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close"
+                className={iconBtn}
+              >
+                <CloseIcon size={20} />
+              </button>
+            </div>
+            <div
+              className="scrollbar-hide mx-auto flex w-full max-w-[1600px] min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pt-6 sm:px-10 sm:pt-10"
+              style={{
+                background: "#f7f7f5",
+                paddingBottom: "calc(2rem + env(safe-area-inset-bottom))",
+              }}
+            >
+              <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-black/40">
+                Menu
+              </p>
+              <Link
+                href="/"
+                onClick={() => setMenuOpen(false)}
+                className={menuLink}
+              >
+                Home
+              </Link>
+              <Link
+                href="/shop"
+                onClick={() => setMenuOpen(false)}
+                className={menuLink}
+              >
+                Explore
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  window.dispatchEvent(new CustomEvent("toggleCart"));
+                }}
+                className={menuBtn}
+              >
+                Cart
+              </button>
+              <Show when="signed-in">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    window.dispatchEvent(new CustomEvent("toggleOrders"));
+                  }}
+                  className={menuBtn}
+                >
+                  Orders
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    window.dispatchEvent(new CustomEvent("toggleProfile"));
+                  }}
+                  className={menuBtn}
+                >
+                  Profile
+                </button>
+              </Show>
+              <Show when="signed-out">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    showSignInModal("Sign in to view orders", {
+                      redirect: "/",
+                    });
+                  }}
+                  className={menuBtn}
+                >
+                  Orders
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    showSignInModal();
+                  }}
+                  className={menuBtn}
+                >
+                  Profile
+                </button>
+              </Show>
+              {mobileMenuExtra.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={menuLink}
+                >
+                  {l.name}
+                </Link>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  openInstallAppPrompt();
+                }}
+                className={menuBtn}
+              >
+                Get the app
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <>
       <header
-        className={`transition-colors duration-300 ${
-          scrolled ? "bg-[#f7f7f5]/90 backdrop-blur-md" : "bg-transparent"
+        className={`sticky top-0 z-40 transition-colors duration-300 ${
+          scrolled || menuOpen ? "bg-[#f7f7f5]" : "bg-[#f7f7f5] md:bg-transparent"
         }`}
       >
         <div className="mx-auto grid h-16 w-full max-w-[1600px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-4 sm:h-[72px] sm:px-10 lg:px-14 xl:px-20">
@@ -231,124 +379,7 @@ export default function Header() {
         </div>
       </header>
 
-      {menuOpen && mounted
-        ? createPortal(
-            <div className="fixed inset-0 z-[10050] flex flex-col bg-[#f7f7f5] md:hidden">
-              <div className="mx-auto flex h-16 w-full max-w-[1600px] shrink-0 items-center justify-between px-4 sm:px-10">
-                <span className="inline-flex h-11 items-center text-[17px] font-medium uppercase tracking-[0.12em] sm:text-[19px]">
-                  KLIKCOLLECT
-                  <span className="align-super text-[0.55em] tracking-normal">
-                    ™
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(false)}
-                  aria-label="Close"
-                  className={iconBtn}
-                >
-                  <CloseIcon size={20} />
-                </button>
-              </div>
-              <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-10 sm:pt-10">
-                <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-black/40">
-                  Menu
-                </p>
-                <Link
-                  href="/"
-                  onClick={() => setMenuOpen(false)}
-                  className={menuLink}
-                >
-                  Home
-                </Link>
-                <Link
-                  href="/shop"
-                  onClick={() => setMenuOpen(false)}
-                  className={menuLink}
-                >
-                  Explore
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    window.dispatchEvent(new CustomEvent("toggleCart"));
-                  }}
-                  className={menuBtn}
-                >
-                  Cart
-                </button>
-                <Show when="signed-in">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      window.dispatchEvent(new CustomEvent("toggleOrders"));
-                    }}
-                    className={menuBtn}
-                  >
-                    Orders
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      window.dispatchEvent(new CustomEvent("toggleProfile"));
-                    }}
-                    className={menuBtn}
-                  >
-                    Profile
-                  </button>
-                </Show>
-                <Show when="signed-out">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      showSignInModal("Sign in to view orders", {
-                        redirect: "/",
-                      });
-                    }}
-                    className={menuBtn}
-                  >
-                    Orders
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      showSignInModal();
-                    }}
-                    className={menuBtn}
-                  >
-                    Profile
-                  </button>
-                </Show>
-                {mobileMenuExtra.map((l) => (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    onClick={() => setMenuOpen(false)}
-                    className={menuLink}
-                  >
-                    {l.name}
-                  </Link>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    openInstallAppPrompt();
-                  }}
-                  className={menuBtn}
-                >
-                  Get the app
-                </button>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+      {mobileMenu}
 
       {isCartOpen ? (
         <Cart
