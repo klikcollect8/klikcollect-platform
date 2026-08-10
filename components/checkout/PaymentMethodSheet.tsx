@@ -1,9 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, CreditCard, Smartphone, X } from "lucide-react";
+import {
+  Building2,
+  CreditCard,
+  Hash,
+  Smartphone,
+  Wallet,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type PayMethod, isMpesaPayMethod } from "@/components/checkout/payment-methods";
+import {
+  availablePayMethods,
+  isMpesaPayMethod,
+  type PayMethod,
+} from "@/components/checkout/payment-methods";
 
 type Props = {
   open: boolean;
@@ -16,7 +27,15 @@ type Props = {
   mpesaAvailable: boolean;
 };
 
-/** Minimal Card / M-Pesa chooser. */
+const ICONS: Record<string, React.ReactNode> = {
+  stripe_checkout: <Wallet className="h-5 w-5" strokeWidth={1.5} />,
+  paystack_card: <CreditCard className="h-5 w-5" strokeWidth={1.5} />,
+  mpesa: <Smartphone className="h-5 w-5" strokeWidth={1.5} />,
+  paystack_bank: <Building2 className="h-5 w-5" strokeWidth={1.5} />,
+  paystack_ussd: <Hash className="h-5 w-5" strokeWidth={1.5} />,
+};
+
+/** Full dual-rail payment chooser (legacy sheet; page checkout uses inline list). */
 export default function PaymentMethodSheet({
   open,
   onClose,
@@ -29,6 +48,7 @@ export default function PaymentMethodSheet({
 }: Props) {
   const [draft, setDraft] = useState<PayMethod | null>(payMethod);
   const [draftPhone, setDraftPhone] = useState(mpesaPhone);
+  const methods = availablePayMethods(cardAvailable, mpesaAvailable);
 
   useEffect(() => {
     if (!open) return;
@@ -51,8 +71,7 @@ export default function PaymentMethodSheet({
   }, [open, onClose]);
 
   const canConfirm =
-    !!draft &&
-    (!isMpesaPayMethod(draft) || draftPhone.trim().length >= 9);
+    !!draft && (!isMpesaPayMethod(draft) || draftPhone.trim().length >= 9);
 
   const confirm = () => {
     if (!draft || !canConfirm) return;
@@ -62,29 +81,6 @@ export default function PaymentMethodSheet({
   };
 
   if (!open) return null;
-
-  const options: Array<{
-    id: PayMethod;
-    label: string;
-    hint: string;
-    show: boolean;
-    icon: React.ReactNode;
-  }> = [
-    {
-      id: "stripe_card",
-      label: "Card",
-      hint: "Visa, Mastercard",
-      show: cardAvailable,
-      icon: <CreditCard className="h-5 w-5" strokeWidth={1.5} />,
-    },
-    {
-      id: "mpesa",
-      label: "M-Pesa",
-      hint: "Safaricom STK push",
-      show: mpesaAvailable,
-      icon: <Smartphone className="h-5 w-5" strokeWidth={1.5} />,
-    },
-  ];
 
   return (
     <div className="fixed inset-0 z-[10050] flex items-end justify-center sm:items-center sm:p-6">
@@ -98,14 +94,11 @@ export default function PaymentMethodSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="pay-sheet-title"
-        className="relative z-10 flex w-full max-w-[400px] flex-col bg-[#f7f7f5] max-h-[85dvh] sm:border sm:border-black/8"
+        className="relative z-10 w-full max-w-md border border-black/10 bg-[#f7f7f5] p-6 shadow-xl sm:rounded-sm"
       >
-        <div className="flex items-center justify-between px-6 pb-2 pt-5">
-          <h2
-            id="pay-sheet-title"
-            className="text-[16px] font-medium tracking-tight"
-          >
-            Payment
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="pay-sheet-title" className="text-[17px] font-medium">
+            Payment method
           </h2>
           <button
             type="button"
@@ -116,71 +109,59 @@ export default function PaymentMethodSheet({
             <X className="h-5 w-5" strokeWidth={1.5} />
           </button>
         </div>
-
-        <div className="space-y-1 px-4 pb-4">
-          {options
-            .filter((o) => o.show)
-            .map((o) => {
-              const selected = draft === o.id;
-              return (
-                <div key={o.id}>
-                  <button
-                    type="button"
-                    onClick={() => setDraft(o.id)}
-                    className={cn(
-                      "flex w-full items-center gap-4 px-3 py-4 text-left transition-colors",
-                      selected ? "bg-black/[0.04]" : "hover:bg-black/[0.03]",
-                    )}
-                  >
-                    <span className="text-black/50">{o.icon}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-medium">
-                        {o.label}
-                      </span>
-                      <span className="mt-0.5 block text-[12px] text-black/40">
-                        {o.hint}
-                      </span>
+        <ul className="mt-5 space-y-2">
+          {methods.map((m) => {
+            const selected = draft === m.id;
+            return (
+              <li key={m.id}>
+                <button
+                  type="button"
+                  onClick={() => setDraft(m.id)}
+                  className={cn(
+                    "flex w-full items-center gap-3 border px-4 py-3 text-left",
+                    selected ? "border-black bg-white" : "border-black/10",
+                  )}
+                >
+                  <span className="text-black/60">{ICONS[m.id] || null}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-medium">
+                      {m.label}
                     </span>
-                    {selected ? (
-                      <Check className="h-4 w-4" strokeWidth={2} />
-                    ) : null}
-                  </button>
-                  {selected && o.id === "mpesa" ? (
-                    <div className="px-3 pb-4">
-                      <input
-                        value={draftPhone}
-                        onChange={(e) => setDraftPhone(e.target.value)}
-                        placeholder="07XXXXXXXX"
-                        inputMode="tel"
-                        autoComplete="tel"
-                        className="w-full border-b border-black/15 bg-transparent py-3 text-[15px] outline-none focus:border-black/40"
-                      />
-                    </div>
+                    <span className="block text-[12px] text-black/40">
+                      {m.description}
+                    </span>
+                  </span>
+                  {selected ? (
+                    <span className="text-[11px] uppercase tracking-[0.14em]">
+                      On
+                    </span>
                   ) : null}
-                </div>
-              );
-            })}
-
-          {!cardAvailable && !mpesaAvailable ? (
-            <p className="px-3 py-10 text-center text-[14px] text-black/40">
-              Payments unavailable
-            </p>
-          ) : null}
-        </div>
-
-        <div className="px-6 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-2">
-          <button
-            type="button"
-            onClick={confirm}
-            disabled={!canConfirm}
-            className="w-full bg-black py-3.5 text-[13px] font-medium uppercase tracking-[0.16em] text-white disabled:bg-black/25"
-          >
-            Done
-          </button>
-        </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {isMpesaPayMethod(draft) ? (
+          <label className="mt-5 block">
+            <span className="text-[12px] text-black/40">M-Pesa number</span>
+            <input
+              value={draftPhone}
+              onChange={(e) => setDraftPhone(e.target.value)}
+              className="mt-2 w-full border-b border-black/15 bg-transparent py-3 text-[16px] outline-none focus:border-black"
+              placeholder="07…"
+              inputMode="tel"
+            />
+          </label>
+        ) : null}
+        <button
+          type="button"
+          disabled={!canConfirm}
+          onClick={confirm}
+          className="mt-6 w-full bg-black py-3.5 text-[12px] font-medium uppercase tracking-[0.16em] text-white disabled:opacity-35"
+        >
+          Confirm
+        </button>
       </div>
     </div>
   );
 }
-
-export type { PayMethod };

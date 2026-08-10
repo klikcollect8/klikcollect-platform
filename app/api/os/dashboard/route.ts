@@ -6,6 +6,9 @@ import { ensureOrderSeed, listOsOrders } from "@/lib/orders-store";
 import { availableOf } from "@/lib/inventory";
 import { getVendorPayableBalance } from "@/lib/ledger/balances";
 import { listVendorActivity } from "@/lib/vendor-activity";
+import { listVendorQuestions } from "@/lib/vendor-content";
+import { getPublicVendorHours } from "@/lib/vendor-storefront";
+import { computeLiveStoreStatus } from "@/lib/store-hours-live";
 import { getServiceSupabase } from "@/lib/supabase/admin";
 
 function nairobiDayKey(d: Date): string {
@@ -47,14 +50,23 @@ export async function GET(request: NextRequest) {
   const allowed = new Set(scope);
 
   await ensureOrderSeed();
-  const [catalogueAll, ordersAll, activity, availableMinor] = await Promise.all(
-    [
-      listCatalogue(),
+  const [catalogueAll, ordersAll, activity, availableMinor, questionsPack, hoursPack] =
+    await Promise.all([
+      listCatalogue(scope[0] || undefined),
       listOsOrders(),
       listVendorActivity(scope, 40),
       scope[0] ? getVendorPayableBalance(scope[0]) : Promise.resolve(0),
-    ],
-  );
+      scope.length
+        ? listVendorQuestions(scope).catch(() => ({
+            questions: [] as Awaited<
+              ReturnType<typeof listVendorQuestions>
+            >["questions"],
+          }))
+        : Promise.resolve({ questions: [] }),
+      scope[0]
+        ? getPublicVendorHours(scope[0]).catch(() => [])
+        : Promise.resolve([]),
+    ]);
 
   const catalogue = catalogueAll.filter(
     (p) => p.vendorId && allowed.has(p.vendorId),
@@ -232,6 +244,26 @@ export async function GET(request: NextRequest) {
     },
   ].filter((s) => s.value > 0);
 
+  const unansweredQuestions = (questionsPack.questions || []).filter(
+    (q) => !q.answers?.length,
+  ).length;
+
+  const primaryHours =
+    hoursPack.find((h) => h.storePublicId) || hoursPack[0] || null;
+  const live = computeLiveStoreStatus(
+    primaryHours
+      ? { weekly: primaryHours.weekly, holidays: primaryHours.holidays }
+      : null,
+  );
+  const storeStatus = {
+    openNow: live.openNow,
+    statusLabel: live.statusLabel,
+    detailLabel: live.detailLabel,
+    todayRange: live.todayRange,
+    clock: live.clock,
+    storeName: primaryHours?.storeName || storeName,
+  };
+
   return NextResponse.json({
     data: {
       vendorId: scope[0] || null,
@@ -257,6 +289,12 @@ export async function GET(request: NextRequest) {
       aovMinor,
       repeatRate,
       rating: null,
+      attention: {
+        unansweredQuestions,
+        ordersWaiting: buckets.waiting,
+        lowStock: lowStock.length + outOfStock.length,
+      },
+      storeStatus,
       activity,
       charts: {
         salesSeries,

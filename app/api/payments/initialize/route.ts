@@ -21,11 +21,16 @@ import { quoteFees } from "@/lib/fees/engine";
 export async function POST(request: NextRequest) {
   try {
     const user = await currentUser();
+    if (!user?.id) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
     const body = await request.json();
-    let amountMinor = Number(body?.amountMinor);
+    const clientAmount = Number(body?.amountMinor);
+    const deliveryMinorClient = Math.max(0, Number(body?.deliveryMinor) || 0);
+    let amountMinor = Number.isFinite(clientAmount) ? clientAmount : 0;
     const email =
       String(body?.email || "").trim() ||
-      (user ? clerkEmail(user) : null) ||
+      clerkEmail(user) ||
       "";
     const orderPublicId = body?.orderPublicId
       ? String(body.orderPublicId)
@@ -37,15 +42,26 @@ export async function POST(request: NextRequest) {
         : [];
     const methodRaw = String(body?.method || "card").toLowerCase();
     const providerRaw = String(body?.provider || "").toLowerCase();
-    // Dual rail: stripe card | paystack mpesa | paystack card (legacy)
-    const method =
-      methodRaw === "mpesa" || methodRaw === "mobile_money" ? "mpesa" : "card";
+    // Dual rail: stripe card/wallets | paystack card | mpesa | bank | ussd
+    const method: "card" | "mpesa" | "bank" | "ussd" =
+      methodRaw === "mpesa" || methodRaw === "mobile_money"
+        ? "mpesa"
+        : methodRaw === "bank" || methodRaw === "bank_transfer"
+          ? "bank"
+          : methodRaw === "ussd"
+            ? "ussd"
+            : "card";
     const provider: "stripe" | "paystack" =
-      providerRaw === "stripe" || (method === "card" && providerRaw !== "paystack")
-        ? method === "mpesa"
-          ? "paystack"
-          : "stripe"
-        : "paystack";
+      providerRaw === "paystack" ||
+      method === "mpesa" ||
+      method === "bank" ||
+      method === "ussd"
+        ? "paystack"
+        : providerRaw === "stripe"
+          ? "stripe"
+          : method === "card" && providerRaw !== "paystack"
+            ? "stripe"
+            : "paystack";
 
     const phoneNormalized = body?.phone
       ? normalizeKenyaPhone(String(body.phone))
@@ -60,17 +76,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prefer server-side order totals
+    // Server goods + checkout delivery. Never overwrite a higher client total with
+    // goods-only (that undercharged delivery).
     if (orderIds.length > 0) {
       try {
-        let serverTotal = 0;
+        let serverGoods = 0;
         for (const id of orderIds) {
           const order = await getOsOrder(id);
           if (order?.totalMinor && order.totalMinor > 0) {
-            serverTotal += order.totalMinor;
+            serverGoods += order.totalMinor;
           }
         }
-        if (serverTotal > 0) amountMinor = serverTotal;
+        if (serverGoods > 0) {
+          amountMinor = Math.max(
+            amountMinor,
+            serverGoods + deliveryMinorClient,
+          );
+        }
       } catch {
         // keep client amount
       }
@@ -115,7 +137,7 @@ export async function POST(request: NextRequest) {
           collectHub,
           fulfilment: areaKey === "pickup" ? "pickup" : "delivery",
         });
-        // If orders were created without delivery fee, bump charge to quote total
+        // Bump to fee-engine total when higher; never drop below client/checkout total.
         if (feeQuote.customerTotalMinor > amountMinor) {
           amountMinor = feeQuote.customerTotalMinor;
         }
@@ -222,9 +244,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ─── Paystack (M-Pesa or card fallback) ─────────────────────────
+    // ─── Paystack (card / M-Pesa / bank / USSD) ─────────────────────
     const channels: PaymentChannel[] =
-      method === "mpesa" ? ["mobile_money"] : ["card"];
+      method === "mpesa"
+        ? ["mobile_money"]
+        : method === "bank"
+          ? ["bank"]
+          : method === "ussd"
+            ? ["ussd"]
+            : ["card"];
     const callbackUrl = `${origin}/payment/callback?reference=${encodeURIComponent(reference)}&provider=paystack`;
 
     const metadata: Record<string, unknown> = {

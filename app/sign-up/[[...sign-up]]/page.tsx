@@ -3,6 +3,10 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { queueAuthModal } from "@/components/SignInModalProvider";
+import {
+  publicLandingForAuth,
+  resolveAuthReturnPath,
+} from "@/lib/auth/return-path";
 
 /** Bridge - opens the auth overlay instead of a dedicated page. */
 export default function SignUpPage() {
@@ -10,13 +14,8 @@ export default function SignUpPage() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const redirect = searchParams.get("redirect")?.trim() || "/";
-    const target =
-      redirect.startsWith("/") &&
-      !redirect.startsWith("/sign-in") &&
-      !redirect.startsWith("/sign-up")
-        ? redirect
-        : "/";
+    const target = resolveAuthReturnPath(searchParams);
+    const landing = publicLandingForAuth(target);
 
     const intent = {
       mode: "sign-up" as const,
@@ -24,7 +23,7 @@ export default function SignUpPage() {
     };
     queueAuthModal(intent);
     window.dispatchEvent(new CustomEvent("openAuthModal", { detail: intent }));
-    router.replace(target);
+    router.replace(landing);
   }, [router, searchParams]);
 
   return (

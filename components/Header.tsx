@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Show } from "@clerk/nextjs";
 import Cart from "./Cart";
-import CheckoutPopup from "./checkout/CheckoutPopup";
 import WishlistSidebar from "./WishlistSidebar";
 import MobileSearch from "./MobileSearch";
 import NotificationsPanel from "./NotificationsPanel";
@@ -25,7 +24,6 @@ import { useWishlist } from "@/lib/hooks/useWishlist";
 
 const NAV = [
   { name: "Shop", href: "/shop" },
-  { name: "Maps", href: "/maps" },
   { name: "Vendors", href: "/brands" },
   { name: "Deals", href: "/todays-deals" },
   { name: "Saved", href: "/saved" },
@@ -34,7 +32,6 @@ const NAV = [
 
 /** Extra destinations after bottom-bar pages in the mobile burger */
 const MOBILE_MENU_EXTRA = [
-  { name: "Maps", href: "/maps" },
   { name: "Vendors", href: "/brands" },
   { name: "Deals", href: "/todays-deals" },
   { name: "Saved", href: "/saved" },
@@ -48,11 +45,11 @@ const iconBtn =
 /** Obscura top bar - aligned logo / nav / actions; notifications panel like search */
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { showSignInModal } = useSignInModal();
   const { cartItems, updateQuantity, removeFromCart } = useCart();
   const { wishlist, removeFromWishlist } = useWishlist();
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -71,7 +68,7 @@ export default function Header() {
     const onToggleCart = () => setIsCartOpen(true);
     const onOpenCheckout = () => {
       setIsCartOpen(false);
-      setIsCheckoutOpen(true);
+      router.push("/checkout");
     };
     const onToggleWishlist = () => setIsWishlistOpen(true);
     const onToggleNotifications = () => setIsNotificationsOpen(true);
@@ -90,7 +87,7 @@ export default function Header() {
       window.removeEventListener("toggleNotifications", onToggleNotifications);
       window.removeEventListener("toggleOrders", onToggleOrders);
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMenuOpen(false));
@@ -338,9 +335,6 @@ export default function Header() {
           onUpdateQuantity={updateQuantity}
           onRemoveItem={removeFromCart}
         />
-      ) : null}
-      {isCheckoutOpen ? (
-        <CheckoutPopup onClose={() => setIsCheckoutOpen(false)} />
       ) : null}
       {isWishlistOpen ? (
         <WishlistSidebar

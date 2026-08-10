@@ -30,20 +30,55 @@ export function loadPaystackInline(): Promise<void> {
   if (scriptPromise) return scriptPromise;
 
   scriptPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${SCRIPT_URL}"]`);
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () =>
-        reject(new Error("Paystack script failed")),
-      );
+    const finishOk = () => {
       if (window.PaystackPop) resolve();
+      else reject(new Error("PaystackPop unavailable after load"));
+    };
+
+    const existing = document.querySelector(
+      `script[src="${SCRIPT_URL}"]`,
+    ) as HTMLScriptElement | null;
+
+    if (existing) {
+      if (window.PaystackPop) {
+        resolve();
+        return;
+      }
+      // Script tag exists but may already have finished loading (load won't re-fire)
+      const poll = window.setInterval(() => {
+        if (window.PaystackPop) {
+          window.clearInterval(poll);
+          resolve();
+        }
+      }, 50);
+      window.setTimeout(() => {
+        window.clearInterval(poll);
+        if (window.PaystackPop) resolve();
+        else {
+          scriptPromise = null;
+          reject(new Error("Paystack script present but PaystackPop missing"));
+        }
+      }, 8000);
+      existing.addEventListener("load", finishOk, { once: true });
+      existing.addEventListener(
+        "error",
+        () => {
+          scriptPromise = null;
+          reject(new Error("Paystack script failed"));
+        },
+        { once: true },
+      );
       return;
     }
+
     const s = document.createElement("script");
     s.src = SCRIPT_URL;
     s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("Failed to load Paystack Inline"));
+    s.onload = () => finishOk();
+    s.onerror = () => {
+      scriptPromise = null;
+      reject(new Error("Failed to load Paystack Inline"));
+    };
     document.body.appendChild(s);
   });
 

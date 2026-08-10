@@ -19,6 +19,8 @@ export type InventoryMovement = {
   refId?: string;
   createdAt: string;
   actorUserId?: string;
+  previousQuantity?: number;
+  newQuantity?: number;
 };
 
 export function availableOf(
@@ -44,6 +46,8 @@ async function appendMovement(m: InventoryMovement) {
       refType: m.refType,
       refId: m.refId,
       actorUserId: m.actorUserId,
+      previousQuantity: m.previousQuantity,
+      newQuantity: m.newQuantity,
     },
   });
 }
@@ -283,6 +287,8 @@ export async function adjustOnHand(input: {
     refType: "manual",
     createdAt: new Date().toISOString(),
     actorUserId: input.actorUserId,
+    previousQuantity: prev,
+    newQuantity: onHand,
   });
   return updated;
 }

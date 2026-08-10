@@ -3,8 +3,10 @@ import { requireVendorPermission } from "@/lib/auth/require-vendor";
 import { inviteStaffMembership } from "@/lib/authz/memberships";
 import {
   isEnabledStaffRole,
+  MVP_VENDOR_INVITE_ROLES,
   type StaffMembershipRole,
 } from "@/lib/authz/role-ids";
+import { canInviteRole } from "@/lib/authz/invite-ceiling";
 import { emitVendorActivity } from "@/lib/vendor-activity";
 import { notifyVendorStaff } from "@/lib/vendor-notifications";
 
@@ -20,12 +22,17 @@ export async function POST(request: NextRequest) {
   const gate = await requireVendorPermission("staff:invite", { vendorId });
   if (!gate.ok) return gate.response;
 
-  if (!email.includes("@") || !vendorId || !isEnabledStaffRole(role)) {
+  if (
+    !email.includes("@") ||
+    !vendorId ||
+    !isEnabledStaffRole(role) ||
+    !(MVP_VENDOR_INVITE_ROLES as readonly string[]).includes(role)
+  ) {
     return NextResponse.json(
       {
         error: {
           code: "INVALID",
-          message: "email, vendorId, and vendor store role required",
+          message: "email, vendorId, and MVP vendor role required",
         },
       },
       { status: 400 },
@@ -35,6 +42,17 @@ export async function POST(request: NextRequest) {
   if (!gate.actor.vendorIds.includes(vendorId)) {
     return NextResponse.json(
       { error: { code: "FORBIDDEN", message: "Vendor out of scope" } },
+      { status: 403 },
+    );
+  }
+  if (!canInviteRole(gate.actor.actor, vendorId, role)) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "INVITE_CEILING",
+          message: "You cannot invite a role at or above your authority",
+        },
+      },
       { status: 403 },
     );
   }

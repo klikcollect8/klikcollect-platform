@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useClerk, useSignIn, useSignUp } from "@clerk/nextjs";
 import { queueAuthModal } from "@/components/SignInModalProvider";
+import { consumeAuthRedirect } from "@/lib/auth/return-path";
 
 export default function SSOCallbackPage() {
   const clerk = useClerk();
@@ -17,8 +18,10 @@ export default function SSOCallbackPage() {
       if (!clerk.loaded || hasRun.current) return;
       hasRun.current = true;
 
-      const goHome = (decorateUrl: (path: string) => string) => {
-        const url = decorateUrl("/");
+      const afterAuth = consumeAuthRedirect("/");
+
+      const goAfterAuth = (decorateUrl: (path: string) => string) => {
+        const url = decorateUrl(afterAuth);
         if (url.startsWith("http")) window.location.href = url;
         else router.replace(url);
       };
@@ -27,7 +30,7 @@ export default function SSOCallbackPage() {
         queueAuthModal({
           mode: "sign-up",
           message: message ?? "Finish signing in",
-          redirect: "/",
+          redirect: afterAuth,
         });
         router.replace("/");
       };
@@ -37,7 +40,7 @@ export default function SSOCallbackPage() {
           await signIn.finalize({
             navigate: ({ session, decorateUrl }) => {
               if (session?.currentTask) return;
-              goHome(decorateUrl);
+              goAfterAuth(decorateUrl);
             },
           });
           return;
@@ -50,7 +53,7 @@ export default function SSOCallbackPage() {
             await signIn.finalize({
               navigate: ({ session, decorateUrl }) => {
                 if (session?.currentTask) return;
-                goHome(decorateUrl);
+                goAfterAuth(decorateUrl);
               },
             });
             return;
@@ -75,7 +78,7 @@ export default function SSOCallbackPage() {
             await signUp.finalize({
               navigate: ({ session, decorateUrl }) => {
                 if (session?.currentTask) return;
-                goHome(decorateUrl);
+                goAfterAuth(decorateUrl);
               },
             });
             return;
@@ -89,7 +92,7 @@ export default function SSOCallbackPage() {
           await signUp.finalize({
             navigate: ({ session, decorateUrl }) => {
               if (session?.currentTask) return;
-              goHome(decorateUrl);
+              goAfterAuth(decorateUrl);
             },
           });
           return;
@@ -111,7 +114,7 @@ export default function SSOCallbackPage() {
             session: sessionId,
             navigate: ({ session, decorateUrl }) => {
               if (session?.currentTask) return;
-              goHome(decorateUrl);
+              goAfterAuth(decorateUrl);
             },
           });
           return;

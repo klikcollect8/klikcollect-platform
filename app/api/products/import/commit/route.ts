@@ -4,27 +4,23 @@ import { addCatalogueProducts } from "@/lib/catalogue-store";
 import { DEMO_VENDOR_ID } from "@/lib/tenancy";
 import { publicId } from "@/lib/ids";
 import { appendUsageEvent } from "@/lib/m1-store";
-import { requireVendorActor } from "@/lib/auth/require-vendor";
+import {
+  handleRequireAdminError,
+  requireAdminPermission,
+} from "@/lib/auth/require-admin";
 
 /**
- * Commit bulk import after dry-run (M1 DoD).
- * Tenant-scoped write to local catalogue store - INV-9 from first listing.
+ * Platform-only bulk catalogue import.
+ * Vendors cannot create canonical products.
  */
 export async function POST(request: NextRequest) {
   try {
-    const gate = await requireVendorActor();
-    if (!gate.ok) return gate.response;
+    const admin = await requireAdminPermission("products:create");
 
     const body = await request.json();
     const csv = String(body?.csv || "");
-    let vendorId =
+    const vendorId =
       String(body?.vendorId || DEMO_VENDOR_ID).trim() || DEMO_VENDOR_ID;
-    if (
-      !gate.actor.isPlatformAdmin &&
-      !gate.actor.vendorIds.includes(vendorId)
-    ) {
-      vendorId = gate.actor.vendorIds[0] || DEMO_VENDOR_ID;
-    }
 
     if (!csv.trim()) {
       return NextResponse.json(
@@ -125,8 +121,12 @@ export async function POST(request: NextRequest) {
     await appendUsageEvent({
       id: publicId("evt"),
       name: "catalogue.import_committed",
-      properties: { count: created.length, vendorId },
-      actorType: "vendor",
+      properties: {
+        count: created.length,
+        vendorId,
+        actorUserId: admin.user.id,
+      },
+      actorType: "admin",
       createdAt: new Date().toISOString(),
     });
 
@@ -145,7 +145,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 },
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && "status" in error) {
+      return handleRequireAdminError(error);
+    }
     return NextResponse.json(
       { error: { code: "COMMIT_FAILED", message: "Could not commit import" } },
       { status: 500 },

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ModuleShell } from "@/components/os/ModuleShell";
 import { OsStat } from "@/components/os/OsPanel";
 import { ProductsTable } from "./ProductsTable";
-import { messages } from "@/messages/en-KE";
 import { listCatalogue } from "@/lib/catalogue-store";
 import { requireVendorActor } from "@/lib/auth/require-vendor";
 
@@ -15,7 +14,7 @@ export default async function OsProductsPage() {
     : ({} as Record<string, string>);
   const published = products.filter((p) => p.status === "published").length;
   const low = products.filter((p) => (p.stock ?? 0) <= 5).length;
-  const draft = products.filter((p) => p.status === "draft").length;
+  const out = products.filter((p) => (p.stock ?? 0) <= 0).length;
   const rows = products.map((p) => ({
     ...p,
     price: p.price ?? 0,
@@ -24,34 +23,26 @@ export default async function OsProductsPage() {
 
   return (
     <ModuleShell
-      title={messages.os.products}
-      description="Your store catalogue - listings, pricing, and stock for this vendor only."
+      title="My products"
+      description="Platform catalogue items assigned to your store. Update your price and stock — product details are managed by KlikCollect."
       live
       actions={
-        <>
-          <Link
-            href="/app/products/import"
-            className="rounded-[var(--kc-radius-sm)] border border-[var(--kc-line)] bg-white px-3 py-2 text-[13px] font-medium hover:bg-[var(--kc-canvas)]"
-          >
-            Import
-          </Link>
-          <Link
-            href="/app/products/new"
-            className="rounded-[var(--kc-radius-sm)] bg-[var(--kc-ink)] px-3 py-2 text-[13px] font-medium text-white hover:bg-black"
-          >
-            Add product
-          </Link>
-        </>
+        <Link
+          href="/app/inventory"
+          className="rounded-[var(--kc-radius-sm)] bg-[var(--kc-ink)] px-3 py-2 text-[13px] font-medium text-white hover:bg-black"
+        >
+          Update stock
+        </Link>
       }
     >
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <OsStat label="Products" value={products.length} />
-        <OsStat label="Active" value={published} />
-        <OsStat label="Draft" value={draft} />
+        <OsStat label="Assigned" value={products.length} />
+        <OsStat label="Selling" value={published} />
         <OsStat label="Low stock" value={low} />
+        <OsStat label="Out of stock" value={out} />
       </div>
 
-      <ProductsTable products={rows} vendors={vendorMap} />
+      <ProductsTable products={rows} vendors={vendorMap} offerMode />
     </ModuleShell>
   );
 }

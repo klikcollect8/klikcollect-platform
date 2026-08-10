@@ -6,10 +6,12 @@ import {
   updateCatalogueStatus,
 } from "@/lib/catalogue-store";
 import type { Product } from "@/types";
-import { DEMO_VENDOR_ID } from "@/lib/tenancy";
 import { publicId } from "@/lib/ids";
 import { appendUsageEvent } from "@/lib/m1-store";
-import { requireVendorActor } from "@/lib/auth/require-vendor";
+import {
+  handleRequireAdminError,
+  requireAdminPermission,
+} from "@/lib/auth/require-admin";
 
 export async function GET(request: NextRequest) {
   const vendorId = request.nextUrl.searchParams.get("vendorId") || undefined;
@@ -17,37 +19,26 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ data: products });
 }
 
-/** Manual vendor listing create - tenant-scoped (M1). */
+/**
+ * Platform-only canonical product create (+ initial offer for a vendor).
+ * Vendors cannot create catalogue products — use /api/os/offers instead.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const gate = await requireVendorActor();
-    if (!gate.ok) return gate.response;
-
+    const admin = await requireAdminPermission("products:create");
     const body = await request.json();
     const name = String(body?.name || "").trim();
     const category = String(body?.category || "").trim();
     const priceMajor = Number(body?.priceMajor ?? body?.price);
-    const stock = Number(body?.stock);
-    let vendorId =
-      String(body?.vendorId || DEMO_VENDOR_ID).trim() || DEMO_VENDOR_ID;
-    if (
-      !gate.actor.isPlatformAdmin &&
-      !gate.actor.vendorIds.includes(vendorId)
-    ) {
-      vendorId = gate.actor.vendorIds[0] || DEMO_VENDOR_ID;
-    }
+    const stock = Number(body?.stock ?? 0);
+    const vendorId = String(body?.vendorId || "").trim();
 
-    if (
-      !name ||
-      !category ||
-      !Number.isFinite(priceMajor) ||
-      !Number.isFinite(stock)
-    ) {
+    if (!name || !category || !vendorId || !Number.isFinite(priceMajor)) {
       return NextResponse.json(
         {
           error: {
             code: "INVALID",
-            message: "name, category, priceMajor, stock required",
+            message: "name, category, vendorId, priceMajor required",
           },
         },
         { status: 400 },
@@ -103,52 +94,56 @@ export async function POST(request: NextRequest) {
     await appendUsageEvent({
       id: publicId("evt"),
       name: "catalogue.product_created",
-      properties: { productId: product.id, vendorId, category },
-      actorType: "vendor",
+      properties: {
+        productId: product.id,
+        vendorId,
+        category,
+        actorUserId: admin.user.id,
+      },
+      actorType: "admin",
       createdAt: new Date().toISOString(),
     });
 
     return NextResponse.json({ data: product }, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      { error: { code: "WRITE_FAILED", message: "Could not create product" } },
-      { status: 500 },
-    );
+  } catch (error) {
+    return handleRequireAdminError(error);
   }
 }
 
-/** Bulk status update for Products module. */
+/** Platform-only bulk offer/product status update. */
 export async function PATCH(request: NextRequest) {
-  const gate = await requireVendorActor();
-  if (!gate.ok) return gate.response;
-
-  const body = await request.json();
-  const ids = Array.isArray(body?.ids)
-    ? body.ids.map((id: unknown) => String(id))
-    : [];
-  const status = String(body?.status || "") as Product["status"];
-  if (
-    !ids.length ||
-    !["published", "draft", "archived"].includes(String(status))
-  ) {
-    return NextResponse.json(
-      {
-        error: {
-          code: "INVALID",
-          message: "ids and status (published|draft|archived) required",
+  try {
+    await requireAdminPermission("products:edit");
+    const body = await request.json();
+    const ids = Array.isArray(body?.ids)
+      ? body.ids.map((id: unknown) => String(id))
+      : [];
+    const status = String(body?.status || "") as Product["status"];
+    if (
+      !ids.length ||
+      !["published", "draft", "archived"].includes(String(status))
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "INVALID",
+            message: "ids and status (published|draft|archived) required",
+          },
         },
-      },
-      { status: 400 },
-    );
-  }
+        { status: 400 },
+      );
+    }
 
-  const updated = await updateCatalogueStatus(ids, status);
-  await appendUsageEvent({
-    id: publicId("evt"),
-    name: "catalogue.bulk_status",
-    properties: { count: updated, status },
-    actorType: "vendor",
-    createdAt: new Date().toISOString(),
-  });
-  return NextResponse.json({ data: { updated } });
+    const updated = await updateCatalogueStatus(ids, status);
+    await appendUsageEvent({
+      id: publicId("evt"),
+      name: "catalogue.bulk_status",
+      properties: { count: updated, status },
+      actorType: "admin",
+      createdAt: new Date().toISOString(),
+    });
+    return NextResponse.json({ data: { updated } });
+  } catch (error) {
+    return handleRequireAdminError(error);
+  }
 }

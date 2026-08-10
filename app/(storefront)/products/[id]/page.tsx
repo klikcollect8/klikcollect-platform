@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   FulfilmentMethod,
@@ -9,7 +10,7 @@ import {
   ProductOffer,
   ProductVariation,
 } from "@/types";
-import { ChevronDown, Minus, Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import RelatedProducts from "@/components/RelatedProducts";
 import ImageGallery from "@/components/ImageGallery";
@@ -17,11 +18,20 @@ import WishlistButton from "@/components/WishlistButton";
 import ProductReviews from "@/components/ProductReviews";
 import ProductQuestions from "@/components/ProductQuestions";
 import SizeGuide from "@/components/SizeGuide";
+import { CloseIcon, SearchIcon } from "@/components/NavIcons";
 import { useToast } from "@/components/ToastProvider";
 import { useUserAuth } from "@/lib/hooks/useUserAuth";
 import { useCart } from "@/lib/hooks/useCart";
+import { useUserLocation } from "@/components/providers/LocationProvider";
 import { formatPrice } from "@/lib/currency";
 import { resolveVendorSlug } from "@/lib/vendor-slug";
+import {
+  rankOffers,
+  sortRankedOffers,
+  TOP_OFFER_COUNT,
+  type OfferSortMode,
+  type RankedOffer,
+} from "@/lib/offers/rank-offers";
 import MapPreview from "@/components/map/MapPreview";
 
 type TabType = "details" | "location" | "reviews" | "questions";
@@ -29,10 +39,11 @@ type TabType = "details" | "location" | "reviews" | "questions";
 function ProductPageInner() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { showToast } = useToast();
   const { loading: authLoading } = useUserAuth();
   const { addToCart: addToCartHook } = useCart();
+  const { coords, status: locationStatus, track: trackLocation } =
+    useUserLocation();
   const [product, setProduct] = useState<Product | null>(null);
   const [offers, setOffers] = useState<ProductOffer[]>([]);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
@@ -43,16 +54,51 @@ function ProductPageInner() {
     Record<string, string>
   >({});
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [fulfilment, setFulfilment] = useState<FulfilmentMethod>("pickup");
-  const [moreVendorsOpen, setMoreVendorsOpen] = useState(false);
+  const [browseOpen, setBrowseOpen] = useState(false);
+  const [browseVisible, setBrowseVisible] = useState(false);
+  const [browseQuery, setBrowseQuery] = useState("");
+  const [browseSort, setBrowseSort] = useState<OfferSortMode>("best");
+  const [sheetMounted, setSheetMounted] = useState(false);
+  const [fulfilment, setFulfilment] = useState<FulfilmentMethod | null>(null);
+  const [deliveryQuoteMajor, setDeliveryQuoteMajor] = useState<number | null>(
+    null,
+  );
+  const [deliveryQuoteLabel, setDeliveryQuoteLabel] = useState<string | null>(
+    null,
+  );
+  const [deliveryQuoting, setDeliveryQuoting] = useState(false);
 
   const prefillOffer = searchParams.get("offer");
+
+  useEffect(() => {
+    setSheetMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!selectedOfferId && activeTab !== "details") {
       setActiveTab("details");
     }
   }, [selectedOfferId, activeTab]);
+
+  useEffect(() => {
+    if (!browseOpen) {
+      setBrowseVisible(false);
+      return;
+    }
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setBrowseVisible(true));
+    });
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setBrowseOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [browseOpen]);
 
   useEffect(() => {
     if (!params.id) return;
@@ -73,6 +119,7 @@ function ProductPageInner() {
           ? data.offers
           : [];
         setOffers(list);
+        // Only prefill when ?offer= is present — otherwise require explicit pick
         if (prefillOffer && list.some((o) => o.id === prefillOffer)) {
           setSelectedOfferId(prefillOffer);
         } else {
@@ -93,14 +140,174 @@ function ProductPageInner() {
       .finally(() => setLoading(false));
   }, [params.id, prefillOffer]);
 
-  const selectedOffer = useMemo(
-    () => offers.find((o) => o.id === selectedOfferId) || null,
-    [offers, selectedOfferId],
+  const userPoint = useMemo(
+    () =>
+      coords
+        ? { lat: coords.lat, lng: coords.lng }
+        : null,
+    [coords?.lat, coords?.lng],
   );
+
+  const rankedOffers = useMemo(
+    () => rankOffers(offers, userPoint),
+    [offers, userPoint],
+  );
+
+  const topOffers = useMemo(
+    () => rankedOffers.slice(0, TOP_OFFER_COUNT),
+    [rankedOffers],
+  );
+
+  const selectOffer = (id: string) => {
+    setSelectedOfferId((prev) => (prev === id ? null : id));
+    setBrowseOpen(false);
+  };
+
+  const clearOffer = () => {
+    setSelectedOfferId(null);
+  };
+
+  const offerPlace = (offer: {
+    address?: string;
+    neighbourhood?: string;
+  }) => offer.address || offer.neighbourhood || "";
+
+  const selectedOffer = useMemo(
+    () =>
+      rankedOffers.find((o) => o.id === selectedOfferId) ||
+      offers.find((o) => o.id === selectedOfferId) ||
+      null,
+    [rankedOffers, offers, selectedOfferId],
+  );
+
+  const browsedOffers = useMemo(() => {
+    const sorted = sortRankedOffers(rankedOffers, browseSort, userPoint);
+    const q = browseQuery.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter(
+      (o) =>
+        o.vendorName.toLowerCase().includes(q) ||
+        (o.neighbourhood || "").toLowerCase().includes(q) ||
+        (o.address || "").toLowerCase().includes(q),
+    );
+  }, [rankedOffers, browseSort, browseQuery, userPoint]);
+
+  // Auto road-distance quote once a vendor is selected + live location is ready
+  useEffect(() => {
+    if (!selectedOffer) {
+      setDeliveryQuoteMajor(null);
+      setDeliveryQuoteLabel(null);
+      setDeliveryQuoting(false);
+      return;
+    }
+
+    if (!coords) {
+      setDeliveryQuoteMajor(null);
+      setDeliveryQuoteLabel(null);
+      setDeliveryQuoting(false);
+      return;
+    }
+
+    const shops =
+      selectedOffer.lat != null && selectedOffer.lng != null
+        ? [{ lat: selectedOffer.lat, lng: selectedOffer.lng }]
+        : [];
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setDeliveryQuoting(true);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/checkout/delivery-quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            fulfilment: "delivery",
+            areaLabel: selectedOffer.neighbourhood || null,
+            drop: { lat: coords.lat, lng: coords.lng },
+            shops,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        const minor = Number(json?.data?.deliveryMinor);
+        if (Number.isFinite(minor)) {
+          setDeliveryQuoteMajor(minor / 100);
+          const km = Number(json?.data?.distanceKm) || 0;
+          const eta = Number(json?.data?.etaMinutes) || 0;
+          const adjs = Array.isArray(json?.data?.adjustments)
+            ? (json.data.adjustments as Array<{ label?: string; amountMajor?: number }>)
+            : [];
+          const parts = [
+            km > 0
+              ? km < 1
+                ? `${Math.round(km * 1000)} m`
+                : `${km.toFixed(1)} km`
+              : null,
+            eta > 0 ? `~${eta} min` : null,
+            ...adjs
+              .filter((a) => a?.label && a?.amountMajor)
+              .map((a) => `${a.label} +${a.amountMajor}`),
+          ].filter(Boolean);
+          setDeliveryQuoteLabel(parts.length ? parts.join(" · ") : null);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setDeliveryQuoteMajor(null);
+        setDeliveryQuoteLabel(null);
+      } finally {
+        if (!cancelled) setDeliveryQuoting(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [selectedOffer, coords?.lat, coords?.lng]);
+
+  /** Closer vendor with similar price → save on delivery hint */
+  const switchVendorHint = useMemo(() => {
+    if (!selectedOfferId || !userPoint || rankedOffers.length < 2) return null;
+    const selected = rankedOffers.find((o) => o.id === selectedOfferId);
+    if (!selected || selected.distanceKm == null) return null;
+    const better = rankedOffers.find(
+      (o) =>
+        o.id !== selected.id &&
+        o.distanceKm != null &&
+        o.distanceKm < selected.distanceKm! - 0.3 &&
+        o.price <= selected.price * 1.05,
+    );
+    if (!better || better.distanceKm == null) return null;
+    const deltaKm = selected.distanceKm - better.distanceKm;
+    const save = Math.round(deltaKm * 40);
+    if (save < 50) return null;
+    return {
+      offerId: better.id,
+      vendorName: better.vendorName,
+      saveMajor: save,
+    };
+  }, [selectedOfferId, rankedOffers, userPoint]);
 
   const addToCart = async () => {
     if (!product || !selectedOffer) {
       showToast("Choose a vendor first", "error");
+      return;
+    }
+    if (!fulfilment) {
+      showToast("Choose pickup or delivery", "error");
+      return;
+    }
+    if (fulfilment === "delivery" && !coords) {
+      showToast("Allow location to calculate delivery", "error");
+      trackLocation();
+      return;
+    }
+    if (fulfilment === "delivery" && deliveryQuoteMajor == null) {
+      showToast("Calculating delivery… try again in a moment", "error");
       return;
     }
     if (authLoading) await new Promise((r) => setTimeout(r, 300));
@@ -120,6 +327,10 @@ function ProductPageInner() {
         vendorName: selectedOffer.vendorName,
         neighbourhood: selectedOffer.neighbourhood,
         fulfilment,
+        deliveryZoneLabel:
+          fulfilment === "delivery" ? "Your location" : undefined,
+        deliveryFee:
+          fulfilment === "delivery" ? deliveryQuoteMajor ?? 0 : 0,
       });
       showToast(`${product.name} added to bag`, "success");
       const recent = JSON.parse(localStorage.getItem("recentlyViewed") || "[]");
@@ -145,35 +356,21 @@ function ProductPageInner() {
   const handleBuyNow = async () => {
     await addToCart();
     if (selectedOffer) {
-      window.dispatchEvent(new CustomEvent("openCheckout"));
+      window.location.href = "/checkout";
     }
   };
 
-  const availableOffers = useMemo(
-    () => offers.filter((o) => o.stock > 0),
-    [offers],
-  );
+  const availableOffers = rankedOffers;
 
-  const { visibleOffers, hiddenOffers } = useMemo(() => {
-    if (availableOffers.length <= 2) {
-      return {
-        visibleOffers: availableOffers,
-        hiddenOffers: [] as ProductOffer[],
-      };
+  const mapOffers = useMemo(() => {
+    const byId = new Map<string, RankedOffer>();
+    for (const o of topOffers) byId.set(o.id, o);
+    if (selectedOfferId) {
+      const sel = rankedOffers.find((o) => o.id === selectedOfferId);
+      if (sel) byId.set(sel.id, sel);
     }
-    const top = availableOffers.slice(0, 2);
-    if (!selectedOfferId || top.some((o) => o.id === selectedOfferId)) {
-      return {
-        visibleOffers: top,
-        hiddenOffers: availableOffers.slice(2),
-      };
-    }
-    const selected = availableOffers.find((o) => o.id === selectedOfferId);
-    const rest = availableOffers.filter((o) => o.id !== selectedOfferId);
-    const visible = [selected, rest[0]].filter(Boolean) as ProductOffer[];
-    const hidden = rest.slice(1);
-    return { visibleOffers: visible, hiddenOffers: hidden };
-  }, [availableOffers, selectedOfferId]);
+    return [...byId.values()];
+  }, [topOffers, rankedOffers, selectedOfferId]);
 
   if (loading) {
     return (
@@ -217,7 +414,7 @@ function ProductPageInner() {
 
   return (
     <div className="min-h-screen w-full bg-[#f7f7f5] text-black">
-      <div className="mx-auto w-full max-w-[1600px] px-4 pb-32 pt-6 sm:px-6 sm:pb-20 sm:pt-10 md:px-10 lg:px-14 xl:px-20">
+      <div className="mx-auto w-full max-w-[1600px] px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 sm:pb-16 sm:pt-10 md:px-10 lg:px-14 lg:pb-20 xl:px-20">
         <Breadcrumbs
           items={[
             {
@@ -262,68 +459,14 @@ function ProductPageInner() {
               </button>
             ) : null}
 
-            {/* How you get it - choose before buying */}
-            <section className="mt-10">
-              <h2 className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
-                How you get it
-              </h2>
-              <div
-                className="grid grid-cols-1 border border-black/[0.1] min-[400px]:grid-cols-2"
-                role="group"
-                aria-label="Fulfilment method"
-              >
-                <button
-                  type="button"
-                  onClick={() => setFulfilment("pickup")}
-                  className={`min-h-14 px-4 py-3.5 text-left transition-colors ${
-                    fulfilment === "pickup"
-                      ? "bg-black text-white"
-                      : "bg-transparent text-black/55 hover:text-black"
-                  }`}
-                >
-                  <span className="block text-[14px] font-medium tracking-tight">
-                    Click &amp; collect
-                  </span>
-                  <span
-                    className={`mt-1 block text-[12px] ${
-                      fulfilment === "pickup"
-                        ? "text-white/65"
-                        : "text-black/35"
-                    }`}
-                  >
-                    Pick up at the store
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFulfilment("delivery")}
-                  className={`min-h-14 border-t border-black/[0.1] px-4 py-3.5 text-left transition-colors min-[400px]:border-l min-[400px]:border-t-0 ${
-                    fulfilment === "delivery"
-                      ? "bg-black text-white"
-                      : "bg-transparent text-black/55 hover:text-black"
-                  }`}
-                >
-                  <span className="block text-[14px] font-medium tracking-tight">
-                    Delivery
-                  </span>
-                  <span
-                    className={`mt-1 block text-[12px] ${
-                      fulfilment === "delivery"
-                        ? "text-white/65"
-                        : "text-black/35"
-                    }`}
-                  >
-                    Fee at checkout
-                  </span>
-                </button>
-              </div>
-            </section>
-
-            {/* Vendors - 2 shown, rest in dropdown */}
-            <section className="mt-10" id="product-vendors">
-              <div className="mb-3 flex items-end justify-between gap-4">
+            {/* Vendors — pick one (or none) */}
+            <section
+              className="mt-10 border-t border-black/[0.08] pt-8"
+              id="product-vendors"
+            >
+              <div className="mb-5 flex items-end justify-between gap-4">
                 <h2 className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
-                  Vendor
+                  Choose a shop
                 </h2>
                 <p className="text-[12px] text-black/35">
                   {availableOffers.length} available
@@ -331,55 +474,58 @@ function ProductPageInner() {
               </div>
 
               {availableOffers.length === 0 ? (
-                <p className="py-6 text-[14px] text-black/45">
+                <p className="py-4 text-[14px] text-black/45">
                   No vendors available right now.
                 </p>
               ) : (
                 <div>
-                  <ul>
-                    {visibleOffers.map((offer) => {
+                  <ul className="border-t border-black/[0.06]" role="listbox">
+                    {topOffers.map((offer) => {
                       const active = selectedOfferId === offer.id;
+                      const place = offerPlace(offer);
                       return (
-                        <li key={offer.id}>
+                        <li key={offer.id} role="option" aria-selected={active}>
                           <button
                             type="button"
-                            onClick={() => {
-                              setSelectedOfferId(offer.id);
-                              setMoreVendorsOpen(false);
-                            }}
-                            className={`flex w-full items-center justify-between gap-4 border-b border-black/[0.06] py-4 text-left transition-colors ${
+                            onClick={() => selectOffer(offer.id)}
+                            className={`grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 border-b border-black/[0.06] py-4 text-left transition-colors ${
                               active
-                                ? "opacity-100"
-                                : "opacity-70 hover:opacity-100"
+                                ? "bg-black/[0.03]"
+                                : "hover:bg-black/[0.015]"
                             }`}
                           >
+                            <span
+                              className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                                active
+                                  ? "border-black"
+                                  : "border-black/25"
+                              }`}
+                              aria-hidden
+                            >
+                              {active ? (
+                                <span className="h-2 w-2 rounded-full bg-black" />
+                              ) : null}
+                            </span>
                             <span className="min-w-0">
                               <span
                                 className={`block text-[15px] font-medium tracking-tight ${
-                                  active ? "text-black" : "text-black/75"
+                                  active ? "text-black" : "text-black/80"
                                 }`}
                               >
                                 {offer.vendorName}
                               </span>
-                              {offer.neighbourhood || offer.address ? (
-                                <span className="mt-0.5 block text-[12px] text-black/40">
-                                  {offer.address || offer.neighbourhood}
+                              {place ? (
+                                <span className="mt-1 block text-[12px] leading-snug text-black/40">
+                                  {place}
                                 </span>
                               ) : null}
                             </span>
-                            <span className="shrink-0 text-right">
-                              <span
-                                className={`block text-[15px] font-medium tabular-nums ${
-                                  active ? "text-black" : "text-black/50"
-                                }`}
-                              >
-                                {formatPrice(offer.price)}
-                              </span>
-                              {active ? (
-                                <span className="mt-0.5 block text-[11px] uppercase tracking-[0.14em] text-black/40">
-                                  Selected
-                                </span>
-                              ) : null}
+                            <span
+                              className={`shrink-0 pt-0.5 text-right text-[15px] font-medium tabular-nums ${
+                                active ? "text-black" : "text-black/50"
+                              }`}
+                            >
+                              {formatPrice(offer.price)}
                             </span>
                           </button>
                         </li>
@@ -387,70 +533,37 @@ function ProductPageInner() {
                     })}
                   </ul>
 
-                  {hiddenOffers.length > 0 ? (
-                    <div className="relative mt-1">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    {availableOffers.length > 1 ? (
                       <button
                         type="button"
-                        onClick={() => setMoreVendorsOpen((v) => !v)}
-                        className="flex w-full items-center justify-between gap-3 py-3.5 text-left text-[13px] text-black/45 transition-colors hover:text-black"
-                        aria-expanded={moreVendorsOpen}
+                        onClick={() => {
+                          setBrowseSort(userPoint ? "best" : "cheapest");
+                          setBrowseQuery("");
+                          setBrowseOpen(true);
+                        }}
+                        className="text-[13px] text-black/45 underline underline-offset-[5px] decoration-black/15 transition-colors hover:text-black hover:decoration-black"
                       >
-                        <span>
-                          {moreVendorsOpen
-                            ? "Hide other vendors"
-                            : `More vendors (${hiddenOffers.length})`}
-                        </span>
-                        <ChevronDown
-                          className={`h-4 w-4 shrink-0 transition-transform ${
-                            moreVendorsOpen ? "rotate-180" : ""
-                          }`}
-                          strokeWidth={1.75}
-                        />
+                        Browse all {availableOffers.length} vendors
                       </button>
-                      {moreVendorsOpen ? (
-                        <ul className="border border-black/[0.08] bg-[var(--kc-canvas)]">
-                          {hiddenOffers.map((offer) => {
-                            const active = selectedOfferId === offer.id;
-                            return (
-                              <li key={offer.id}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedOfferId(offer.id);
-                                    setMoreVendorsOpen(false);
-                                  }}
-                                  className="flex w-full items-center justify-between gap-4 border-b border-black/[0.06] px-3 py-3.5 text-left last:border-b-0 hover:bg-black/[0.02]"
-                                >
-                                  <span className="min-w-0">
-                                    <span
-                                      className={`block text-[14px] font-medium tracking-tight ${
-                                        active ? "text-black" : "text-black/75"
-                                      }`}
-                                    >
-                                      {offer.vendorName}
-                                    </span>
-                                    {offer.neighbourhood || offer.address ? (
-                                      <span className="mt-0.5 block text-[12px] text-black/40">
-                                        {offer.address || offer.neighbourhood}
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                  <span className="shrink-0 text-[14px] font-medium tabular-nums text-black/55">
-                                    {formatPrice(offer.price)}
-                                  </span>
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : null}
-                    </div>
-                  ) : null}
+                    ) : (
+                      <span />
+                    )}
+                    {selectedOfferId ? (
+                      <button
+                        type="button"
+                        onClick={clearOffer}
+                        className="text-[13px] text-black/40 transition-colors hover:text-black"
+                      >
+                        Clear selection
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               )}
             </section>
 
-            {/* Price after vendor */}
+            {/* Price follows selected vendor offer */}
             <div className="mt-8">
               {selectedOffer ? (
                 <>
@@ -458,7 +571,7 @@ function ProductPageInner() {
                     {formatPrice(selectedOffer.price)}
                   </p>
                   <p className="mt-2 text-[13px] text-black/40">
-                    From{" "}
+                    At{" "}
                     <Link
                       href={`/vendors/${resolveVendorSlug({
                         id: selectedOffer.vendorId,
@@ -468,16 +581,14 @@ function ProductPageInner() {
                     >
                       {selectedOffer.vendorName}
                     </Link>
-                    {fulfilment === "pickup" && selectedOffer.neighbourhood
-                      ? ` · Collect in ${selectedOffer.neighbourhood}`
-                      : fulfilment === "delivery"
-                        ? " · Delivery"
-                        : ""}
+                    {selectedOffer.neighbourhood
+                      ? ` · ${selectedOffer.neighbourhood}`
+                      : ""}
                   </p>
                 </>
               ) : (
                 <p className="text-[15px] text-black/45">
-                  Select a vendor to see price
+                  Pick a shop to see price
                 </p>
               )}
             </div>
@@ -528,6 +639,107 @@ function ProductPageInner() {
               </div>
             ) : null}
 
+            {/* Fulfilment — compact pickup / delivery (fee from live location) */}
+            {selectedOffer ? (
+              <section className="mt-6" id="product-fulfilment">
+                <div className="flex items-center gap-1 rounded-sm border border-black/10 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFulfilment((prev) =>
+                        prev === "pickup" ? null : "pickup",
+                      )
+                    }
+                    className={`flex min-h-9 flex-1 items-center justify-center gap-2 px-2 text-[12px] transition-colors ${
+                      fulfilment === "pickup"
+                        ? "bg-black text-white"
+                        : "text-black/50 hover:text-black"
+                    }`}
+                  >
+                    <span className="font-medium tracking-tight">Pickup</span>
+                    <span
+                      className={
+                        fulfilment === "pickup"
+                          ? "text-white/70"
+                          : "text-black/35"
+                      }
+                    >
+                      Free
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (fulfilment === "delivery") {
+                        setFulfilment(null);
+                        return;
+                      }
+                      if (!coords) trackLocation();
+                      setFulfilment("delivery");
+                    }}
+                    className={`flex min-h-9 flex-1 items-center justify-center gap-2 px-2 text-[12px] transition-colors ${
+                      fulfilment === "delivery"
+                        ? "bg-black text-white"
+                        : "text-black/50 hover:text-black"
+                    }`}
+                  >
+                    <span className="font-medium tracking-tight">Delivery</span>
+                    <span
+                      className={`tabular-nums ${
+                        fulfilment === "delivery"
+                          ? "text-white/70"
+                          : "text-black/35"
+                      }`}
+                    >
+                      {!coords
+                        ? locationStatus === "locating"
+                          ? "…"
+                          : "GPS"
+                        : deliveryQuoting
+                          ? "…"
+                          : deliveryQuoteMajor != null
+                            ? formatPrice(deliveryQuoteMajor)
+                            : "—"}
+                    </span>
+                  </button>
+                </div>
+                {fulfilment === "delivery" ? (
+                  <div className="mt-2 space-y-1.5">
+                    <p className="text-[11px] text-black/35">
+                      {!coords ? (
+                        <>
+                          Using your live location.{" "}
+                          <button
+                            type="button"
+                            onClick={() => trackLocation()}
+                            className="underline underline-offset-2 hover:text-black"
+                          >
+                            Enable GPS
+                          </button>
+                        </>
+                      ) : deliveryQuoteLabel ? (
+                        <>To you · {deliveryQuoteLabel}</>
+                      ) : deliveryQuoting ? (
+                        <>Calculating from your location…</>
+                      ) : (
+                        <>To your live location</>
+                      )}
+                    </p>
+                    {switchVendorHint ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOfferId(switchVendorHint.offerId)}
+                        className="block w-full text-left text-[12px] leading-snug text-black/55 underline underline-offset-2 decoration-black/20 hover:text-black hover:decoration-black"
+                      >
+                        Buy from {switchVendorHint.vendorName} instead. Save{" "}
+                        {formatPrice(switchVendorHint.saveMajor)} on delivery.
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
             {selectedOffer && stock > 0 ? (
               <div className="mt-8 space-y-5">
                 <div className="flex items-center justify-between gap-4">
@@ -556,23 +768,37 @@ function ProductPageInner() {
                   </div>
                   <p className="text-[13px] text-black/40">
                     {stock <= 5 ? `Only ${stock} left` : "In stock"}
+                    {fulfilment === "delivery" &&
+                    deliveryQuoteMajor != null
+                      ? ` · +${formatPrice(deliveryQuoteMajor)} delivery`
+                      : ""}
                   </p>
                 </div>
 
-                <div className="hidden grid-cols-2 gap-3 sm:grid">
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={addToCart}
-                    disabled={isAddingToCart}
-                    className="bg-black py-4 text-[12px] font-medium uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-80 disabled:opacity-50 sm:text-[13px] sm:tracking-[0.16em]"
+                    disabled={
+                      isAddingToCart ||
+                      !fulfilment ||
+                      (fulfilment === "delivery" &&
+                        (deliveryQuoteMajor == null || !coords))
+                    }
+                    className="min-h-12 bg-black py-4 text-[12px] font-medium uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-80 disabled:opacity-50 sm:text-[13px] sm:tracking-[0.16em]"
                   >
                     {isAddingToCart ? "Adding…" : "Add to bag"}
                   </button>
                   <button
                     type="button"
                     onClick={handleBuyNow}
-                    disabled={isAddingToCart}
-                    className="border border-black/20 py-4 text-[12px] font-medium uppercase tracking-[0.14em] transition-colors hover:border-black hover:bg-black hover:text-white disabled:opacity-50 sm:text-[13px] sm:tracking-[0.16em]"
+                    disabled={
+                      isAddingToCart ||
+                      !fulfilment ||
+                      (fulfilment === "delivery" &&
+                        (deliveryQuoteMajor == null || !coords))
+                    }
+                    className="min-h-12 border border-black/20 py-4 text-[12px] font-medium uppercase tracking-[0.14em] transition-colors hover:border-black hover:bg-black hover:text-white disabled:opacity-50 sm:text-[13px] sm:tracking-[0.16em]"
                   >
                     Buy now
                   </button>
@@ -596,7 +822,7 @@ function ProductPageInner() {
                       .getElementById("product-vendors")
                       ?.scrollIntoView({ behavior: "smooth", block: "center" })
                   }
-                  className="hidden w-full border border-black/20 py-4 text-[13px] font-medium uppercase tracking-[0.16em] transition-colors hover:border-black hover:bg-black hover:text-white sm:block"
+                  className="min-h-12 w-full border border-black/20 py-4 text-[12px] font-medium uppercase tracking-[0.14em] transition-colors hover:border-black hover:bg-black hover:text-white sm:text-[13px] sm:tracking-[0.16em]"
                 >
                   Select a vendor
                 </button>
@@ -605,44 +831,6 @@ function ProductPageInner() {
             )}
           </div>
         </div>
-
-        {/* Mobile sticky buy bar - sits above bottom nav */}
-        {selectedOffer && stock > 0 ? (
-          <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[85] border-t border-black/10 bg-[#f7f7f5]/95 px-4 py-3 backdrop-blur-md sm:hidden">
-            <div className="mx-auto grid max-w-[1600px] grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={addToCart}
-                disabled={isAddingToCart}
-                className="min-h-12 bg-black text-[11px] font-medium uppercase tracking-[0.12em] text-white disabled:opacity-50"
-              >
-                {isAddingToCart ? "Adding…" : "Add to bag"}
-              </button>
-              <button
-                type="button"
-                onClick={handleBuyNow}
-                disabled={isAddingToCart}
-                className="min-h-12 border border-black/20 text-[11px] font-medium uppercase tracking-[0.12em] disabled:opacity-50"
-              >
-                Buy now
-              </button>
-            </div>
-          </div>
-        ) : !selectedOffer ? (
-          <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[85] border-t border-black/10 bg-[#f7f7f5]/95 px-4 py-3 backdrop-blur-md sm:hidden">
-            <button
-              type="button"
-              onClick={() =>
-                document
-                  .getElementById("product-vendors")
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" })
-              }
-              className="mx-auto flex min-h-12 w-full max-w-[1600px] items-center justify-center bg-black text-[11px] font-medium uppercase tracking-[0.12em] text-white"
-            >
-              Select a vendor
-            </button>
-          </div>
-        ) : null}
 
         {/* Vendor-specific: Details / Location / Reviews / Questions */}
         <section className="mt-24 lg:mt-32" id="product-info">
@@ -721,13 +909,6 @@ function ProductPageInner() {
                               selectedOffer.stock > 0
                                 ? `${selectedOffer.stock} in stock`
                                 : "Out of stock",
-                          },
-                          {
-                            label: "Fulfilment",
-                            value:
-                              fulfilment === "delivery"
-                                ? "Delivery"
-                                : "Click & collect",
                           },
                           {
                             label: "Area",
@@ -816,7 +997,7 @@ function ProductPageInner() {
                   <MapPreview
                     variant="tab"
                     selectedOfferId={selectedOfferId}
-                    offers={availableOffers.map((o) => ({
+                    offers={mapOffers.map((o) => ({
                       id: o.id,
                       vendorId: o.vendorId,
                       vendorName: o.vendorName,
@@ -856,6 +1037,169 @@ function ProductPageInner() {
           />
         </div>
       </div>
+
+      {sheetMounted && browseOpen
+        ? createPortal(
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Browse vendors"
+              className={`fixed inset-0 z-[9999] bg-[#f7f7f5]/78 backdrop-blur-xl transition-opacity duration-300 ease-out ${
+                browseVisible ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <div className="mx-auto flex h-full w-full max-w-[1200px] flex-col px-5 sm:px-8 lg:px-12">
+                <header className="flex shrink-0 items-center justify-between pt-5 sm:pt-7">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-black/40">
+                    Vendors
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setBrowseOpen(false)}
+                    className="group inline-flex items-center gap-2 text-[13px] text-black/45 transition-colors hover:text-black"
+                    aria-label="Close vendors"
+                  >
+                    <span className="hidden sm:inline">Esc</span>
+                    <CloseIcon size={20} />
+                  </button>
+                </header>
+
+                <div
+                  className={`mt-6 shrink-0 transition-all duration-500 ease-out sm:mt-8 ${
+                    browseVisible
+                      ? "translate-y-0 opacity-100"
+                      : "translate-y-2 opacity-0"
+                  }`}
+                >
+                  <label className="sr-only" htmlFor="kc-vendor-search">
+                    Search shops
+                  </label>
+                  <div className="group relative flex items-center border-b border-black/15 transition-colors focus-within:border-black/50">
+                    <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-black/30 transition-colors group-focus-within:text-black/55">
+                      <SearchIcon size={18} />
+                    </span>
+                    <input
+                      id="kc-vendor-search"
+                      type="search"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={browseQuery}
+                      onChange={(e) => setBrowseQuery(e.target.value)}
+                      placeholder="Search shop or area"
+                      className="w-full bg-transparent py-4 pl-8 pr-16 text-[clamp(1.25rem,2.8vw,1.75rem)] font-medium tracking-tight text-black placeholder:font-normal placeholder:text-black/30 outline-none sm:py-5 sm:pl-9 [&::-webkit-search-cancel-button]:hidden"
+                    />
+                    {browseQuery ? (
+                      <button
+                        type="button"
+                        onClick={() => setBrowseQuery("")}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 px-2 py-1 text-[12px] text-black/40 transition-colors hover:text-black"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-3 text-[12px] text-black/35">
+                    {availableOffers.length} selling this item
+                    {browseQuery.trim()
+                      ? ` · ${browsedOffers.length} match${
+                          browsedOffers.length === 1 ? "" : "es"
+                        }`
+                      : ""}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
+                    {(
+                      [
+                        ["best", "Best"],
+                        ["nearest", "Nearest"],
+                        ["cheapest", "Cheapest"],
+                        ["area", "Area"],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        disabled={id === "nearest" && !userPoint}
+                        onClick={() => setBrowseSort(id)}
+                        className={`text-[12px] font-medium uppercase tracking-[0.14em] disabled:opacity-30 ${
+                          browseSort === id
+                            ? "text-black underline underline-offset-[5px]"
+                            : "text-black/35 hover:text-black"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <ul
+                  className={`scrollbar-hide min-h-0 flex-1 overflow-y-auto pb-16 pt-10 transition-all duration-500 ease-out sm:pt-12 ${
+                    browseVisible
+                      ? "translate-y-0 opacity-100"
+                      : "translate-y-3 opacity-0"
+                  }`}
+                >
+                  {browsedOffers.length === 0 ? (
+                    <li className="py-8 text-[14px] text-black/40">
+                      No vendors match that search.
+                    </li>
+                  ) : (
+                    browsedOffers.map((offer) => {
+                      const active = selectedOfferId === offer.id;
+                      const place = offerPlace(offer);
+                      return (
+                        <li key={offer.id}>
+                          <button
+                            type="button"
+                            onClick={() => selectOffer(offer.id)}
+                            className={`grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 border-b border-black/[0.06] py-4 text-left transition-colors ${
+                              active
+                                ? "bg-black/[0.03]"
+                                : "hover:bg-black/[0.015]"
+                            }`}
+                          >
+                            <span
+                              className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                                active ? "border-black" : "border-black/25"
+                              }`}
+                              aria-hidden
+                            >
+                              {active ? (
+                                <span className="h-2 w-2 rounded-full bg-black" />
+                              ) : null}
+                            </span>
+                            <span className="min-w-0">
+                              <span
+                                className={`block text-[16px] font-medium tracking-tight ${
+                                  active ? "text-black" : "text-black/80"
+                                }`}
+                              >
+                                {offer.vendorName}
+                              </span>
+                              {place ? (
+                                <span className="mt-1 block text-[13px] leading-snug text-black/40">
+                                  {place}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span
+                              className={`shrink-0 pt-0.5 text-[15px] font-medium tabular-nums ${
+                                active ? "text-black" : "text-black/50"
+                              }`}
+                            >
+                              {formatPrice(offer.price)}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

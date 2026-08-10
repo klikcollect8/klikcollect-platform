@@ -13,6 +13,9 @@ export type AddToCartOffer = {
   vendorName: string;
   neighbourhood?: string;
   fulfilment?: FulfilmentMethod;
+  deliveryZoneId?: string;
+  deliveryZoneLabel?: string;
+  deliveryFee?: number;
 };
 
 /** Module-level guard - many components call useCart(); one fetch per user. */
@@ -161,6 +164,18 @@ export function useCart() {
       }
 
       const fulfilment = offer.fulfilment || "pickup";
+      const deliveryMeta =
+        fulfilment === "delivery"
+          ? {
+              deliveryZoneId: offer.deliveryZoneId,
+              deliveryZoneLabel: offer.deliveryZoneLabel,
+              deliveryFee: offer.deliveryFee ?? 0,
+            }
+          : {
+              deliveryZoneId: undefined,
+              deliveryZoneLabel: undefined,
+              deliveryFee: 0,
+            };
       const line: CartItem = {
         product: {
           ...product,
@@ -175,6 +190,7 @@ export function useCart() {
         vendorName: offer.vendorName,
         neighbourhood: offer.neighbourhood,
         fulfilment,
+        ...deliveryMeta,
       };
 
       if (!userId || !isSignedIn) {
@@ -190,6 +206,7 @@ export function useCart() {
                         ...item,
                         quantity: item.quantity + quantity,
                         fulfilment,
+                        ...deliveryMeta,
                       }
                     : item,
                 )
@@ -234,6 +251,7 @@ export function useCart() {
             ...next[existingIndex],
             quantity: nextQty,
             fulfilment,
+            ...deliveryMeta,
           };
         } else {
           next = [...prev, { ...line, quantity: nextQty }];
@@ -321,6 +339,85 @@ export function useCart() {
     void fetch("/api/user/cart", { method: "DELETE" }).catch(() => {});
   }, [isSignedIn, userId]);
 
+  /** Swap a bag line to another vendor offer (keeps quantity). */
+  const replaceOffer = useCallback(
+    async (lineOfferId: string, next: AddToCartOffer) => {
+      const existing = cartItems.find((i) => lineKey(i) === lineOfferId);
+      if (!existing) return;
+
+      const qty = existing.quantity;
+      const fulfilment = next.fulfilment || existing.fulfilment || "pickup";
+      const deliveryMeta =
+        fulfilment === "delivery"
+          ? {
+              deliveryZoneId: next.deliveryZoneId ?? existing.deliveryZoneId,
+              deliveryZoneLabel:
+                next.deliveryZoneLabel ?? existing.deliveryZoneLabel,
+              deliveryFee: next.deliveryFee,
+            }
+          : {
+              deliveryZoneId: undefined,
+              deliveryZoneLabel: undefined,
+              deliveryFee: 0,
+            };
+
+      const replaced: CartItem = {
+        ...existing,
+        product: {
+          ...existing.product,
+          price: next.offerPrice,
+          vendorName: next.vendorName,
+          neighbourhood: next.neighbourhood,
+        },
+        offerId: next.offerId,
+        offerPrice: next.offerPrice,
+        vendorId: next.vendorId,
+        vendorName: next.vendorName,
+        neighbourhood: next.neighbourhood,
+        fulfilment,
+        ...deliveryMeta,
+        quantity: qty,
+      };
+
+      setCartItems((prev) => {
+        const without = prev.filter((i) => lineKey(i) !== lineOfferId);
+        const mergeIdx = without.findIndex(
+          (i) => lineKey(i) === next.offerId,
+        );
+        let updated: CartItem[];
+        if (mergeIdx >= 0) {
+          updated = without.map((item, i) =>
+            i === mergeIdx
+              ? { ...item, quantity: item.quantity + qty }
+              : item,
+          );
+        } else {
+          updated = [...without, replaced];
+        }
+        localStorage.setItem("cart", JSON.stringify(updated));
+        return updated;
+      });
+      window.dispatchEvent(new CustomEvent(CART_UPDATED_EVENT));
+
+      if (!userId || !isSignedIn) return;
+
+      void fetch(
+        `/api/user/cart?product_id=${encodeURIComponent(lineOfferId)}`,
+        { method: "DELETE" },
+      ).catch(() => {});
+      void fetch("/api/user/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          offer_id: next.offerId,
+          product_id: existing.product.id,
+          quantity: qty,
+        }),
+      }).catch(() => {});
+    },
+    [cartItems, isSignedIn, userId],
+  );
+
   useEffect(() => {
     void loadCart();
   }, [loadCart]);
@@ -343,6 +440,7 @@ export function useCart() {
     updateQuantity,
     removeFromCart,
     clearCart,
+    replaceOffer,
     reloadCart: () => {
       loadedForUser.current = null;
       cartFetchUserId = null;

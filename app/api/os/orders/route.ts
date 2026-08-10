@@ -10,7 +10,10 @@ import {
 } from "@/lib/orders-store";
 import { publicId } from "@/lib/ids";
 import { appendUsageEvent } from "@/lib/m1-store";
-import { requireVendorActor } from "@/lib/auth/require-vendor";
+import {
+  requireVendorActor,
+  requireVendorPermission,
+} from "@/lib/auth/require-vendor";
 import { withIdempotency, idempotencyKeyFrom } from "@/lib/idempotency";
 import { emitVendorActivity } from "@/lib/vendor-activity";
 import { notifyVendorStaff } from "@/lib/vendor-notifications";
@@ -40,9 +43,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const gate = await requireVendorActor();
-  if (!gate.ok) return gate.response;
-
   const body = await request.json();
   const id = String(body?.id || "");
   if (!id) {
@@ -54,6 +54,8 @@ export async function PATCH(request: NextRequest) {
 
   // Branch assign without status change.
   if (body?.storeId || body?.storePublicId) {
+    const gate = await requireVendorPermission("orders:fulfill");
+    if (!gate.ok) return gate.response;
     const storePublicId = String(body.storeId || body.storePublicId);
     const storeName = String(
       body.storeName || body.collectHub || storePublicId,
@@ -98,6 +100,9 @@ export async function PATCH(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  const gate = await requireVendorPermission("orders:fulfill");
+  if (!gate.ok) return gate.response;
 
   const key = idempotencyKeyFrom(request);
   const result = await withIdempotency(

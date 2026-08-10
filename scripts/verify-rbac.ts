@@ -12,6 +12,11 @@ import {
   LEGACY_PLATFORM_ROLE_MAP,
   migrateLegacyPlatformRole,
 } from "../lib/authz/role-ids";
+import {
+  canInviteRole,
+  inviteableRolesForActor,
+} from "../lib/authz/invite-ceiling";
+import type { Actor } from "../lib/authz/actor";
 
 let failed = 0;
 
@@ -95,14 +100,26 @@ assert(
   "vendor_owner → withdraw",
 );
 
-// Product manager cannot stock
+// Product manager is offer helper — no canonical catalogue write
 assert(
   !roleHasPermission("product_manager", "inventory:adjust"),
   "product_manager ↛ stock adjust",
 );
 assert(
-  roleHasPermission("product_manager", "products:edit"),
-  "product_manager → products:edit",
+  !roleHasPermission("product_manager", "products:edit"),
+  "product_manager ↛ products:edit",
+);
+assert(
+  !roleHasPermission("product_manager", "products:create"),
+  "product_manager ↛ products:create",
+);
+assert(
+  roleHasPermission("product_manager", "offers:price"),
+  "product_manager → offers:price",
+);
+assert(
+  roleHasPermission("product_manager", "catalogue:request_correction"),
+  "product_manager → catalogue correction",
 );
 
 // BI analyst read-only analytics
@@ -146,14 +163,22 @@ assert(
   "driver → delivery:complete",
 );
 
-// Finance manager vs product manager
+// Finance manager: view/statements only — owner requests payouts
 assert(
-  roleHasPermission("finance_manager", "finance:withdraw"),
-  "finance_manager → withdraw",
+  !roleHasPermission("finance_manager", "finance:withdraw"),
+  "finance_manager ↛ withdraw",
+);
+assert(
+  roleHasPermission("finance_manager", "finance:statements"),
+  "finance_manager → statements",
 );
 assert(
   !roleHasPermission("finance_manager", "products:edit"),
   "finance_manager ↛ products",
+);
+assert(
+  !roleHasPermission("finance_manager", "products:create"),
+  "finance_manager ↛ products:create",
 );
 assert(
   roleHasPermission("marketing_manager", "marketing:coupons"),
@@ -305,12 +330,44 @@ assert(
   "vendor_owner → branches:view",
 );
 assert(
-  roleHasPermission("vendor_owner", "products:create"),
-  "vendor_owner → products:create",
+  !roleHasPermission("vendor_owner", "products:create"),
+  "vendor_owner ↛ products:create (platform catalogue)",
+);
+assert(
+  !roleHasPermission("vendor_owner", "products:edit"),
+  "vendor_owner ↛ products:edit",
+);
+assert(
+  roleHasPermission("vendor_owner", "offers:price"),
+  "vendor_owner → offers:price",
+);
+assert(
+  roleHasPermission("vendor_owner", "offers:view"),
+  "vendor_owner → offers:view",
+);
+assert(
+  roleHasPermission("vendor_owner", "catalogue:request_correction"),
+  "vendor_owner → catalogue correction",
+);
+assert(
+  roleHasPermission("vendor_admin", "offers:price"),
+  "vendor_admin → offers:price",
+);
+assert(
+  !roleHasPermission("store_manager", "offers:price"),
+  "store_manager ↛ offers:price",
+);
+assert(
+  roleHasPermission("platform_admin", "products:create"),
+  "platform_admin → products:create",
+);
+assert(
+  roleHasPermission("marketplace_curator", "products:edit"),
+  "curator → products:edit",
 );
 assert(
   roleHasPermission("vendor_owner", "content:moderate"),
-  "vendor_owner → content:moderate (own catalogue)",
+  "vendor_owner → content:moderate (Q&A/reviews)",
 );
 assert(
   roleHasPermission("vendor_support", "content:moderate"),
@@ -320,6 +377,60 @@ assert(
   !roleHasPermission("cashier", "content:moderate"),
   "cashier ↛ content:moderate",
 );
+assert(
+  roleHasPermission("vendor_owner", "offers:availability"),
+  "vendor_owner → offers:availability",
+);
+assert(
+  roleHasPermission("vendor_admin", "offers:availability"),
+  "vendor_admin → offers:availability",
+);
+
+{
+  const vid = "v_test";
+  const ownerActor: Actor = {
+    userId: "u_owner",
+    email: "owner@test.com",
+    platformRole: null,
+    vendorMemberships: [
+      { vendorId: vid, role: "vendor_owner", status: "active" },
+    ],
+    permissions: new Set(permissionsForRole("vendor_owner")),
+    isSuperAdmin: false,
+    isPlatformStaff: false,
+  };
+  const managerActor: Actor = {
+    userId: "u_mgr",
+    email: "mgr@test.com",
+    platformRole: null,
+    vendorMemberships: [
+      { vendorId: vid, role: "store_manager", status: "active" },
+    ],
+    permissions: new Set(permissionsForRole("store_manager")),
+    isSuperAdmin: false,
+    isPlatformStaff: false,
+  };
+  assert(
+    canInviteRole(ownerActor, vid, "store_manager"),
+    "owner → invite store_manager",
+  );
+  assert(
+    canInviteRole(ownerActor, vid, "vendor_owner"),
+    "owner → invite vendor_owner",
+  );
+  assert(
+    inviteableRolesForActor(ownerActor, vid).includes("vendor_admin"),
+    "owner inviteable includes vendor_admin",
+  );
+  assert(
+    !canInviteRole(managerActor, vid, "vendor_owner"),
+    "store_manager ↛ invite vendor_owner",
+  );
+  assert(
+    !canInviteRole(managerActor, vid, "vendor_admin"),
+    "store_manager ↛ invite vendor_admin",
+  );
+}
 assert(
   roleHasPermission("platform_admin", "vendors:approve"),
   "platform_admin → vendors:approve",

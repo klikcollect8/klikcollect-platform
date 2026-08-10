@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { listCatalogue } from "@/lib/catalogue-store";
 import { publicId } from "@/lib/ids";
 import { appendUsageEvent } from "@/lib/m1-store";
-import { requireVendorActor } from "@/lib/auth/require-vendor";
+import {
+  requireVendorActor,
+  requireVendorPermission,
+} from "@/lib/auth/require-vendor";
 import { adjustOnHand, availableOf, listMovements } from "@/lib/inventory";
 import { withIdempotency, idempotencyKeyFrom } from "@/lib/idempotency";
 import { emitVendorActivity } from "@/lib/vendor-activity";
@@ -31,9 +34,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const gate = await requireVendorActor();
-  if (!gate.ok) return gate.response;
-
   const body = await request.json();
   const id = String(body?.id || "");
   const onHand = Number(body?.onHand ?? body?.stock);
@@ -51,7 +51,19 @@ export async function PATCH(request: NextRequest) {
   }
 
   const existing = (await listCatalogue()).find((p) => p.id === id);
-  if (existing?.vendorId && !gate.actor.vendorIds.includes(existing.vendorId)) {
+  if (!existing?.vendorId) {
+    return NextResponse.json(
+      { error: { code: "NOT_FOUND", message: "Offer not found" } },
+      { status: 404 },
+    );
+  }
+
+  const gate = await requireVendorPermission("inventory:adjust", {
+    vendorId: existing.vendorId,
+  });
+  if (!gate.ok) return gate.response;
+
+  if (!gate.actor.vendorIds.includes(existing.vendorId)) {
     return NextResponse.json(
       { error: { code: "FORBIDDEN", message: "Not a member of this vendor" } },
       { status: 403 },

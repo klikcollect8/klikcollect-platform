@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireVendorActor } from "@/lib/auth/require-vendor";
+import { inviteableRolesForActor } from "@/lib/authz/invite-ceiling";
 
 /** Current vendor/platform actor + permissions for OS nav gating. */
 export async function GET() {
@@ -7,6 +8,10 @@ export async function GET() {
   if (!gate.ok) return gate.response;
 
   const { actor } = gate;
+  const primaryVendorId = actor.vendorIds[0] || "";
+  const inviteableRoles = primaryVendorId
+    ? inviteableRolesForActor(actor.actor, primaryVendorId)
+    : [];
   return NextResponse.json({
     data: {
       userId: actor.userId,
@@ -17,6 +22,7 @@ export async function GET() {
       platformRole: actor.actor.platformRole,
       permissions: [...actor.actor.permissions],
       memberships: actor.actor.vendorMemberships,
+      inviteableRoles,
     },
   });
 }

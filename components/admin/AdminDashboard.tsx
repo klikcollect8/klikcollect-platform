@@ -6,7 +6,6 @@ import {
   Activity,
   Flag,
   HeartPulse,
-  Package,
   ShoppingBag,
   SlidersHorizontal,
   Store,
@@ -42,6 +41,10 @@ export type AdminDashboardProps = {
     lowStock: number;
     products: number;
     ordersTotal: number;
+    openCorrections?: number;
+    openContentReports?: number;
+    heldPayouts?: number;
+    gmvTodayMinor?: number;
   };
   profitKes: number;
   profitDelta: string;
@@ -56,6 +59,7 @@ export type AdminDashboardProps = {
     href: string;
   }>;
   initialFlags?: FeatureFlags;
+  volumeLabel?: string;
 };
 
 export function AdminDashboard(props: AdminDashboardProps) {
@@ -102,7 +106,7 @@ export function AdminDashboard(props: AdminDashboardProps) {
       </div>
 
       <section>
-        <h2 className={cn("mb-5", adminUi.sectionLabel)}>Needs attention</h2>
+        <h2 className={cn("mb-5", adminUi.sectionLabel)}>Alerts</h2>
         <div className="grid w-full gap-8 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Pending vendors"
@@ -119,18 +123,20 @@ export function AdminDashboard(props: AdminDashboardProps) {
             href="/admin/orders"
           />
           <StatCard
-            label="Support tickets"
-            value={props.metrics.ticketsOpen}
-            description="Unresolved"
-            icon={Ticket}
-            href="/admin/support"
+            label="Content reports"
+            value={props.metrics.openContentReports ?? 0}
+            description="Moderation queue"
+            icon={Flag}
+            href="/admin/content-reports"
           />
           <StatCard
-            label="Low stock SKUs"
-            value={props.metrics.lowStock}
-            description={`${props.metrics.products} in catalogue`}
-            icon={Package}
-            href="/admin/products"
+            label="Corrections / tickets"
+            value={
+              (props.metrics.openCorrections ?? 0) + props.metrics.ticketsOpen
+            }
+            description={`${props.metrics.ticketsOpen} support · ${props.metrics.openCorrections ?? 0} catalogue`}
+            icon={Ticket}
+            href="/admin/support"
           />
         </div>
       </section>
@@ -140,12 +146,20 @@ export function AdminDashboard(props: AdminDashboardProps) {
           <section className="xl:col-span-8">
             <div className="mb-5 flex items-end justify-between gap-3">
               <div>
-                <h2 className={adminUi.sectionLabel}>Platform volume</h2>
+                <h2 className={adminUi.sectionLabel}>
+                  {props.volumeLabel || "Marketplace GMV"}
+                </h2>
                 <p className="mt-2 text-[26px] font-medium tracking-tight text-black tabular-nums">
-                  KES {(props.profitKes / 1000).toFixed(1)}K
+                  {props.profitKes >= 1000
+                    ? `KES ${(props.profitKes / 1000).toFixed(1)}K`
+                    : `KES ${props.profitKes.toLocaleString("en-KE")}`}
                 </p>
                 <p className="mt-1 text-[13px] text-black/45">
-                  ▲ {props.profitDelta} vs last period
+                  {props.profitDelta.startsWith("-") ? "" : props.profitDelta.includes("0%") ? "" : "▲ "}
+                  {props.profitDelta}
+                  {typeof props.metrics.gmvTodayMinor === "number"
+                    ? ` · Today KES ${Math.round(props.metrics.gmvTodayMinor / 100).toLocaleString("en-KE")}`
+                    : ""}
                 </p>
               </div>
               <Link href="/admin/finance" className={adminUi.btnGhost}>

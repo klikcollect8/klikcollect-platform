@@ -80,16 +80,55 @@ export const ENABLED_STAFF_ROLES = [...VENDOR_ROLES] as const;
 
 export type EnabledStaffRole = (typeof ENABLED_STAFF_ROLES)[number];
 
+/**
+ * MVP vendor invite list (predefined roles only — no platform roles).
+ * Labels for UI: Owner, Manager, Inventory, Order Manager, Cashier, Dispatch, Finance.
+ */
+export const MVP_VENDOR_INVITE_ROLES = [
+  "vendor_owner",
+  "vendor_admin",
+  "store_manager",
+  "inventory_manager",
+  "cashier",
+  "dispatch_manager",
+  "finance_manager",
+] as const satisfies readonly StaffMembershipRole[];
+
+export const MVP_VENDOR_INVITE_LABELS: Record<
+  (typeof MVP_VENDOR_INVITE_ROLES)[number],
+  string
+> = {
+  vendor_owner: "Owner",
+  vendor_admin: "Manager",
+  store_manager: "Order manager",
+  inventory_manager: "Inventory",
+  cashier: "Cashier / POS",
+  dispatch_manager: "Dispatch",
+  finance_manager: "Finance (view)",
+};
+
 /** Inviteable roles given feature flags (store_ops / couriers / warehouse). */
 export function inviteableStaffRoles(flags: {
   store_ops?: boolean;
   couriers?: boolean;
   warehouse?: boolean;
 }): readonly StaffMembershipRole[] {
-  const roles: StaffMembershipRole[] = [...VENDOR_ROLES];
-  if (flags.store_ops) roles.push(...STORE_ROLES);
-  if (flags.couriers) roles.push(...DELIVERY_ROLES);
-  if (flags.warehouse) roles.push(...WAREHOUSE_ROLES);
+  const roles: StaffMembershipRole[] = [...MVP_VENDOR_INVITE_ROLES];
+  if (flags.store_ops) {
+    for (const r of STORE_ROLES) {
+      if (!roles.includes(r)) roles.push(r);
+    }
+  }
+  if (flags.couriers) {
+    for (const r of DELIVERY_ROLES) {
+      if (!roles.includes(r)) roles.push(r);
+    }
+  }
+  if (flags.warehouse) {
+    for (const r of WAREHOUSE_ROLES) {
+      if (!roles.includes(r)) roles.push(r);
+    }
+  }
   return roles;
 }
 

@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
-import CommerceMapLazy from "@/components/maps/CommerceMapLazy";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Maps · KlikCollect",
-  description:
-    "Discover shops near you on the map — routes, places search, and live ETAs across Nairobi.",
-};
-
+/** Maps is temporarily disabled — keep route for bookmarks, send users to shop. */
 export default function MapsPage() {
-  return <CommerceMapLazy />;
+  redirect("/shop");
 }

@@ -329,6 +329,9 @@ export default function PhoneAuthForm({
       return;
     }
     try {
+      // Persist intent so /sso-callback can restore destination after transfer flows.
+      const { persistAuthRedirect } = await import("@/lib/auth/return-path");
+      persistAuthRedirect(afterAuth);
       // redirectUrl = destination when session is created
       // redirectCallbackUrl = /sso-callback when Clerk needs transfer / finalize
       const { error } = await signIn.sso({

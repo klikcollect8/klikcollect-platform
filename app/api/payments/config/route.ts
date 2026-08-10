@@ -6,24 +6,32 @@ import { stripeConfigStatus } from "@/lib/stripe/client";
 export async function GET() {
   const paystack = paystackConfigStatus();
   const stripe = stripeConfigStatus();
+  const stripeReady = stripe.configured;
+  const paystackReady = paystack.configured;
+
   return NextResponse.json({
     data: {
       paystack: {
         ...paystack,
-        ready: paystack.configured && paystack.secretMode === "test",
+        ready: paystackReady,
       },
       stripe: {
         ...stripe,
-        ready: stripe.configured,
+        ready: stripeReady,
       },
       dualRail: true,
       methods: {
-        card: stripe.configured ? "stripe" : paystack.configured ? "paystack" : null,
-        mpesa: paystack.configured ? "paystack" : null,
+        stripe_checkout: stripeReady,
+        paystack_card: paystackReady,
+        mpesa: paystackReady,
+        paystack_bank: paystackReady,
+        paystack_ussd: paystackReady,
+        /** @deprecated alias */
+        stripe_card: stripeReady,
       },
       testHints: [
-        "Card → Stripe Checkout (test mode)",
-        "M-Pesa → Paystack mobile_money",
+        "Stripe → card, Apple Pay, Google Pay, Link (Checkout Session)",
+        "Paystack → card, M-Pesa, bank, USSD",
         "Vendor payouts release when order status → collected",
       ],
     },

@@ -1,6 +1,9 @@
 import { getStripe, stripeCurrency } from "@/lib/stripe/client";
-import { publicId } from "@/lib/ids";
 
+/**
+ * Stripe Checkout Session with dynamic payment methods
+ * (card, Apple Pay, Google Pay, Link — whatever is enabled for the account).
+ */
 export async function createStripeCheckoutSession(input: {
   email: string;
   amountMinor: number;
@@ -19,8 +22,6 @@ export async function createStripeCheckoutSession(input: {
     input.orderIds.length > 1
       ? `KlikCollect orders (${input.orderIds.length})`
       : `KlikCollect order ${input.orderPublicId || input.reference}`;
-
-  const integrationSuffix = publicId("chk").slice(-8);
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -62,9 +63,7 @@ export async function createStripeCheckoutSession(input: {
         provider: "stripe",
       },
     },
-    // Tag sessions for Dashboard comparison (API 2026-03-25+)
-    integration_identifier: `klikcollect_checkout_${integrationSuffix}`,
-  } as never);
+  });
 
   return session;
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Show, SignInButton, useUser } from "@clerk/nextjs";
 import { ModuleShell } from "@/components/os/ModuleShell";
+import { PrintSheet, printSheet } from "@/components/os/PrintSheet";
 import { osUi } from "@/components/os/os-ui";
 import { formatKesMinor } from "@/lib/money";
 import { ScanBarcode, Trash2, Plus, Minus } from "lucide-react";
@@ -41,11 +42,26 @@ export default function PosPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [canPrint, setCanPrint] = useState(false);
+  const [permsLoaded, setPermsLoaded] = useState(false);
+  const [storeName, setStoreName] = useState("Store");
 
   useEffect(() => {
     void fetch("/api/os/me")
       .then((r) => r.json())
-      .then((b) => setVendorId(b?.data?.vendorIds?.[0] || ""));
+      .then((b) => {
+        setVendorId(b?.data?.vendorIds?.[0] || "");
+        const perms: string[] = b?.data?.permissions || [];
+        setCanPrint(perms.includes("pos:print_receipt"));
+        setPermsLoaded(true);
+      })
+      .catch(() => setPermsLoaded(true));
+    void fetch("/api/os/dashboard")
+      .then((r) => r.json())
+      .then((b) => {
+        if (b?.data?.storeName) setStoreName(String(b.data.storeName));
+      })
+      .catch(() => null);
   }, []);
 
   const totalMinor = cart.reduce((s, l) => s + l.moneyMinor * l.quantity, 0);
@@ -188,44 +204,36 @@ export default function PosPage() {
       ) : null}
 
       {receipt ? (
-        <div
-          id="pos-receipt"
-          className="mb-4 border-b border-black/10 pb-4 print:border-0"
-        >
-          <p className={osUi.sectionLabel}>Receipt</p>
-          <p className="mt-1 text-[18px] font-semibold text-black">
-            {receipt.code}
-          </p>
-          {receipt.tender ? (
-            <p className="mt-1 text-[13px] capitalize text-black/50">
-              Paid · {receipt.tender}
-            </p>
-          ) : null}
-          <ul className="mt-3 space-y-1 text-[13px] text-black">
-            {receipt.items.map((it, i) => (
-              <li key={i} className="flex justify-between">
-                <span>
-                  {it.name} × {it.quantity}
-                </span>
-                <span className="tabular-nums">
-                  {formatKesMinor(it.moneyMinor * it.quantity)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 flex justify-between border-t border-black/10 pt-2 text-[14px] font-semibold">
-            <span>Total</span>
-            <span>{formatKesMinor(receipt.totalMinor)}</span>
-          </p>
-          <p className={cn("mt-2 text-[12px]", osUi.muted)}>{receipt.note}</p>
+        <div className="mb-4 border-b border-black/10 pb-4">
+          <PrintSheet
+            template="pos"
+            vendorName={storeName}
+            receiptCode={receipt.code}
+            tender={receipt.tender}
+            notes={receipt.note}
+            totalMinor={receipt.totalMinor}
+            lines={receipt.items.map((it) => ({
+              name: it.name,
+              quantity: it.quantity,
+              moneyMinor: it.moneyMinor,
+            }))}
+          />
           <div className="mt-3 flex flex-wrap gap-2 print:hidden">
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className={osUi.btnSecondary}
-            >
-              Print
-            </button>
+            {permsLoaded && canPrint ? (
+              <button
+                type="button"
+                onClick={() => printSheet()}
+                className={osUi.btnSecondary}
+              >
+                Print
+              </button>
+            ) : permsLoaded ? (
+              <p className={cn("text-[12px]", osUi.muted)}>
+                Printing requires pos:print_receipt
+              </p>
+            ) : (
+              <p className={cn("text-[12px]", osUi.muted)}>Checking print access…</p>
+            )}
             <button
               type="button"
               onClick={() => setReceipt(null)}

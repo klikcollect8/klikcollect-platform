@@ -6,7 +6,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { Bell, Menu, Search, X } from "lucide-react";
 import { messages } from "@/messages/en-KE";
-import { OS_NAV_GROUPS, OS_PLATFORM_REDIRECTS, osNav } from "./nav";
+import {
+  OS_NAV_GROUPS,
+  OS_PLATFORM_REDIRECTS,
+  osNav,
+  resolveOsNavMatch,
+} from "./nav";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/track";
 import { osUi } from "@/components/os/os-ui";
@@ -124,6 +129,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   }, [permissions]);
 
+  const pageMatch = useMemo(() => resolveOsNavMatch(pathname), [pathname]);
+  const workspaceLabel = vendorLabel || "My Business";
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -139,19 +147,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const renderSidebar = (onNavigate?: () => void) => (
+  const renderSidebar = (onNavigate?: () => void, mobileDrawer = false) => (
     <div className="flex h-full flex-col bg-[var(--kc-canvas)]">
-      <div className="px-6 pb-6 pt-9">
-        <Link href="/app" onClick={onNavigate} className="block">
-          <p className={osUi.pageEyebrow}>Store</p>
+      <div className={cn("px-6 pb-6", mobileDrawer ? "pt-6 pr-14" : "pt-9")}>
+        <Link href="/app" onClick={onNavigate} className="block min-w-0">
+          <p className={osUi.pageEyebrow}>
+            {mobileDrawer ? "Menu" : "My business"}
+          </p>
           <p
-            className="mt-2 text-[17px] font-medium tracking-tight text-black"
+            className="mt-2 truncate text-[17px] font-medium tracking-tight text-black"
             style={{ fontFamily: "var(--font-display), sans-serif" }}
           >
-            klikcollect
+            {mobileDrawer ? workspaceLabel : "klikcollect"}
           </p>
-          <p className="mt-1 text-[12px] text-black/35">
-            {vendorLabel || "Your storefront"}
+          <p className="mt-1 truncate text-[12px] text-black/35">
+            {mobileDrawer
+              ? "Vendor workspace"
+              : vendorLabel || "Your store"}
           </p>
         </Link>
       </div>
@@ -176,7 +188,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       href={item.href}
                       onClick={onNavigate}
                       className={cn(
-                        "flex items-center gap-2.5 px-2 py-2.5 text-[14px]",
+                        "flex min-h-11 items-center gap-2.5 px-2 py-3 text-[14px]",
                         active ? osUi.navActive : osUi.navIdle,
                       )}
                     >
@@ -237,31 +249,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="absolute right-4 top-4 z-10 p-2 text-black/40 hover:text-black"
+              className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center text-black/40 hover:text-black"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>
-            {renderSidebar(() => setMobileOpen(false))}
+            {renderSidebar(() => setMobileOpen(false), true)}
           </aside>
         </div>
       ) : null}
 
       <div className={osUi.shellAsidePad}>
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 bg-[var(--kc-canvas)]/90 px-6 backdrop-blur-sm sm:px-10 lg:px-12 xl:px-16">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-[var(--kc-canvas)]/90 px-3 backdrop-blur-sm sm:gap-3 sm:px-6 lg:px-12 xl:px-16">
           <button
             type="button"
-            className="p-1.5 text-black lg:hidden"
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-black lg:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" strokeWidth={1.5} />
           </button>
 
+          <div className="min-w-0 flex-1 lg:hidden">
+            <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-black/35">
+              {workspaceLabel}
+            </p>
+            <p
+              className="truncate text-[15px] font-medium tracking-tight text-black"
+              style={{ fontFamily: "var(--font-display), sans-serif" }}
+            >
+              {pageMatch.label}
+            </p>
+          </div>
+
           <button
             type="button"
             onClick={() => setCmdOpen(true)}
-            className="flex h-9 max-w-sm flex-1 items-center gap-2.5 text-[13px] text-black/35 transition-colors hover:text-black"
+            className="hidden h-9 max-w-sm flex-1 items-center gap-2.5 text-[13px] text-black/35 transition-colors hover:text-black lg:flex"
+            aria-label="Search"
           >
             <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
             <span className="flex-1 truncate text-left">Search</span>
@@ -270,10 +295,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </kbd>
           </button>
 
-          <div className="ml-auto flex shrink-0 items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setCmdOpen(true)}
+              className="flex h-11 w-11 items-center justify-center text-black/40 transition-colors hover:text-black lg:hidden"
+              aria-label="Search"
+            >
+              <Search className="h-4 w-4" strokeWidth={1.5} />
+            </button>
             <Link
               href="/app/notifications"
-              className="relative p-1.5 text-black/40 transition-colors hover:text-black"
+              className="relative flex h-11 w-11 items-center justify-center text-black/40 transition-colors hover:text-black"
               aria-label={
                 counts["/app/notifications"]
                   ? `${counts["/app/notifications"]} unread notifications`
@@ -282,7 +315,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Bell className="h-4 w-4" strokeWidth={1.5} />
               {counts["/app/notifications"] ? (
-                <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-black" />
+                <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-black" />
               ) : null}
             </Link>
             <Show when="signed-out">
@@ -301,7 +334,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <UserButton />
+              <div className="flex h-11 items-center">
+                <UserButton />
+              </div>
             </Show>
           </div>
         </header>

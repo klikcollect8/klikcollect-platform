@@ -50,6 +50,17 @@ export async function postLedgerTransaction(input: {
     .single();
 
   if (txErr || !tx) {
+    // Concurrent capture: unique idempotency_key → treat as success
+    if (txErr?.code === "23505") {
+      const { data: again } = await supabase
+        .from("ledger_transactions")
+        .select("id")
+        .eq("idempotency_key", input.idempotencyKey)
+        .maybeSingle();
+      if (again?.id) {
+        return { ok: true, transactionId: again.id };
+      }
+    }
     return {
       ok: false,
       error: txErr?.message || "Failed to create transaction",

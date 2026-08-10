@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { ModuleShell } from "@/components/os/ModuleShell";
 import {
-  ENABLED_STAFF_ROLES,
-  STAFF_ROLE_LABELS,
+  MVP_VENDOR_INVITE_LABELS,
   type StaffMembershipRole,
 } from "@/lib/authz/role-ids";
 import { osUi } from "@/components/os/os-ui";
@@ -24,18 +23,36 @@ type Member = {
 export default function VendorStaffPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<StaffMembershipRole>("vendor_staff");
+  const [role, setRole] = useState<StaffMembershipRole | "">("");
   const [vendorId, setVendorId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const roles = ENABLED_STAFF_ROLES;
+  const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [roles, setRoles] = useState<StaffMembershipRole[]>([]);
+
+  const applyInviteable = (inviteable: unknown) => {
+    if (!Array.isArray(inviteable)) {
+      setRoles([]);
+      setRole("");
+      setRolesLoaded(true);
+      return;
+    }
+    const next = inviteable as StaffMembershipRole[];
+    setRoles(next);
+    setRole(next[0] || "");
+    setRolesLoaded(true);
+  };
 
   const load = async (vid?: string) => {
     const q = vid ? `?vendorId=${encodeURIComponent(vid)}` : "";
     const res = await fetch(`/api/os/staff${q}`);
     const json = await res.json();
-    if (res.ok) setMembers(json.data || []);
-    else setError(json.error?.message || "Failed to load staff");
+    if (res.ok) {
+      setMembers(json.data || []);
+      if (Array.isArray(json.inviteableRoles)) {
+        applyInviteable(json.inviteableRoles);
+      }
+    } else setError(json.error?.message || "Failed to load staff");
   };
 
   useEffect(() => {
@@ -44,11 +61,20 @@ export default function VendorStaffPage() {
       .then((body) => {
         const id = body?.data?.vendorIds?.[0] || "";
         setVendorId(id);
+        applyInviteable(body?.data?.inviteableRoles);
         void load(id);
+      })
+      .catch(() => {
+        setRolesLoaded(true);
+        setError("Could not load your account");
       });
   }, []);
 
   const invite = async () => {
+    if (!role) {
+      setError("Select a role you are allowed to invite");
+      return;
+    }
     setBusy(true);
     setError(null);
     const res = await fetch("/api/os/staff", {
@@ -80,7 +106,7 @@ export default function VendorStaffPage() {
   return (
     <ModuleShell
       title="Staff"
-      description="Invite people to help run this store only. Platform staff are managed in Admin."
+      description="Invite people inside your organisation only. They can never get platform admin powers."
       live
     >
       <div className="space-y-5">
@@ -92,27 +118,46 @@ export default function VendorStaffPage() {
               placeholder="email@vendor.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={!rolesLoaded}
             />
             <select
               className={osUi.input}
               value={role}
+              disabled={!rolesLoaded || !roles.length}
               onChange={(e) => setRole(e.target.value as StaffMembershipRole)}
             >
-              {roles.map((r) => (
-                <option key={r} value={r}>
-                  {STAFF_ROLE_LABELS[r]}
-                </option>
-              ))}
+              {!rolesLoaded ? (
+                <option value="">Loading roles…</option>
+              ) : !roles.length ? (
+                <option value="">No inviteable roles</option>
+              ) : (
+                roles.map((r) => (
+                  <option key={r} value={r}>
+                    {r in MVP_VENDOR_INVITE_LABELS
+                      ? MVP_VENDOR_INVITE_LABELS[
+                          r as keyof typeof MVP_VENDOR_INVITE_LABELS
+                        ]
+                      : r.replace(/_/g, " ")}
+                  </option>
+                ))
+              )}
             </select>
             <button
               type="button"
-              disabled={busy || !email || !vendorId}
+              disabled={
+                busy || !email || !vendorId || !role || !rolesLoaded
+              }
               onClick={() => void invite()}
-              className={osUi.btnPrimary}
+              className={cn(osUi.btnPrimary, "disabled:opacity-40")}
             >
               Invite
             </button>
           </div>
+          {rolesLoaded && !roles.length ? (
+            <p className="mt-3 text-[13px] text-[var(--kc-mute)]">
+              Your role cannot invite staff. Ask a store owner or manager.
+            </p>
+          ) : null}
           {error ? (
             <p className="mt-3 text-[13px] text-[#8e1b0d]">{error}</p>
           ) : null}
@@ -122,7 +167,7 @@ export default function VendorStaffPage() {
           <table className="w-full text-left text-[14px]">
             <thead className="border-b border-black/10 text-[11px] font-medium uppercase tracking-[0.12em] text-black/40">
               <tr>
-                <th className="py-3 font-medium">Email</th>
+                <th className="px-3 py-3 font-medium sm:px-4">Email</th>
                 <th className="py-3 font-medium">Role</th>
                 <th className="py-3 font-medium">Status</th>
                 <th className="py-3 font-medium" />
@@ -131,7 +176,7 @@ export default function VendorStaffPage() {
             <tbody>
               {members.map((m) => (
                 <tr key={m.id} className="border-t border-black/[0.06]">
-                  <td className="py-3.5 font-medium text-black">
+                  <td className="px-3 py-3.5 font-medium text-black sm:px-4">
                     {m.email || m.clerk_user_id}
                   </td>
                   <td className="py-3.5 capitalize text-black/55">
@@ -140,7 +185,7 @@ export default function VendorStaffPage() {
                   <td className="py-3.5 text-[12px] uppercase tracking-[0.1em] text-black/40">
                     {m.status}
                   </td>
-                  <td className="py-3.5 text-right">
+                  <td className="py-3.5 pr-3 text-right sm:pr-4">
                     <button
                       type="button"
                       disabled={busy}

@@ -12,11 +12,16 @@ import {
 } from "react";
 
 const STORAGE_KEY = "klikcollect:user-location";
+/** Prefer fresh, high-accuracy GPS for delivery quoting. */
 const WATCH_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,
-  maximumAge: 5_000,
-  timeout: 12_000,
+  maximumAge: 1_500,
+  timeout: 18_000,
 };
+/** Ignore noisy fixes when we already have a tighter reading nearby. */
+const ACCURACY_ACCEPT_M = 120;
+const ACCURACY_IMPROVE_M = 25;
+const MOVE_ACCEPT_M = 18;
 
 export type UserCoords = {
   lat: number;
@@ -74,6 +79,22 @@ function writeCached(coords: UserCoords) {
   }
 }
 
+function haversineMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 export function LocationProvider({ children }: { children: ReactNode }) {
   const [coords, setCoords] = useState<UserCoords | null>(null);
   const [status, setStatus] = useState<LocationStatus>("idle");
@@ -105,8 +126,33 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       accuracy: pos.coords.accuracy,
       updatedAt: Date.now(),
     };
-    setCoords(next);
-    writeCached(next);
+
+    setCoords((prev) => {
+      if (!prev) {
+        writeCached(next);
+        return next;
+      }
+      const accuracy = next.accuracy ?? 999;
+      const prevAccuracy = prev.accuracy ?? 999;
+      const movedM = haversineMeters(
+        prev.lat,
+        prev.lng,
+        next.lat,
+        next.lng,
+      );
+      const improved =
+        accuracy + ACCURACY_IMPROVE_M < prevAccuracy ||
+        (accuracy <= ACCURACY_ACCEPT_M && accuracy <= prevAccuracy);
+      const relocated = movedM >= MOVE_ACCEPT_M && accuracy <= Math.max(prevAccuracy, 80);
+      const stale = Date.now() - prev.updatedAt > 45_000;
+
+      // Keep the better pin when the new fix is vague and nearby.
+      if (!stale && !relocated && !improved && accuracy > ACCURACY_ACCEPT_M) {
+        return prev;
+      }
+      writeCached(next);
+      return next;
+    });
     setStatus("ready");
     setError(null);
   }, []);

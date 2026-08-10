@@ -129,7 +129,7 @@ export async function sbGetUnifiedCatalogue(): Promise<StorefrontProduct[]> {
       .order("created_at", { ascending: false }),
     sb
       .from("product_offers")
-      .select("product_id, public_id")
+      .select("product_id, public_id, price_minor, on_hand, reserved")
       .eq("status", "published")
       .is("deleted_at", null),
     sb.from("categories").select("id, name"),
@@ -139,11 +139,24 @@ export async function sbGetUnifiedCatalogue(): Promise<StorefrontProduct[]> {
 
   const catById = new Map((cats || []).map((c) => [c.id, c.name]));
   const countByProductUuid = new Map<string, number>();
+  /** Min in-stock offer price (major units) per product uuid */
+  const minPriceByProductUuid = new Map<string, number>();
   for (const o of offers || []) {
+    const productId = o.product_id as string;
     countByProductUuid.set(
-      o.product_id,
-      (countByProductUuid.get(o.product_id) || 0) + 1,
+      productId,
+      (countByProductUuid.get(productId) || 0) + 1,
     );
+    const stock = Math.max(
+      0,
+      Number(o.on_hand || 0) - Number(o.reserved || 0),
+    );
+    if (stock <= 0) continue;
+    const priceMajor = minorToMajor(Number(o.price_minor || 0));
+    const prev = minPriceByProductUuid.get(productId);
+    if (prev == null || priceMajor < prev) {
+      minPriceByProductUuid.set(productId, priceMajor);
+    }
   }
 
   return (products || []).map((row) => {
@@ -152,10 +165,12 @@ export async function sbGetUnifiedCatalogue(): Promise<StorefrontProduct[]> {
       catById.get(row.category_id) ||
       "";
     const mapped = mapProduct(row as Record<string, unknown>, catName);
+    const minPrice = minPriceByProductUuid.get(row.id);
     return {
       ...mapped,
       offerCount: countByProductUuid.get(row.id) || 0,
-      price: undefined,
+      // Listing signal only — not a single SKU price; PDP uses offer price
+      price: minPrice,
       vendorName: undefined,
       neighbourhood: undefined,
       stock: undefined,
@@ -187,7 +202,8 @@ export async function sbGetProductDetail(
     )
     .eq("product_id", product.id)
     .eq("status", "published")
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .order("price_minor", { ascending: true });
   if (oErr) throw oErr;
 
   const offers: ProductOffer[] = (offerRows || []).map((row) => {
@@ -225,17 +241,20 @@ export async function sbGetProductDetail(
 
 export async function sbGetOfferByPublicId(
   offerPublicId: string,
+  opts?: { includeUnpublished?: boolean },
 ): Promise<ProductOffer | null> {
   const sb = getServiceSupabase();
-  const { data, error } = await sb
+  let q = sb
     .from("product_offers")
     .select(
       "*, products(public_id), vendors(public_id, name, neighbourhood, address_text), stores(lat, lng, address_text)",
     )
     .eq("public_id", offerPublicId)
-    .eq("status", "published")
-    .is("deleted_at", null)
-    .maybeSingle();
+    .is("deleted_at", null);
+  if (!opts?.includeUnpublished) {
+    q = q.eq("status", "published");
+  }
+  const { data, error } = await q.maybeSingle();
   if (error) throw error;
   if (!data) return null;
   const productPublicId = (data as { products?: { public_id?: string } })

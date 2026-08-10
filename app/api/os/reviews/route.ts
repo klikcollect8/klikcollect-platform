@@ -7,12 +7,12 @@ import { inVendorScope, vendorScopeIds } from "@/lib/auth/vendor-scope";
 import { emitVendorActivity } from "@/lib/vendor-activity";
 import { notifyVendorStaff } from "@/lib/vendor-notifications";
 import {
-  deleteVendorReview,
-  deleteVendorReviewAnswer,
   listVendorReviews,
   replyToVendorReview,
   setVendorReviewStatus,
 } from "@/lib/vendor-content";
+import { createContentReport } from "@/lib/content-reports";
+import { FeatureUnavailableError } from "@/lib/offers-mutations";
 
 function scopeFrom(actor: VendorActor, vendorId?: string | null): string[] {
   if (vendorId) {
@@ -123,72 +123,60 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data: result });
   }
 
+  if (action === "report") {
+    const reason = String(body?.reason || "inappropriate").trim() || "other";
+    const message = String(body?.message || "").trim();
+    try {
+      const created = await createContentReport({
+        vendorPublicId: scope[0],
+        actorClerkId: gate.actor.userId,
+        targetType: "review",
+        targetId: reviewId,
+        reason,
+        message,
+      });
+      await emitVendorActivity({
+        vendorPublicId: scope[0],
+        kind: "review",
+        title: "Review reported to KlikCollect",
+        body: message.slice(0, 120) || reason,
+        refType: "content_report",
+        refId: created.publicId,
+      });
+      return NextResponse.json({ data: created }, { status: 201 });
+    } catch (e) {
+      if (e instanceof FeatureUnavailableError) {
+        return NextResponse.json(
+          { error: { code: e.code, message: e.message } },
+          { status: 503 },
+        );
+      }
+      return NextResponse.json(
+        {
+          error: {
+            message: e instanceof Error ? e.message : "Report failed",
+          },
+        },
+        { status: 500 },
+      );
+    }
+  }
+
   return NextResponse.json(
     { error: { message: "Unknown action" } },
     { status: 400 },
   );
 }
 
-export async function DELETE(request: NextRequest) {
-  const body = await request.json().catch(() => ({}));
-  const vendorId = String(body?.vendorId || "");
-  const gate = await requireVendorPermission("content:moderate", {
-    vendorId: vendorId || undefined,
-  });
-  if (!gate.ok) return gate.response;
-
-  const scope = scopeFrom(gate.actor, vendorId || null);
-  if (!scope.length) {
-    return NextResponse.json(
-      { error: { message: "Vendor out of scope" } },
-      { status: 403 },
-    );
-  }
-
-  const reviewId = String(body?.reviewId || "");
-  const answerId = body?.answerId ? String(body.answerId) : "";
-  if (!reviewId) {
-    return NextResponse.json(
-      { error: { message: "reviewId required" } },
-      { status: 400 },
-    );
-  }
-
-  if (answerId) {
-    const result = await deleteVendorReviewAnswer(
-      reviewId,
-      answerId,
-      scope,
-      gate.actor.userId,
-    );
-    if (!result.ok) {
-      return NextResponse.json(
-        { error: { message: result.reason } },
-        {
-          status:
-            result.reason === "not_found" ||
-            result.reason === "answer_not_found"
-              ? 404
-              : 500,
-        },
-      );
-    }
-    return NextResponse.json({ data: result });
-  }
-
-  const result = await deleteVendorReview(reviewId, scope, gate.actor.userId);
-  if (!result.ok) {
-    return NextResponse.json(
-      { error: { message: result.reason } },
-      { status: result.reason === "not_found" ? 404 : 500 },
-    );
-  }
-  await emitVendorActivity({
-    vendorPublicId: scope[0],
-    kind: "review",
-    title: "Removed a review",
-    refType: "review",
-    refId: reviewId,
-  });
-  return NextResponse.json({ data: { ok: true } });
+/** Vendors cannot delete reviews — platform moderation only. */
+export async function DELETE() {
+  return NextResponse.json(
+    {
+      error: {
+        message:
+          "Vendors cannot delete reviews. Respond or report — KlikCollect moderates removals.",
+      },
+    },
+    { status: 403 },
+  );
 }

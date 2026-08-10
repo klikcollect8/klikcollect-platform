@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ModuleShell } from "@/components/os/ModuleShell";
+import { PrintSheet, printSheet } from "@/components/os/PrintSheet";
 import { osUi } from "@/components/os/os-ui";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,8 @@ export default function PackingPage() {
   const [verified, setVerified] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [canPrint, setCanPrint] = useState(false);
+  const [storeName, setStoreName] = useState("Store");
 
   async function load() {
     const res = await fetch("/api/os/orders");
@@ -47,6 +50,18 @@ export default function PackingPage() {
   }
 
   useEffect(() => {
+    void fetch("/api/os/me")
+      .then((r) => r.json())
+      .then((b) => {
+        const perms: string[] = b?.data?.permissions || [];
+        setCanPrint(perms.includes("orders:fulfill"));
+      });
+    void fetch("/api/os/dashboard")
+      .then((r) => r.json())
+      .then((b) => {
+        if (b?.data?.storeName) setStoreName(String(b.data.storeName));
+      })
+      .catch(() => null);
     void load();
     // Initial load only; selectedId updates handled inside load().
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -282,16 +297,32 @@ export default function PackingPage() {
                 </button>
                 <button
                   type="button"
-                  disabled={!current}
-                  onClick={() => window.print()}
+                  disabled={!current || !canPrint}
+                  onClick={() => {
+                    if (!canPrint) {
+                      setMessage("Printing requires orders:fulfill");
+                      return;
+                    }
+                    printSheet();
+                  }}
                   className={cn(
                     osUi.btnSecondary,
-                    "min-h-[56px] flex-1 text-[13px]",
+                    "min-h-[56px] flex-1 text-[13px] disabled:opacity-40",
                   )}
                 >
                   Print packing slip
                 </button>
               </div>
+              {!canPrint ? (
+                <p
+                  className={cn(
+                    "text-center text-[13px] print:hidden",
+                    osUi.muted,
+                  )}
+                >
+                  Printing requires orders:fulfill
+                </p>
+              ) : null}
               {!allVerified ? (
                 <p
                   className={cn(
@@ -303,47 +334,19 @@ export default function PackingPage() {
                 </p>
               ) : null}
 
-              {/* Print-only packing slip */}
-              <div
-                id="packing-slip"
-                className="hidden print:block print:space-y-4"
-              >
-                <p className="text-[11px] uppercase tracking-[0.16em] text-black/40">
-                  Packing slip
-                </p>
-                <h2 className="text-[28px] font-medium tracking-tight">
-                  {current.orderNumber}
-                </h2>
-                <p className="text-[15px]">
-                  {current.customerName}
-                  {current.notes ? ` · ${current.notes}` : ""}
-                </p>
-                <p className="text-[12px] text-black/45">
-                  Packed {new Date().toLocaleString("en-KE")}
-                </p>
-                <ul className="mt-4 divide-y divide-black/15 border-y border-black/15">
-                  {current.items.map((it, i) => (
-                    <li
-                      key={`${it.name}-${i}`}
-                      className="flex items-baseline justify-between gap-4 py-3"
-                    >
-                      <div>
-                        <p className="text-[18px] font-medium">
-                          {it.quantity}× {it.name}
-                        </p>
-                        {it.barcode ? (
-                          <p className="mt-1 font-mono text-[16px] tracking-wider">
-                            {it.barcode}
-                          </p>
-                        ) : null}
-                      </div>
-                      <span className="text-[13px] uppercase tracking-wider text-black/40">
-                        □
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <PrintSheet
+                template="packing"
+                printOnly
+                vendorName={storeName}
+                receiptCode={current.orderNumber}
+                customerName={current.customerName}
+                notes={current.notes}
+                lines={current.items.map((it) => ({
+                  name: it.name,
+                  quantity: it.quantity,
+                  barcode: it.barcode,
+                }))}
+              />
             </div>
           )}
         </div>

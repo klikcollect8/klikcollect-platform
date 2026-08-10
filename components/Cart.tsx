@@ -10,6 +10,8 @@ import { formatPrice } from "@/lib/currency";
 import { resolveProductImage } from "@/lib/product-image";
 import { V1_CATEGORIES } from "@/lib/curation-policy";
 import { useIsClient } from "@/lib/hooks/useIsClient";
+import { useCartDeliveryQuote } from "@/lib/hooks/useCartDeliveryQuote";
+import { DeliveryOptimizeHints } from "@/components/checkout/DeliveryOptimizeHints";
 
 interface CartProps {
   items: CartItem[];
@@ -34,11 +36,22 @@ export default function Cart({
   const linePrice = (item: CartItem) =>
     item.offerPrice ?? item.product.price ?? 0;
   const lineId = (item: CartItem) => item.offerId || item.product.id;
-  const total = items.reduce(
+  const subtotal = items.reduce(
     (sum, item) => sum + linePrice(item) * item.quantity,
     0,
   );
+  const {
+    deliveryMajor: deliveryTotal,
+    quote: deliveryQuote,
+    shopCount,
+    areaLabel: liveAreaLabel,
+  } = useCartDeliveryQuote(items);
+  const total = subtotal + deliveryTotal;
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const deliveryLabel =
+    liveAreaLabel ||
+    items.find((i) => i.fulfilment === "delivery" && i.deliveryZoneLabel)
+      ?.deliveryZoneLabel;
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
@@ -227,11 +240,17 @@ export default function Cart({
                                 : ""}
                               {" · "}
                               {item.fulfilment === "delivery"
-                                ? "Delivery"
+                                ? item.deliveryZoneLabel
+                                  ? `Delivery · ${item.deliveryZoneLabel}`
+                                  : "Delivery"
                                 : "Click & collect"}
                             </p>
                             <p className="mt-1 text-[13px] tabular-nums text-black/50">
                               {formatPrice(linePrice(item))} each
+                              {item.fulfilment === "delivery" &&
+                              (item.deliveryFee ?? 0) > 0
+                                ? ` · +${formatPrice(item.deliveryFee!)} delivery`
+                                : ""}
                             </p>
                           </div>
                           <p className="shrink-0 text-[15px] font-medium tabular-nums tracking-tight text-black sm:text-[16px]">
@@ -303,18 +322,45 @@ export default function Cart({
                 : "translate-y-2 opacity-0"
             }`}
           >
-            <div className="mb-5 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
-                  Subtotal
-                </p>
-                <p className="mt-1 text-[12px] text-black/40">
-                  Taxes calculated at checkout
+            <div className="mb-5 space-y-3">
+              <div className="flex items-end justify-between gap-4">
+                <p className="text-[13px] text-black/45">Subtotal</p>
+                <p className="text-[14px] font-medium tabular-nums text-black/70">
+                  {formatPrice(subtotal)}
                 </p>
               </div>
-              <p className="text-[clamp(1.35rem,2.5vw,1.75rem)] font-medium tracking-tight tabular-nums text-black">
-                {formatPrice(total)}
-              </p>
+              {deliveryTotal > 0 ? (
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-[13px] text-black/45">
+                      Total delivery cost
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-black/35">
+                      {shopCount > 1 ? `${shopCount} shops` : "1 shop"}
+                      {deliveryLabel ? ` · ${deliveryLabel}` : ""}
+                    </p>
+                    {deliveryQuote?.adjustments?.length ? (
+                      <p className="mt-0.5 text-[11px] text-black/35">
+                        {deliveryQuote.adjustments
+                          .map((a) => `${a.label} +${a.amountMajor}`)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
+                  </div>
+                  <p className="text-[14px] font-medium tabular-nums text-black/70">
+                    {formatPrice(deliveryTotal)}
+                  </p>
+                </div>
+              ) : null}
+              <DeliveryOptimizeHints items={items} compact />
+              <div className="flex items-end justify-between gap-4 border-t border-black/[0.06] pt-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-black/35">
+                  Total
+                </p>
+                <p className="text-[clamp(1.35rem,2.5vw,1.75rem)] font-medium tracking-tight tabular-nums text-black">
+                  {formatPrice(total)}
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -325,19 +371,14 @@ export default function Cart({
               >
                 View bag
               </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  handleClose();
-                  window.setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent("openCheckout"));
-                  }, 280);
-                }}
+              <Link
+                href="/checkout"
+                onClick={handleClose}
                 className="inline-flex items-center justify-center gap-2 bg-black px-4 py-3.5 text-[13px] font-medium text-white transition-opacity hover:opacity-80 sm:py-4"
               >
                 Checkout
                 <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-              </button>
+              </Link>
             </div>
           </footer>
         ) : (

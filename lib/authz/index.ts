@@ -6,3 +6,4 @@ export * from "@/lib/authz/actor";
 export * from "@/lib/authz/can";
 export * from "@/lib/authz/resolve-actor";
 export * from "@/lib/authz/memberships";
+export * from "@/lib/authz/invite-ceiling";

@@ -984,7 +984,10 @@ export default function MapCanvas({
     if (lastFitMarkersKeyRef.current === fitMarkers) return;
     lastFitMarkersKeyRef.current = fitMarkers;
 
-    const pts = markers.filter((m) => m.kind !== "vendor" && m.kind !== "user");
+    // Prefer non-user/vendor markers (stops/places); fall back to all pins
+    // so checkout (user + shops) still fits the viewport.
+    let pts = markers.filter((m) => m.kind !== "vendor" && m.kind !== "user");
+    if (pts.length === 0) pts = markers;
     if (pts.length === 0 && (!vendorGeoJSON || !vendorGeoJSON.features.length))
       return;
     const bounds = new mapboxgl.LngLatBounds();

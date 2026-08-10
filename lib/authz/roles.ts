@@ -38,9 +38,15 @@ const PLATFORM_ADMIN_PERMS: Permission[] = [
   "staff:assign_roles",
   "staff:revoke",
   "products:view",
+  "products:create",
+  "products:edit",
+  "products:archive",
   "products:approve",
   "products:reject",
   "products:feature",
+  "offers:view",
+  "offers:price",
+  "offers:availability",
   "categories:view",
   "categories:create",
   "categories:edit",
@@ -151,14 +157,21 @@ const CURATOR_PERMS: Permission[] = [
   "auth:login",
   "auth:logout",
   "products:view",
+  "products:create",
+  "products:edit",
+  "products:archive",
   "products:approve",
   "products:reject",
   "products:feature",
+  "offers:view",
+  "offers:availability",
   "content:moderate",
   "categories:view",
   "categories:create",
   "categories:edit",
   "categories:manage",
+  "brands:manage",
+  "attributes:manage",
   "cms:collections",
   "vendors:view",
 ];
@@ -249,16 +262,17 @@ const DEVELOPER_PERMS: Permission[] = [
 ];
 
 /**
- * Vendor storefront panel - own catalogue, stock, orders, team, payouts.
- * Platform abilities (approve vendors, CMS, flags, cross-tenant ledger) stay on platform roles.
+ * Vendor workspace — offers/stock/orders/team/payouts.
+ * Canonical catalogue create/edit stays on platform roles only.
  */
 const VENDOR_OWNER_PERMS: Permission[] = [
   "auth:login",
   "auth:logout",
   "products:view",
-  "products:create",
-  "products:edit",
-  "products:archive",
+  "offers:view",
+  "offers:price",
+  "offers:availability",
+  "catalogue:request_correction",
   "categories:view",
   "inventory:view",
   "inventory:receive",
@@ -316,6 +330,8 @@ const VENDOR_ADMIN_PERMS: Permission[] = except(VENDOR_OWNER_PERMS, [
 const STORE_MANAGER_PERMS: Permission[] = [
   "auth:login",
   "auth:logout",
+  "products:view",
+  "offers:view",
   "orders:view",
   "orders:create",
   "orders:fulfill",
@@ -349,6 +365,7 @@ const VENDOR_VIEWER_PERMS: Permission[] = [
   "auth:login",
   "auth:logout",
   "products:view",
+  "offers:view",
   "categories:view",
   "inventory:view",
   "orders:view",
@@ -363,6 +380,9 @@ const VENDOR_VIEWER_PERMS: Permission[] = [
 const INVENTORY_MANAGER_PERMS: Permission[] = [
   "auth:login",
   "auth:logout",
+  "products:view",
+  "offers:view",
+  "catalogue:request_correction",
   "inventory:view",
   "inventory:receive",
   "inventory:adjust",
@@ -375,27 +395,28 @@ const INVENTORY_MANAGER_PERMS: Permission[] = [
   "barcode:scan",
 ];
 
+/** Offer ops helper — never canonical catalogue write. */
 const PRODUCT_MANAGER_PERMS: Permission[] = [
   "auth:login",
   "auth:logout",
   "products:view",
-  "products:create",
-  "products:edit",
-  "products:archive",
+  "offers:view",
+  "offers:price",
+  "offers:availability",
+  "catalogue:request_correction",
   "categories:view",
-  "categories:edit",
-  "attributes:manage",
+  "inventory:view",
   "content:moderate",
 ];
 
 const FINANCE_MANAGER_PERMS: Permission[] = [
   "auth:login",
   "auth:logout",
+  "products:view",
+  "offers:view",
   "ledger:view",
   "payments:view",
   "payments:payout",
-  "payments:refund",
-  "finance:withdraw",
   "finance:statements",
   "reports:generate",
   "reports:export",
@@ -404,8 +425,11 @@ const FINANCE_MANAGER_PERMS: Permission[] = [
 const VENDOR_SUPPORT_PERMS: Permission[] = [
   "auth:login",
   "auth:logout",
+  "products:view",
+  "offers:view",
   "support:customers_view",
   "orders:view",
+  "orders:fulfill",
   "support:tickets_view",
   "support:tickets_create",
   "support:tickets_resolve",
@@ -436,6 +460,7 @@ const CASHIER_PERMS: Permission[] = [
   "orders:view",
   "barcode:scan",
   "products:view",
+  "offers:view",
 ];
 
 const SALES_ASSISTANT_PERMS: Permission[] = [
@@ -480,6 +505,10 @@ const FLEET_MANAGER_PERMS: Permission[] = [
 const DISPATCH_MANAGER_PERMS: Permission[] = [
   "auth:login",
   "auth:logout",
+  "products:view",
+  "offers:view",
+  "orders:view",
+  "orders:fulfill",
   "delivery:view",
   "delivery:assign",
   "delivery:reassign",

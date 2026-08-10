@@ -65,6 +65,19 @@ type DashboardData = {
   stock: { low: number; out: number; onHand: number; products: number };
   aovMinor: number;
   repeatRate: number;
+  attention?: {
+    unansweredQuestions: number;
+    ordersWaiting: number;
+    lowStock: number;
+  };
+  storeStatus?: {
+    openNow: boolean;
+    statusLabel: string;
+    detailLabel: string;
+    todayRange: string | null;
+    clock: string;
+    storeName: string;
+  };
   activity: Activity[];
   charts?: {
     salesSeries: Array<{
@@ -111,16 +124,16 @@ function greeting() {
 }
 
 const LINKS = [
-  { href: "/app/orders", label: "Orders", icon: ShoppingBag },
+  { href: "/app/orders", label: "View orders", icon: ShoppingBag },
+  { href: "/app/inventory", label: "Update stock", icon: Boxes },
+  { href: "/app/products", label: "Update prices", icon: Package },
   { href: "/app/orders/packing", label: "Packing", icon: PackageCheck },
   { href: "/app/pos", label: "POS", icon: ScanBarcode },
-  { href: "/app/products", label: "Products", icon: Package },
-  { href: "/app/inventory", label: "Inventory", icon: Boxes },
-  { href: "/app/couriers", label: "Delivery", icon: Truck },
-  { href: "/app/customers", label: "Customers", icon: Users },
-  { href: "/app/reviews", label: "Reviews", icon: Star },
+  { href: "/app/payments", label: "Request payout", icon: Wallet },
   { href: "/app/questions", label: "Questions", icon: MessageCircleQuestion },
-  { href: "/app/finance", label: "Wallet", icon: Wallet },
+  { href: "/app/reviews", label: "Reviews", icon: Star },
+  { href: "/app/staff", label: "Manage staff", icon: Users },
+  { href: "/app/couriers", label: "Delivery", icon: Truck },
 ];
 
 const tooltipStyle = {
@@ -214,6 +227,104 @@ export function OsDashboard() {
       </div>
 
       {error ? <p className="text-[14px] text-[#8e1b0d]">{error}</p> : null}
+
+      {data ? (
+        <section className="rounded-[var(--kc-radius)] border border-black/10 bg-white px-5 py-5">
+          <h2 className={cn("mb-4", osUi.sectionLabel)}>Needs attention</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <Link
+              href="/app/orders"
+              className="border border-black/[0.06] px-4 py-3 transition-colors hover:bg-black/[0.02]"
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] text-black/35">
+                Orders waiting
+              </p>
+              <p className="mt-1 text-[22px] font-medium tabular-nums">
+                {data.attention?.ordersWaiting ?? data.buckets.waiting}
+              </p>
+            </Link>
+            <Link
+              href="/app/questions"
+              className="border border-black/[0.06] px-4 py-3 transition-colors hover:bg-black/[0.02]"
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] text-black/35">
+                Unanswered questions
+              </p>
+              <p className="mt-1 text-[22px] font-medium tabular-nums">
+                {data.attention?.unansweredQuestions ?? 0}
+              </p>
+            </Link>
+            <Link
+              href="/app/store#hours"
+              className="border border-black/[0.06] px-4 py-3 transition-colors hover:bg-black/[0.02]"
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] text-black/35">
+                Store status
+              </p>
+              <p className="mt-1 text-[18px] font-medium">
+                {data.storeStatus?.openNow
+                  ? "Open"
+                  : data.storeStatus?.statusLabel || "Closed"}
+              </p>
+              <p className="mt-0.5 text-[11px] text-black/40">
+                {data.storeStatus?.todayRange ||
+                  data.storeStatus?.detailLabel ||
+                  "Set hours"}
+                {data.storeStatus?.clock
+                  ? ` · ${data.storeStatus.clock}`
+                  : ""}
+              </p>
+            </Link>
+            <Link
+              href="/app/inventory"
+              className="border border-black/[0.06] px-4 py-3 transition-colors hover:bg-black/[0.02]"
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] text-black/35">
+                Low / out of stock
+              </p>
+              <p className="mt-1 text-[22px] font-medium tabular-nums">
+                {data.attention?.lowStock ?? data.stock.low + data.stock.out}
+              </p>
+            </Link>
+            <Link
+              href="/app/finance"
+              className="border border-black/[0.06] px-4 py-3 transition-colors hover:bg-black/[0.02]"
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] text-black/35">
+                Available balance
+              </p>
+              <p className="mt-1 text-[22px] font-medium tabular-nums">
+                {kes(data.wallet.availableMinor)}
+              </p>
+            </Link>
+            <Link
+              href="/app/payments"
+              className="border border-black/[0.06] px-4 py-3 transition-colors hover:bg-black/[0.02]"
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] text-black/35">
+                Pending
+              </p>
+              <p className="mt-1 text-[22px] font-medium tabular-nums">
+                {kes(data.wallet.pendingMinor)}
+              </p>
+            </Link>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/app/inventory" className={osUi.btnSecondary}>
+              Update stock
+            </Link>
+            <Link href="/app/products" className={osUi.btnSecondary}>
+              Update prices
+            </Link>
+            <Link href="/app/orders" className={osUi.btnSecondary}>
+              View orders
+            </Link>
+            <Link href="/app/payments" className={osUi.btnPrimary}>
+              Request payout
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       <section>
         <h2 className={cn("mb-5", osUi.sectionLabel)}>Today</h2>

@@ -46,8 +46,11 @@ export async function listOffersForVendor(
   return (await listPublishedOffers()).filter((o) => o.vendorId === vendorId);
 }
 
-export async function getOfferById(id: string): Promise<ProductOffer | null> {
-  const offer = await sbGetOfferByPublicId(id);
+export async function getOfferById(
+  id: string,
+  opts?: { includeUnpublished?: boolean },
+): Promise<ProductOffer | null> {
+  const offer = await sbGetOfferByPublicId(id, opts);
   return offer ? normalise(offer) : null;
 }
 

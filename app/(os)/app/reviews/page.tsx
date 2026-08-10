@@ -43,6 +43,9 @@ export default function OsReviewsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("inappropriate");
+  const [reportMessage, setReportMessage] = useState("");
 
   const load = (vid?: string) =>
     void fetch(
@@ -149,25 +152,35 @@ export default function OsReviewsPage() {
     }
   }
 
-  async function removeReview() {
+  async function reportReview() {
     if (!selected || !vendorId) return;
-    if (!window.confirm("Remove this review from your storefront?")) return;
+    if (reportMessage.trim().length < 5) {
+      setStatus("Add a short reason (at least 5 characters).");
+      return;
+    }
     setBusy(true);
     setStatus(null);
     try {
       const res = await fetch("/api/os/reviews", {
-        method: "DELETE",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vendorId, reviewId: selected.id }),
+        body: JSON.stringify({
+          action: "report",
+          vendorId,
+          reviewId: selected.id,
+          reason: reportReason,
+          message: reportMessage.trim(),
+        }),
       });
       const j = await res.json();
       if (!res.ok) {
-        setStatus(j.error?.message || "Delete failed");
+        setStatus(j.error?.message || "Report failed");
         return;
       }
-      setSelectedId(null);
-      setStatus("Review removed");
-      await load(vendorId);
+      setStatus("Reported to KlikCollect — they will moderate.");
+      setReportOpen(false);
+      setReportMessage("");
+      setReportReason("inappropriate");
     } finally {
       setBusy(false);
     }
@@ -399,12 +412,54 @@ export default function OsReviewsPage() {
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => void removeReview()}
+                  onClick={() => {
+                    setReportOpen((v) => !v);
+                    setStatus(null);
+                  }}
                   className={cn(osUi.btnGhost, osUi.danger)}
                 >
-                  Delete
+                  Report
                 </button>
               </div>
+              {reportOpen ? (
+                <div className="space-y-2 border border-black/10 p-3">
+                  <p className={osUi.sectionLabel}>Report to KlikCollect</p>
+                  <select
+                    className={osUi.input}
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                  >
+                    <option value="inappropriate">Inappropriate</option>
+                    <option value="spam">Spam</option>
+                    <option value="inaccurate">Inaccurate</option>
+                    <option value="abuse">Abuse</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <textarea
+                    className={cn(osUi.input, "min-h-[80px] resize-y")}
+                    value={reportMessage}
+                    onChange={(e) => setReportMessage(e.target.value)}
+                    placeholder="What should moderators know?"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void reportReview()}
+                      className={osUi.btnPrimary}
+                    >
+                      Send report
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportOpen(false)}
+                      className={osUi.btnGhost}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {status ? (
                 <p className="text-[13px] text-black/50">{status}</p>
               ) : null}

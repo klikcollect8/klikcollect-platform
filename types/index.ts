@@ -111,6 +111,11 @@ export interface CartItem {
   neighbourhood?: string;
   /** How the customer wants to receive the item */
   fulfilment?: FulfilmentMethod;
+  /** Delivery zone id when fulfilment is delivery */
+  deliveryZoneId?: string;
+  deliveryZoneLabel?: string;
+  /** Delivery fee in KES major for this line’s zone (cart totals use one fee) */
+  deliveryFee?: number;
 }
 
 export interface Order {

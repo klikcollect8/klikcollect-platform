@@ -36,7 +36,7 @@ export const PERMISSIONS = [
   "staff:assign_roles",
   "staff:revoke",
 
-  // Products
+  // Products (canonical catalogue — platform only for create/edit)
   "products:view",
   "products:create",
   "products:edit",
@@ -44,6 +44,12 @@ export const PERMISSIONS = [
   "products:approve",
   "products:reject",
   "products:feature",
+
+  // Vendor offers (price / availability on platform-owned products)
+  "offers:view",
+  "offers:price",
+  "offers:availability",
+  "catalogue:request_correction",
 
   // Categories / attributes / brands
   "categories:view",
@@ -211,6 +217,8 @@ export const PERMISSION_DOMAINS = [
   "branches",
   "staff",
   "products",
+  "offers",
+  "catalogue",
   "categories",
   "inventory",
   "barcode",

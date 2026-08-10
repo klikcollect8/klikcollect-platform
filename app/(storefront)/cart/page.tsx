@@ -10,6 +10,8 @@ import CartPromotions from "@/components/CartPromotions";
 import { formatPrice } from "@/lib/currency";
 import { resolveProductImage } from "@/lib/product-image";
 import { StorePage, StoreHeading } from "@/components/marketplace/StorePage";
+import { useCartDeliveryQuote } from "@/lib/hooks/useCartDeliveryQuote";
+import { DeliveryOptimizeHints } from "@/components/checkout/DeliveryOptimizeHints";
 
 function linePrice(item: CartItem) {
   return item.offerPrice ?? item.product.price ?? 0;
@@ -27,7 +29,19 @@ export default function CartPage() {
     (sum, item) => sum + linePrice(item) * item.quantity,
     0,
   );
+  const {
+    deliveryMajor: deliveryTotal,
+    quote: deliveryQuote,
+    shopCount,
+    areaLabel: liveAreaLabel,
+  } = useCartDeliveryQuote(cartItems);
+  const grandTotal = subtotal + deliveryTotal;
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const deliveryLabel =
+    liveAreaLabel ||
+    cartItems.find(
+      (i) => i.fulfilment === "delivery" && i.deliveryZoneLabel,
+    )?.deliveryZoneLabel;
 
   useEffect(() => {
     try {
@@ -64,6 +78,10 @@ export default function CartPage() {
       vendorId: item.vendorId || "",
       vendorName: item.vendorName || item.product.vendorName || "",
       neighbourhood: item.neighbourhood,
+      fulfilment: item.fulfilment,
+      deliveryZoneId: item.deliveryZoneId,
+      deliveryZoneLabel: item.deliveryZoneLabel,
+      deliveryFee: item.deliveryFee,
     });
     removeFromSaved(lineId(item));
   };
@@ -153,6 +171,17 @@ export default function CartPage() {
                             Sold by {item.vendorName || item.product.vendorName}
                           </p>
                         ) : null}
+                        <p className="mt-1.5 text-[13px] text-black/45">
+                          {item.fulfilment === "delivery"
+                            ? item.deliveryZoneLabel
+                              ? `Delivery · ${item.deliveryZoneLabel}`
+                              : "Delivery"
+                            : "Click & collect"}
+                          {item.fulfilment === "delivery" &&
+                          (item.deliveryFee ?? 0) > 0
+                            ? ` · +${formatPrice(item.deliveryFee!)}`
+                            : ""}
+                        </p>
                       </div>
                       <p className="shrink-0 text-[17px] font-medium tabular-nums">
                         {formatPrice(linePrice(item) * item.quantity)}
@@ -280,21 +309,50 @@ export default function CartPage() {
               <p className="mt-4 text-[15px] text-black/50">
                 Subtotal ({itemCount} {itemCount === 1 ? "item" : "items"})
               </p>
-              <p className="mt-2 text-[clamp(2rem,3vw,2.75rem)] font-medium tracking-tight tabular-nums">
+              <p className="mt-1 text-[17px] font-medium tabular-nums text-black/70">
                 {formatPrice(subtotal)}
               </p>
-              <p className="mt-4 text-[13px] leading-relaxed text-black/40">
-                Display prices · checkout when ready
+              {deliveryTotal > 0 ? (
+                <div className="mt-4 flex items-end justify-between gap-3 border-t border-black/[0.06] pt-4">
+                  <div>
+                    <p className="text-[14px] text-black/50">
+                      Total delivery cost
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-black/35">
+                      {shopCount > 1 ? `${shopCount} shops` : "1 shop"}
+                      {deliveryLabel ? ` · ${deliveryLabel}` : ""}
+                    </p>
+                    {deliveryQuote?.adjustments?.length ? (
+                      <p className="mt-0.5 text-[11px] text-black/35">
+                        {deliveryQuote.adjustments
+                          .map((a) => `${a.label} +${a.amountMajor}`)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
+                  </div>
+                  <p className="text-[15px] font-medium tabular-nums">
+                    {formatPrice(deliveryTotal)}
+                  </p>
+                </div>
+              ) : null}
+              <DeliveryOptimizeHints items={cartItems} />
+              <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.16em] text-black/40">
+                Total
               </p>
-              <button
-                type="button"
-                onClick={() =>
-                  window.dispatchEvent(new CustomEvent("openCheckout"))
-                }
+              <p className="mt-1 text-[clamp(2rem,3vw,2.75rem)] font-medium tracking-tight tabular-nums">
+                {formatPrice(grandTotal)}
+              </p>
+              <p className="mt-4 text-[13px] leading-relaxed text-black/40">
+                {deliveryTotal > 0
+                  ? "Delivery is priced by road distance · one fee per shop, not per product"
+                  : "Choose delivery or pickup at checkout"}
+              </p>
+              <Link
+                href="/checkout"
                 className="mt-8 flex w-full items-center justify-center bg-black py-4 text-[12px] font-medium uppercase tracking-[0.16em] text-white hover:opacity-80"
               >
                 Checkout
-              </button>
+              </Link>
               <Link
                 href="/shop"
                 className="mt-3 flex w-full items-center justify-center border border-black py-4 text-[12px] font-medium uppercase tracking-[0.16em] transition-colors hover:bg-black hover:text-white"

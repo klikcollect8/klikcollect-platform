@@ -22,11 +22,13 @@ Engineering Bible: `Desktop/klikcollect/docs/`. This document describes the **cu
 
 ## Surfaces
 
-| Surface        | Route               | Notes                                                 |
-| -------------- | ------------------- | ----------------------------------------------------- |
-| Storefront     | `app/(storefront)/` | Customer marketplace - theme untouched by panels work |
-| Vendor OS      | `/app`              | Commerce + finance + delivery + warehouse             |
-| Platform admin | `/admin`            | Ops, finance, KYC, security                           |
+| Surface        | Route               | Notes                                                                 |
+| -------------- | ------------------- | --------------------------------------------------------------------- |
+| Storefront     | `app/(storefront)/` | Customer marketplace - theme untouched by panels work                 |
+| Vendor OS      | `/app`              | My business — offers/stock/orders/staff (not catalogue owner)         |
+| Platform admin | `/admin`            | Ops control plane — catalogue, offers inspect, finance, KYC, security |
+
+**Catalogue authority:** platform owns `products`; vendors own `product_offers` (price/stock). See `docs/rbac.md`.
 
 ## Data truth
 

@@ -48,7 +48,8 @@ export function useUserAuth() {
   return {
     user: mapped,
     loading: !isLoaded,
-    isSignedIn: !!isSignedIn && !!mapped,
+    // Use Clerk session once loaded — don't wait on user object (avoids false signed-out flashes).
+    isSignedIn: isLoaded ? !!isSignedIn : false,
     userStatus,
     userRole,
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
@@ -17,96 +17,155 @@ export type ProductRow = {
   stock?: number;
   status?: string;
   vendorId?: string;
+  barcode?: string;
 };
 
 const TABS = [
   { id: "all", label: "All" },
-  { id: "published", label: "Active" },
-  { id: "draft", label: "Draft" },
-  { id: "archived", label: "Archived" },
+  { id: "published", label: "Selling" },
   { id: "low", label: "Low stock" },
+  { id: "out", label: "Out of stock" },
 ] as const;
 
 export function ProductsTable({
   products,
   vendors,
+  offerMode = false,
 }: {
   products: ProductRow[];
   vendors?: Record<string, string>;
+  /** Vendor workspace: no catalogue publish/archive bulk actions */
+  offerMode?: boolean;
 }) {
   const router = useRouter();
+  const [rows, setRows] = useState(products);
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
   const [q, setQ] = useState("");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [priceDraft, setPriceDraft] = useState("");
+  const [stockDraft, setStockDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
-  function byTab(id: (typeof TABS)[number]["id"], rows: ProductRow[]) {
+  useEffect(() => {
+    setRows(products);
+  }, [products]);
+
+  function byTab(id: (typeof TABS)[number]["id"], list: ProductRow[]) {
     if (id === "published")
-      return rows.filter((p) => !p.status || p.status === "published");
-    if (id === "draft")
-      return rows.filter(
-        (p) => p.status === "draft" || p.status === "pending_review",
-      );
-    if (id === "archived") return rows.filter((p) => p.status === "archived");
+      return list.filter((p) => !p.status || p.status === "published");
     if (id === "low")
-      return rows.filter(
+      return list.filter(
         (p) =>
           typeof p.stock === "number" &&
+          p.stock > 0 &&
           p.stock <= 5 &&
           p.status !== "archived",
       );
-    return rows;
+    if (id === "out")
+      return list.filter((p) => typeof p.stock === "number" && p.stock <= 0);
+    return list;
   }
 
   const filtered = useMemo(() => {
-    let rows = byTab(tab, products);
+    let list = byTab(tab, rows);
     if (q.trim()) {
       const needle = q.toLowerCase();
-      rows = rows.filter(
+      list = list.filter(
         (p) =>
           p.name.toLowerCase().includes(needle) ||
           (p.category || "").toLowerCase().includes(needle) ||
-          ((p.vendorId && vendors?.[p.vendorId]) || "")
-            .toLowerCase()
-            .includes(needle),
+          (p.barcode || "").toLowerCase().includes(needle),
       );
     }
-    return rows;
-  }, [products, tab, q, vendors]);
+    return list;
+  }, [rows, tab, q]);
 
-  const allSelected =
-    filtered.length > 0 && filtered.every((p) => selected.has(p.id));
+  async function readError(res: Response) {
+    const json = await res.json().catch(() => ({}));
+    return json?.error?.message || `Request failed (${res.status})`;
+  }
 
-  function toggleAll() {
-    if (allSelected) {
-      setSelected(new Set());
+  async function savePrice(id: string) {
+    const priceMajor = Number(priceDraft);
+    if (!Number.isInteger(priceMajor) || priceMajor < 0) {
+      setStatusMsg("Price must be a whole KES amount ≥ 0");
       return;
     }
-    setSelected(new Set(filtered.map((p) => p.id)));
-  }
-
-  function toggleOne(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  async function bulkStatus(status: "published" | "draft" | "archived") {
-    if (!selected.size) return;
     setBusy(true);
+    setStatusMsg(null);
     try {
-      const res = await fetch("/api/products/catalogue", {
+      const res = await fetch(`/api/os/offers/${encodeURIComponent(id)}/price`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [...selected], status }),
+        body: JSON.stringify({ priceMajor }),
       });
-      if (res.ok) {
-        setSelected(new Set());
-        router.refresh();
+      if (!res.ok) {
+        setStatusMsg(await readError(res));
+        return;
       }
+      setRows((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, price: priceMajor } : r)),
+      );
+      setEditingId(null);
+      setStatusMsg("Price saved");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveStock(id: string) {
+    const onHand = Number(stockDraft);
+    if (!Number.isInteger(onHand) || onHand < 0) {
+      setStatusMsg("Stock must be a whole number ≥ 0");
+      return;
+    }
+    setBusy(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/os/offers/${encodeURIComponent(id)}/stock`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onHand, reason: "quick_edit" }),
+      });
+      if (!res.ok) {
+        setStatusMsg(await readError(res));
+        return;
+      }
+      setRows((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, stock: onHand } : r)),
+      );
+      setEditingId(null);
+      setStatusMsg("Stock saved");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleAvailability(id: string, status?: string) {
+    const next = status === "draft" ? "published" : "draft";
+    setBusy(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(
+        `/api/os/offers/${encodeURIComponent(id)}/availability`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: next }),
+        },
+      );
+      if (!res.ok) {
+        setStatusMsg(await readError(res));
+        return;
+      }
+      setRows((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: next } : r)),
+      );
+      setStatusMsg(next === "draft" ? "Offer paused" : "Offer resumed");
+      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -130,7 +189,7 @@ export function ProductsTable({
             >
               {t.label}
               <span className="ml-1 text-[var(--kc-faint)]">
-                {byTab(t.id, products).length}
+                {byTab(t.id, rows).length}
               </span>
             </button>
           ))}
@@ -140,133 +199,85 @@ export function ProductsTable({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Filter products"
+            placeholder="Search name or barcode"
             className="w-full rounded-[var(--kc-radius-sm)] border border-[var(--kc-line)] py-1.5 pl-8 pr-3 text-[13px] outline-none focus:border-[var(--kc-ink)] sm:w-56"
           />
         </div>
       </div>
 
-      {selected.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--kc-line-soft)] bg-[var(--kc-canvas)] px-4 py-2.5">
-          <span className="text-[12px] font-medium text-[var(--kc-ink)]">
-            {selected.size} selected
-          </span>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => bulkStatus("published")}
-            className="rounded-[var(--kc-radius-sm)] bg-[var(--kc-ink)] px-2.5 py-1 text-[12px] font-medium text-white disabled:opacity-50"
-          >
-            Publish
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => bulkStatus("draft")}
-            className="rounded-[var(--kc-radius-sm)] border border-[var(--kc-line)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--kc-ink)] disabled:opacity-50"
-          >
-            Draft
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => bulkStatus("archived")}
-            className="rounded-[var(--kc-radius-sm)] border border-[var(--kc-line)] bg-white px-2.5 py-1 text-[12px] font-medium text-[#8e1b0d] disabled:opacity-50"
-          >
-            Archive
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => bulkStatus("published")}
-            className="rounded-[var(--kc-radius-sm)] border border-[var(--kc-line)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--kc-ink)] disabled:opacity-50"
-          >
-            Restore
-          </button>
-        </div>
+      {statusMsg ? (
+        <p className="border-b border-[var(--kc-line-soft)] px-4 py-2 text-[12px] text-[var(--kc-mute)]">
+          {statusMsg}
+        </p>
       ) : null}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-[13px]">
           <thead className="border-b border-[var(--kc-line-soft)] text-[12px] text-[var(--kc-faint)]">
             <tr>
-              <th className="w-10 px-4 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  aria-label="Select all"
-                />
-              </th>
               <th className="px-4 py-2.5 font-medium">Product</th>
-              <th className="px-4 py-2.5 font-medium">Status</th>
-              <th className="px-4 py-2.5 font-medium">Inventory</th>
               <th className="px-4 py-2.5 font-medium">Category</th>
-              <th className="px-4 py-2.5 font-medium">Vendor</th>
-              <th className="px-4 py-2.5 text-right font-medium">Price</th>
+              <th className="px-4 py-2.5 font-medium">Your stock</th>
+              <th className="px-4 py-2.5 text-right font-medium">Your price</th>
+              {offerMode ? (
+                <th className="px-4 py-2.5 text-right font-medium">Actions</th>
+              ) : (
+                <th className="px-4 py-2.5 font-medium">Vendor</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--kc-line-soft)]">
             {filtered.map((p) => {
               const stock = typeof p.stock === "number" ? p.stock : null;
-              const statusLabel =
-                !p.status || p.status === "published"
-                  ? "Active"
-                  : p.status === "archived"
-                    ? "Archived"
-                    : p.status || "Draft";
-              const badgeStatus =
-                statusLabel === "Active"
-                  ? "active"
-                  : statusLabel === "Archived"
-                    ? "cancelled"
-                    : "draft";
+              const editing = editingId === p.id;
               return (
                 <tr key={p.id} className="hover:bg-[var(--kc-canvas)]">
                   <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(p.id)}
-                      onChange={() => toggleOne(p.id)}
-                      aria-label={`Select ${p.name}`}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Link
-                        href={`/app/products/${p.id}`}
-                        className="flex min-w-0 flex-1 items-center gap-3"
-                      >
-                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-[var(--kc-radius-sm)] bg-[var(--kc-canvas)]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={
-                              p.image ||
-                              "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200"
-                            }
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <span className="truncate font-medium text-[var(--kc-ink)] hover:underline">
+                    <Link
+                      href={`/app/products/${p.id}`}
+                      className="flex items-center gap-3"
+                    >
+                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-[var(--kc-radius-sm)] bg-[var(--kc-canvas)]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={
+                            p.image ||
+                            "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200"
+                          }
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-[var(--kc-ink)] hover:underline">
                           {p.name}
                         </span>
-                      </Link>
-                      <Link
-                        href={`/products/${p.id}`}
-                        className="shrink-0 text-[11px] text-[var(--kc-faint)] hover:text-[var(--kc-ink)] hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Storefront
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={badgeStatus} label={statusLabel} />
+                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                          {p.barcode ? (
+                            <span className="text-[11px] text-[var(--kc-faint)]">
+                              {p.barcode}
+                            </span>
+                          ) : null}
+                          {offerMode && p.status === "draft" ? (
+                            <StatusBadge status="draft" />
+                          ) : null}
+                        </span>
+                      </span>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-[var(--kc-mute)]">
-                    {stock === null ? (
-                      " - "
+                    {p.category || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-[var(--kc-mute)]">
+                    {editing && offerMode ? (
+                      <input
+                        value={stockDraft}
+                        onChange={(e) => setStockDraft(e.target.value)}
+                        className="w-20 rounded border border-[var(--kc-line)] px-2 py-1 text-[13px]"
+                        inputMode="numeric"
+                      />
+                    ) : stock === null ? (
+                      "—"
                     ) : stock === 0 ? (
                       <span className="text-[#8e1b0d]">Out of stock</span>
                     ) : (
@@ -275,14 +286,80 @@ export function ProductsTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-[var(--kc-mute)]">
-                    {p.category || " - "}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--kc-mute)]">
-                    {(p.vendorId && vendors?.[p.vendorId]) || " - "}
-                  </td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums text-[var(--kc-ink)]">
-                    {formatKesMajor(p.price)}
+                    {editing && offerMode ? (
+                      <input
+                        value={priceDraft}
+                        onChange={(e) => setPriceDraft(e.target.value)}
+                        className="ml-auto w-24 rounded border border-[var(--kc-line)] px-2 py-1 text-right text-[13px]"
+                        inputMode="numeric"
+                      />
+                    ) : (
+                      formatKesMajor(p.price)
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {offerMode ? (
+                      editing ? (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void savePrice(p.id)}
+                            className="text-[12px] font-medium text-[var(--kc-ink)] underline disabled:opacity-40"
+                          >
+                            Save price
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void saveStock(p.id)}
+                            className="text-[12px] font-medium text-[var(--kc-ink)] underline disabled:opacity-40"
+                          >
+                            Save stock
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(null);
+                              setStatusMsg(null);
+                            }}
+                            className="text-[12px] text-[var(--kc-mute)]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end gap-3">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              void toggleAvailability(p.id, p.status)
+                            }
+                            className="text-[12px] font-medium text-[var(--kc-ink)] underline disabled:opacity-40"
+                          >
+                            {p.status === "draft" ? "Resume" : "Pause"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(p.id);
+                              setPriceDraft(String(Math.round(p.price)));
+                              setStockDraft(String(p.stock ?? 0));
+                              setStatusMsg(null);
+                            }}
+                            className="text-[12px] font-medium text-[var(--kc-ink)] underline"
+                          >
+                            Update
+                          </button>
+                        </div>
+                      )
+                    ) : (
+                      <span className="text-[var(--kc-mute)]">
+                        {(p.vendorId && vendors?.[p.vendorId]) || "—"}
+                      </span>
+                    )}
                   </td>
                 </tr>
               );
@@ -293,11 +370,11 @@ export function ProductsTable({
 
       {!filtered.length ? (
         <p className="px-4 py-12 text-center text-[13px] text-[var(--kc-faint)]">
-          No products match this view
+          No assigned products match this view
         </p>
       ) : (
         <div className="border-t border-[var(--kc-line-soft)] px-4 py-2.5 text-[12px] text-[var(--kc-faint)]">
-          {filtered.length} products
+          {filtered.length} products · catalogue owned by KlikCollect
         </div>
       )}
     </div>

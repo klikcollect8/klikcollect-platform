@@ -27,7 +27,6 @@ export async function listCatalogue(
     .select(
       "*, products(*, categories(name)), vendors(public_id, name, neighbourhood)",
     )
-    .eq("status", "published")
     .is("deleted_at", null);
 
   if (vendorPublicId) {
@@ -37,7 +36,10 @@ export async function listCatalogue(
       .eq("public_id", vendorPublicId)
       .maybeSingle();
     if (!vendor) return [];
-    q = q.eq("vendor_id", vendor.id);
+    // Vendor workspace: include paused (draft) offers for Pause/Resume controls.
+    q = q.eq("vendor_id", vendor.id).in("status", ["published", "draft"]);
+  } else {
+    q = q.eq("status", "published");
   }
 
   const { data, error } = await q;
@@ -72,7 +74,11 @@ export async function listCatalogue(
         ? (product.images as string[])
         : [image],
       category: cat,
-      status: "published" as const,
+      status: (String(row.status || "published") === "draft"
+        ? "draft"
+        : String(row.status) === "archived"
+          ? "archived"
+          : "published") as CatalogueProduct["status"],
       vendorId: vendor.public_id,
       vendorName: vendor.name,
       neighbourhood: vendor.neighbourhood || undefined,

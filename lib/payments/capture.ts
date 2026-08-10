@@ -71,6 +71,24 @@ export async function captureSuccessfulPayment(
     : [];
   const lineItems = input.lineItems?.length ? input.lineItems : intentLineItems;
 
+  const { data: existingReceipt } = await supabase
+    .from("payment_receipts")
+    .select("public_id")
+    .eq("paystack_reference", reference)
+    .maybeSingle();
+
+  if (existingReceipt?.public_id) {
+    return { receiptPublicId: existingReceipt.public_id, already: true };
+  }
+
+  const intentAmount =
+    intent?.amount_minor != null ? Math.round(Number(intent.amount_minor)) : 0;
+  if (intentAmount > 0 && amount > 0 && amount + 1 < intentAmount) {
+    throw new Error(
+      `Underpayment: gateway ${amount} < intent ${intentAmount} for ${reference}`,
+    );
+  }
+
   if (intent?.public_id) {
     await supabase
       .from("payment_intents")
@@ -163,16 +181,8 @@ export async function captureSuccessfulPayment(
     ],
   });
 
-  const already = ledger.ok && !!ledger.transactionId;
-
-  const { data: existingReceipt } = await supabase
-    .from("payment_receipts")
-    .select("public_id")
-    .eq("paystack_reference", reference)
-    .maybeSingle();
-
-  if (existingReceipt?.public_id) {
-    return { receiptPublicId: existingReceipt.public_id, already: true };
+  if (!ledger.ok) {
+    throw new Error(ledger.error || "Ledger post failed");
   }
 
   const receiptPublic = publicId("rcpt");
@@ -205,7 +215,7 @@ export async function captureSuccessfulPayment(
   }
 
   // Stripe: create pending vendor transfers (released on order collected)
-  if (provider === "stripe" && !already && orderIds.length) {
+  if (provider === "stripe" && orderIds.length) {
     try {
       const feeQuote = intentMeta.feeQuote as
         | {
@@ -244,6 +254,6 @@ export async function captureSuccessfulPayment(
 
   return {
     receiptPublicId: receipt?.public_id || receiptPublic,
-    already: !ledger.ok ? false : already,
+    already: false,
   };
 }

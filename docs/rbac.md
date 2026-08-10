@@ -95,17 +95,24 @@ Guest / Customer / Business Customer (future) are **not** RBAC roles - ownership
 
 Only `super_admin` retains these (break-glass). **Developer has no finance/ledger permissions.**
 
+## Catalogue authority (MVP)
+
+- **Platform owns** canonical `products` (`products:create` / `products:edit` / `products:archive`).
+- **Vendors own** `product_offers` via `offers:view`, `offers:price`, `offers:availability`, plus `inventory:adjust` and `catalogue:request_correction`.
+- Vendor roles must **never** hold `products:create` / `products:edit` / `products:archive`.
+- Soft-open demo memberships inherit `vendor_staff` (no catalogue write).
+
 ## Surfaces
 
 | Surface        | Route                  | Gate                                                                                                                                                          |
 | -------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Platform admin | `/admin`               | **Platform-only** - curation, CMS, finance, flags, support, security                                                                                          |
-| Vendor store   | `/app`                 | **Vendor-full commerce workspace** - dashboard, store, products, inventory, orders/packing, POS, customers, reviews/Q&A, branches, delivery map, wallet, team |
+| Platform admin | `/admin`               | **Ops control plane** — catalogue, vendor offers, corrections, CMS, finance, flags, support, security                                                          |
+| Vendor store   | `/app`                 | **My business** — home, orders, offers/stock, POS, storefront, branches, staff, Q&A/reviews, wallet/payouts                                                    |
 | Customer       | `/account`, storefront | Clerk session + ownership                                                                                                                                     |
 
-Phase 1 defaults `store_ops` and `couriers` nav surfaces **on** for vendor roles that hold the matching permissions. Admin remains platform-only and must not be used as a vendor god-mode.
+MVP staff invites use `MVP_VENDOR_INVITE_ROLES` (owner, manager, order manager, inventory, cashier, dispatch, finance view). Platform roles cannot be invited from `/app/staff`.
 
-Vendors never receive platform permissions (`vendors:approve`, `flags:*`, `cms:*`, cross-tenant ledger). OS APIs are tenant-scoped (`vendorIds`) with no platform god-mode.
+Vendors never receive platform permissions (`vendors:approve`, `flags:*`, `cms:*`, cross-tenant ledger). OS APIs are tenant-scoped (`vendorIds` from membership) with no platform god-mode.
 
 ## Invites
 

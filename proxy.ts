@@ -39,7 +39,10 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
     if (!userId) {
       const loginPath = isAdminRoute(request) ? "/admin/login" : "/sign-in";
       const redirectUrl = new URL(loginPath, request.url);
-      redirectUrl.searchParams.set("redirect_url", request.nextUrl.pathname);
+      const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+      // Dual-write: bridge reads `redirect`; Clerk often uses `redirect_url`.
+      redirectUrl.searchParams.set("redirect", returnTo);
+      redirectUrl.searchParams.set("redirect_url", returnTo);
       return NextResponse.redirect(redirectUrl);
     }
   }

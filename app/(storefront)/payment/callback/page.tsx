@@ -1,14 +1,20 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useCart } from "@/lib/hooks/useCart";
 
 function PaymentCallbackInner() {
   const router = useRouter();
   const params = useSearchParams();
+  const { clearCart } = useCart();
   const [status, setStatus] = useState("Confirming your order…");
+  const ran = useRef(false);
 
   useEffect(() => {
+    if (ran.current) return;
+    ran.current = true;
+
     const reference = params.get("reference") || params.get("trxref") || "";
     const provider = params.get("provider") || undefined;
     const sessionId = params.get("session_id") || undefined;
@@ -24,22 +30,35 @@ function PaymentCallbackInner() {
       body: JSON.stringify({ reference, provider, session_id: sessionId }),
     })
       .then((r) => r.json())
-      .then((j) => {
+      .then(async (j) => {
+        const ok =
+          j.data?.status === "success" || Boolean(j.data?.receiptPublicId);
+        if (ok) {
+          try {
+            await clearCart();
+          } catch {
+            /* local clear still helps */
+            try {
+              localStorage.removeItem("cart");
+              window.dispatchEvent(new Event("cart-updated"));
+            } catch {
+              /* ignore */
+            }
+          }
+        }
         if (j.data?.receiptPublicId) {
           setStatus("Order received");
           router.replace(`/account/receipts/${j.data.receiptPublicId}`);
           return;
         }
-        setStatus(
-          j.data?.status === "success" ? "Order received" : "Payment recorded",
-        );
+        setStatus(ok ? "Order received" : "Payment recorded");
         router.replace("/account/orders");
       })
       .catch(() => {
         setStatus("Verification failed");
         router.replace("/account/orders");
       });
-  }, [params, router]);
+  }, [params, router, clearCart]);
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#f7f7f5] px-6 text-center">

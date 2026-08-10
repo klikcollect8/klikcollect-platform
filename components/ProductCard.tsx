@@ -9,7 +9,7 @@ import { track } from "@/lib/track";
 
 interface ProductCardProps {
   product: Product;
-  /** When set (vendor storefront), show this vendor's price */
+  /** When set (vendor storefront), show this vendor's exact price */
   offerPrice?: number;
   /** Prefill offer on PDP */
   offerId?: string;
@@ -23,6 +23,17 @@ export default function ProductCard({
   const href = offerId
     ? `/products/${product.id}?offer=${encodeURIComponent(offerId)}`
     : `/products/${product.id}`;
+
+  const vendorExact =
+    typeof offerPrice === "number" && Number.isFinite(offerPrice);
+  const fromPrice =
+    !vendorExact &&
+    typeof product.price === "number" &&
+    Number.isFinite(product.price)
+      ? product.price
+      : null;
+  const shopCount =
+    typeof product.offerCount === "number" ? product.offerCount : 0;
 
   return (
     <article className="group flex h-full flex-col">
@@ -58,10 +69,24 @@ export default function ProductCard({
         {product.name}
       </Link>
 
-      {typeof offerPrice === "number" ? (
+      {vendorExact ? (
         <p className="text-[17px] font-medium tabular-nums tracking-tight">
           {formatPrice(offerPrice)}
         </p>
+      ) : fromPrice != null ? (
+        <div>
+          <p className="text-[17px] font-medium tabular-nums tracking-tight">
+            <span className="text-[13px] font-normal text-black/40">From </span>
+            {formatPrice(fromPrice)}
+          </p>
+          {shopCount > 1 ? (
+            <p className="mt-0.5 text-[12px] text-black/35">
+              {shopCount} shops
+            </p>
+          ) : null}
+        </div>
+      ) : shopCount > 1 ? (
+        <p className="text-[12px] text-black/35">{shopCount} shops</p>
       ) : null}
     </article>
   );

@@ -2,19 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { formatPrice } from "@/lib/currency";
+import { PrintSheet, printSheet } from "@/components/os/PrintSheet";
 
-/** Printable public receipt view (same API; requires auth for now). */
+type ReceiptView = {
+  public_id: string;
+  amount_minor: number;
+  channel: string | null;
+  paystack_reference: string;
+  paid_at: string;
+  vendor_name?: string | null;
+  vendor_public_id?: string | null;
+  lines?: Array<{ name: string; quantity: number; moneyMinor?: number }>;
+  auth_required?: boolean;
+};
+
+/** Printable receipt view — requires sign-in (owner or platform staff). */
 export default function PublicReceiptPage() {
   const params = useParams();
   const id = String(params?.publicId || "");
-  const [receipt, setReceipt] = useState<{
-    public_id: string;
-    amount_minor: number;
-    channel: string | null;
-    paystack_reference: string;
-    paid_at: string;
-  } | null>(null);
+  const [receipt, setReceipt] = useState<ReceiptView | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,6 +28,9 @@ export default function PublicReceiptPage() {
     void fetch(`/api/receipts/${encodeURIComponent(id)}`)
       .then(async (r) => {
         const j = await r.json();
+        if (r.status === 401) {
+          throw new Error("Sign in to view this receipt");
+        }
         if (!r.ok) throw new Error(j.error || "Not found");
         setReceipt(j.data);
       })
@@ -30,8 +39,11 @@ export default function PublicReceiptPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#f7f7f5] px-6">
         <p className="text-[14px] text-black/50">{error}</p>
+        <p className="text-[12px] text-black/35">
+          Payment receipts require a signed-in account.
+        </p>
       </div>
     );
   }
@@ -48,22 +60,19 @@ export default function PublicReceiptPage() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md bg-[#f7f7f5] px-6 py-16">
-      <p className="text-[12px] uppercase tracking-[0.22em] text-black/40">
-        Online receipt
-      </p>
-      <h1 className="mt-2 text-[28px] font-medium">klikcollect</h1>
-      <p className="mt-8 text-[32px] font-medium tracking-tight">
-        {formatPrice(receipt.amount_minor / 100)}
-      </p>
-      <p className="mt-2 text-[13px] text-black/45">
-        {receipt.channel} · {receipt.paystack_reference}
-      </p>
-      <p className="mt-1 text-[12px] text-black/35">
-        {new Date(receipt.paid_at).toLocaleString()}
-      </p>
+      <PrintSheet
+        template="payment"
+        vendorName={receipt.vendor_name || "KlikCollect"}
+        receiptCode={receipt.public_id}
+        channel={receipt.channel || undefined}
+        reference={receipt.paystack_reference}
+        totalMinor={receipt.amount_minor}
+        paidAt={receipt.paid_at}
+        lines={receipt.lines || []}
+      />
       <button
         type="button"
-        onClick={() => window.print()}
+        onClick={() => printSheet()}
         className="mt-10 bg-black px-5 py-3 text-[12px] uppercase tracking-wider text-white print:hidden"
       >
         Print

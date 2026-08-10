@@ -31,5 +31,37 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return NextResponse.json({ data: receipt });
+  let vendorName: string | null = null;
+  const vendorPublicId = receipt.vendor_public_id
+    ? String(receipt.vendor_public_id)
+    : "";
+  if (vendorPublicId) {
+    const { data: vendor } = await supabase
+      .from("vendors")
+      .select("name")
+      .eq("public_id", vendorPublicId)
+      .maybeSingle();
+    vendorName = vendor?.name ? String(vendor.name) : null;
+  }
+
+  const rawLines = Array.isArray(receipt.line_items) ? receipt.line_items : [];
+  const lines = rawLines.map((it: Record<string, unknown>) => ({
+    name: String(it.name || it.product_name || "Item"),
+    quantity: Number(it.quantity || 1),
+    moneyMinor:
+      typeof it.money_minor === "number"
+        ? it.money_minor
+        : typeof it.moneyMinor === "number"
+          ? it.moneyMinor
+          : undefined,
+  }));
+
+  return NextResponse.json({
+    data: {
+      ...receipt,
+      vendor_name: vendorName,
+      lines,
+      auth_required: true,
+    },
+  });
 }

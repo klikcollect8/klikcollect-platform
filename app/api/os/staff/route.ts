@@ -5,7 +5,12 @@ import {
   inviteStaffMembership,
   revokeStaffMembership,
 } from "@/lib/authz/memberships";
-import { isEnabledStaffRole } from "@/lib/authz/role-ids";
+import {
+  isInviteableStaffRole,
+  isPlatformRole,
+  MVP_VENDOR_INVITE_ROLES,
+} from "@/lib/authz/role-ids";
+import { canInviteRole, inviteableRolesForActor } from "@/lib/authz/invite-ceiling";
 import { emitVendorActivity } from "@/lib/vendor-activity";
 import { notifyVendorStaff } from "@/lib/vendor-notifications";
 
@@ -42,7 +47,12 @@ export async function GET(request: NextRequest) {
       { status: 500 },
     );
   }
-  return NextResponse.json({ data: data || [] });
+  const inviteableRoles = vendorId
+    ? inviteableRolesForActor(gate.actor.actor, vendorId)
+    : gate.actor.vendorIds[0]
+      ? inviteableRolesForActor(gate.actor.actor, gate.actor.vendorIds[0])
+      : [];
+  return NextResponse.json({ data: data || [], inviteableRoles });
 }
 
 export async function POST(request: NextRequest) {
@@ -82,12 +92,23 @@ export async function POST(request: NextRequest) {
   const email = String(body?.email || "")
     .toLowerCase()
     .trim();
-  const role = String(body?.role || "vendor_staff");
-  if (!email.includes("@") || !isEnabledStaffRole(role)) {
+  const role = String(body?.role || "store_manager");
+  if (isPlatformRole(role)) {
+    return NextResponse.json(
+      { error: { message: "Cannot invite platform roles from vendor workspace" } },
+      { status: 403 },
+    );
+  }
+  const flags = { store_ops: true, couriers: true, warehouse: false };
+  if (
+    !email.includes("@") ||
+    !isInviteableStaffRole(role, flags) ||
+    !(MVP_VENDOR_INVITE_ROLES as readonly string[]).includes(role)
+  ) {
     return NextResponse.json(
       {
         error: {
-          message: "Valid email and vendor store role required",
+          message: "Valid email and MVP vendor role required",
         },
       },
       { status: 400 },
@@ -96,6 +117,17 @@ export async function POST(request: NextRequest) {
   if (!gate.actor.vendorIds.includes(vendorId)) {
     return NextResponse.json(
       { error: { message: "Vendor out of scope" } },
+      { status: 403 },
+    );
+  }
+  if (!canInviteRole(gate.actor.actor, vendorId, role)) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "INVITE_CEILING",
+          message: "You cannot invite a role at or above your authority",
+        },
+      },
       { status: 403 },
     );
   }
