@@ -27,9 +27,12 @@ export default function ConditionalHeader() {
 
   return (
     <Suspense fallback={null}>
-      {/* Banner scrolls away; Header owns its own sticky bar (no blur wrapper) */}
+      {/* Banner scrolls away; solid sticky shell (no backdrop-blur — blur clips fixed menus) */}
       <WorkspaceAccessBanner />
-      <Header />
+      <div className="kc-storefront-top sticky top-0 z-40">
+        <Header />
+      </div>
+      <div className="kc-storefront-top-spacer" aria-hidden />
     </Suspense>
   );
 }

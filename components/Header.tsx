@@ -273,8 +273,8 @@ export default function Header() {
   return (
     <>
       <header
-        className={`sticky top-0 z-40 transition-colors duration-300 ${
-          scrolled || menuOpen ? "bg-[#f7f7f5]" : "bg-[#f7f7f5] md:bg-transparent"
+        className={`transition-colors duration-300 ${
+          scrolled || menuOpen ? "bg-[#f7f7f5]" : "bg-[#f7f7f5] lg:bg-transparent"
         }`}
       >
         <div className="mx-auto grid h-16 w-full max-w-[1600px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-4 sm:h-[72px] sm:px-10 lg:px-14 xl:px-20">

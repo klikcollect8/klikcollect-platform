@@ -30,12 +30,9 @@ const dockStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: "100vw",
   margin: 0,
-  transform: "translate3d(0,0,0)",
-  WebkitTransform: "translate3d(0,0,0)",
   borderTop: "1px solid rgba(10, 10, 10, 0.1)",
   background: "#f7f7f5",
   paddingBottom: "env(safe-area-inset-bottom, 0px)",
-  // Stay above iOS rubber-band / Capacitor WebView quirks
   paddingLeft: "env(safe-area-inset-left, 0px)",
   paddingRight: "env(safe-area-inset-right, 0px)",
 };
