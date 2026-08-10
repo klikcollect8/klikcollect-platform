@@ -4,6 +4,8 @@ import { resolveActor } from "@/lib/authz/resolve-actor";
 import { actorVendorIds } from "@/lib/authz/actor";
 import { listApplicationsForUser } from "@/lib/m1-store";
 import { getServiceSupabase } from "@/lib/supabase/admin";
+import { DEMO_VENDOR_ID } from "@/lib/tenancy";
+import { softOpenDemoVendor } from "@/lib/authz/rbac-env";
 
 /**
  * Server gate for /app: require an active staff membership on an admitted vendor.
@@ -20,7 +22,7 @@ export async function VendorAccessGate({
       <GateShell
         title="Sign in required"
         body="Sign in with the account that owns or was invited to a vendor business."
-        ctaHref="/sign-in?redirect_url=/app"
+        ctaHref="/sign-in?redirect=/app&redirect_url=/app"
         ctaLabel="Sign in"
       />
     );
@@ -30,7 +32,14 @@ export async function VendorAccessGate({
   const vendorIds = actorVendorIds(actor);
 
   if (vendorIds.length) {
-    // Ensure at least one membership vendor is still admitted
+    // Soft-open / demo tenant may not exist as an admitted vendors row.
+    if (
+      vendorIds.includes(DEMO_VENDOR_ID) &&
+      (softOpenDemoVendor() || process.env.NODE_ENV !== "production")
+    ) {
+      return <>{children}</>;
+    }
+
     try {
       const sb = getServiceSupabase();
       const { data } = await sb
@@ -42,6 +51,12 @@ export async function VendorAccessGate({
       if (data?.length) {
         return <>{children}</>;
       }
+
+      // Local/dev: membership exists but vendor row missing — allow shell; APIs enforce.
+      if (process.env.NODE_ENV !== "production") {
+        return <>{children}</>;
+      }
+
       return (
         <GateShell
           title="Business suspended"

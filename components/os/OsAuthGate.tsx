@@ -1,6 +1,7 @@
 "use client";
 
-import { Show, SignInButton } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
+import AuthModalTrigger from "@/components/auth/AuthModalTrigger";
 
 export function OsAuthGate({
   children,
@@ -25,14 +26,12 @@ export function OsAuthGate({
             {description}
           </p>
           <div className="mt-7">
-            <SignInButton mode="redirect">
-              <button
-                type="button"
-                className="h-11 bg-[#1c1b19] px-6 text-[11px] font-medium uppercase tracking-[0.18em] text-[#f7f7f5] transition-opacity hover:opacity-85"
-              >
-                Sign in
-              </button>
-            </SignInButton>
+            <AuthModalTrigger
+              redirect="/app"
+              className="h-11 bg-[#1c1b19] px-6 text-[11px] font-medium uppercase tracking-[0.18em] text-[#f7f7f5] transition-opacity hover:opacity-85"
+            >
+              Sign in
+            </AuthModalTrigger>
           </div>
         </div>
       </Show>

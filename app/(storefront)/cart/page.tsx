@@ -1,17 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Minus, Plus, Trash2, ShoppingBag, Loader2 } from "lucide-react";
 import { useCart } from "@/lib/hooks/useCart";
-import { CartItem } from "@/types";
+import { CartItem, FulfilmentMethod } from "@/types";
 import CartPromotions from "@/components/CartPromotions";
 import { formatPrice } from "@/lib/currency";
 import { resolveProductImage } from "@/lib/product-image";
 import { StorePage, StoreHeading } from "@/components/marketplace/StorePage";
 import { useCartDeliveryQuote } from "@/lib/hooks/useCartDeliveryQuote";
 import { DeliveryOptimizeHints } from "@/components/checkout/DeliveryOptimizeHints";
+import { getLatestSavedDeliveryPin } from "@/lib/checkout/saved-delivery-pin";
+import { useUserLocation } from "@/components/providers/LocationProvider";
+import type { MapMarker } from "@/components/map/MapCanvas";
+
+const AdvancedNavMap = dynamic(
+  () => import("@/components/map/AdvancedNavMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[200px] items-center justify-center border border-black/10 bg-black/[0.03] text-[11px] uppercase tracking-[0.16em] text-black/35">
+        Loading map
+      </div>
+    ),
+  },
+);
 
 function linePrice(item: CartItem) {
   return item.offerPrice ?? item.product.price ?? 0;
@@ -20,10 +36,151 @@ function lineId(item: CartItem) {
   return item.offerId || item.product.id;
 }
 
+function CartLineRow({
+  item,
+  onQty,
+  onRemove,
+  onSave,
+  onMoveFulfilment,
+}: {
+  item: CartItem;
+  onQty: (id: string, qty: number) => void;
+  onRemove: (id: string) => void;
+  onSave: (id: string) => void;
+  onMoveFulfilment: (id: string, next: FulfilmentMethod) => void;
+}) {
+  const isDelivery = item.fulfilment === "delivery";
+  return (
+    <div className="flex gap-5 sm:gap-6">
+      <Link
+        href={`/products/${item.product.id}${
+          item.offerId ? `?offer=${encodeURIComponent(item.offerId)}` : ""
+        }`}
+        className="relative h-36 w-28 shrink-0 overflow-hidden bg-black/[0.03] sm:h-44 sm:w-36"
+      >
+        <Image
+          src={resolveProductImage(item.product.image)}
+          alt={item.product.name || "Product"}
+          fill
+          className="object-cover"
+        />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Link
+              href={`/products/${item.product.id}${
+                item.offerId
+                  ? `?offer=${encodeURIComponent(item.offerId)}`
+                  : ""
+              }`}
+              className="text-[17px] font-medium leading-snug hover:opacity-55"
+            >
+              {item.product.name}
+            </Link>
+            <p className="mt-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-black/40">
+              {item.product.category}
+            </p>
+            {item.vendorName || item.product.vendorName ? (
+              <p className="mt-1 text-[13px] text-black/45">
+                Sold by {item.vendorName || item.product.vendorName}
+              </p>
+            ) : null}
+            <p className="mt-1.5 text-[13px] text-black/45">
+              {isDelivery
+                ? item.deliveryZoneLabel
+                  ? `Delivery · ${item.deliveryZoneLabel}`
+                  : "Delivery"
+                : "Click & collect"}
+              {isDelivery && (item.deliveryFee ?? 0) > 0
+                ? ` · +${formatPrice(item.deliveryFee!)}`
+                : ""}
+            </p>
+          </div>
+          <p className="shrink-0 text-[17px] font-medium tabular-nums">
+            {formatPrice(linePrice(item) * item.quantity)}
+          </p>
+        </div>
+        <p className="mt-3 text-[13px] text-black/45">
+          {(item.product.stock ?? 0) > 0 ? "In stock" : "Out of stock"}
+        </p>
+
+        <div className="mt-5 flex flex-wrap items-center gap-4">
+          <div className="inline-flex items-center border border-black/12">
+            <button
+              type="button"
+              onClick={() => onQty(lineId(item), Math.max(0, item.quantity - 1))}
+              className="flex h-10 w-10 items-center justify-center text-black/50 hover:text-black"
+              aria-label="Decrease"
+            >
+              {item.quantity <= 1 ? (
+                <Trash2 className="h-3.5 w-3.5" />
+              ) : (
+                <Minus className="h-3.5 w-3.5" />
+              )}
+            </button>
+            <span className="min-w-[2.5rem] text-center text-[14px] font-medium tabular-nums">
+              {item.quantity}
+            </span>
+            <button
+              type="button"
+              onClick={() => onQty(lineId(item), item.quantity + 1)}
+              className="flex h-10 w-10 items-center justify-center text-black/50 hover:text-black disabled:opacity-30"
+              disabled={item.quantity >= (item.product.stock ?? 999)}
+              aria-label="Increase"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              onMoveFulfilment(lineId(item), isDelivery ? "pickup" : "delivery")
+            }
+            className="text-[13px] underline underline-offset-4 decoration-black/25 hover:decoration-black"
+          >
+            {isDelivery ? "Move to pickup" : "Move to delivery"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onRemove(lineId(item))}
+            className="text-[13px] underline underline-offset-4 decoration-black/25 hover:decoration-black"
+          >
+            Remove
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(lineId(item))}
+            className="text-[13px] underline underline-offset-4 decoration-black/25 hover:decoration-black"
+          >
+            Save for later
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CartPage() {
-  const { cartItems, loading, updateQuantity, removeFromCart, addToCart } =
-    useCart();
+  const {
+    cartItems,
+    loading,
+    updateQuantity,
+    removeFromCart,
+    addToCart,
+    setLineFulfilment,
+  } = useCart();
   const [savedForLater, setSavedForLater] = useState<CartItem[]>([]);
+  const { coords } = useUserLocation();
+
+  const deliveryItems = useMemo(
+    () => cartItems.filter((i) => i.fulfilment === "delivery"),
+    [cartItems],
+  );
+  const pickupItems = useMemo(
+    () => cartItems.filter((i) => i.fulfilment !== "delivery"),
+    [cartItems],
+  );
 
   const subtotal = cartItems.reduce(
     (sum, item) => sum + linePrice(item) * item.quantity,
@@ -39,9 +196,30 @@ export default function CartPage() {
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const deliveryLabel =
     liveAreaLabel ||
-    cartItems.find(
-      (i) => i.fulfilment === "delivery" && i.deliveryZoneLabel,
-    )?.deliveryZoneLabel;
+    deliveryItems.find((i) => i.deliveryZoneLabel)?.deliveryZoneLabel;
+
+  const destination = useMemo(() => {
+    const pin = getLatestSavedDeliveryPin();
+    if (pin?.lat != null && pin?.lng != null) {
+      return {
+        lng: pin.lng,
+        lat: pin.lat,
+        label: pin.label || pin.area || "Delivery",
+      };
+    }
+    return null;
+  }, [deliveryItems.length]);
+
+  const deliveryMarkers = useMemo((): MapMarker[] => {
+    const pins: MapMarker[] = [];
+    const seen = new Set<string>();
+    for (const item of deliveryItems) {
+      const key = item.vendorId || item.vendorName || "";
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+    }
+    return pins;
+  }, [deliveryItems]);
 
   useEffect(() => {
     try {
@@ -70,20 +248,42 @@ export default function CartPage() {
     localStorage.setItem("savedForLater", JSON.stringify(next));
   };
 
-  const moveToCart = async (item: CartItem) => {
+  const moveToCart = async (
+    item: CartItem,
+    fulfilment?: FulfilmentMethod,
+  ) => {
     if (!addToCart || !item.offerId) return;
+    const nextFulfilment = fulfilment || item.fulfilment || "pickup";
     await addToCart(item.product, item.quantity, {
       offerId: item.offerId,
       offerPrice: linePrice(item),
       vendorId: item.vendorId || "",
       vendorName: item.vendorName || item.product.vendorName || "",
       neighbourhood: item.neighbourhood,
-      fulfilment: item.fulfilment,
-      deliveryZoneId: item.deliveryZoneId,
-      deliveryZoneLabel: item.deliveryZoneLabel,
-      deliveryFee: item.deliveryFee,
+      fulfilment: nextFulfilment,
+      deliveryZoneId:
+        nextFulfilment === "delivery" ? item.deliveryZoneId : undefined,
+      deliveryZoneLabel:
+        nextFulfilment === "delivery"
+          ? item.deliveryZoneLabel ||
+            (coords ? "Near you" : "Delivery")
+          : undefined,
+      deliveryFee: nextFulfilment === "delivery" ? item.deliveryFee || 0 : 0,
     });
     removeFromSaved(lineId(item));
+  };
+
+  const moveFulfilment = async (id: string, next: FulfilmentMethod) => {
+    if (next === "delivery") {
+      await setLineFulfilment(id, "delivery", {
+        deliveryZoneLabel:
+          getLatestSavedDeliveryPin()?.label ||
+          (coords ? "Near you" : "Delivery"),
+        deliveryFee: 0,
+      });
+    } else {
+      await setLineFulfilment(id, "pickup");
+    }
   };
 
   if (loading) {
@@ -132,128 +332,91 @@ export default function CartPage() {
 
         <div className="grid grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-20">
           <div className="space-y-16 lg:col-span-8">
-            <div className="space-y-10 border-t border-black/[0.06] pt-10">
-              {cartItems.map((item) => (
-                <div key={lineId(item)} className="flex gap-5 sm:gap-6">
-                  <Link
-                    href={`/products/${item.product.id}${
-                      item.offerId
-                        ? `?offer=${encodeURIComponent(item.offerId)}`
-                        : ""
-                    }`}
-                    className="relative h-36 w-28 shrink-0 overflow-hidden bg-black/[0.03] sm:h-44 sm:w-36"
-                  >
-                    <Image
-                      src={resolveProductImage(item.product.image)}
-                      alt={item.product.name || "Product"}
-                      fill
-                      className="object-cover"
-                    />
-                  </Link>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <Link
-                          href={`/products/${item.product.id}${
-                            item.offerId
-                              ? `?offer=${encodeURIComponent(item.offerId)}`
-                              : ""
-                          }`}
-                          className="text-[17px] font-medium leading-snug hover:opacity-55"
-                        >
-                          {item.product.name}
-                        </Link>
-                        <p className="mt-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-black/40">
-                          {item.product.category}
-                        </p>
-                        {item.vendorName || item.product.vendorName ? (
-                          <p className="mt-1 text-[13px] text-black/45">
-                            Sold by {item.vendorName || item.product.vendorName}
-                          </p>
-                        ) : null}
-                        <p className="mt-1.5 text-[13px] text-black/45">
-                          {item.fulfilment === "delivery"
-                            ? item.deliveryZoneLabel
-                              ? `Delivery · ${item.deliveryZoneLabel}`
-                              : "Delivery"
-                            : "Click & collect"}
-                          {item.fulfilment === "delivery" &&
-                          (item.deliveryFee ?? 0) > 0
-                            ? ` · +${formatPrice(item.deliveryFee!)}`
-                            : ""}
-                        </p>
-                      </div>
-                      <p className="shrink-0 text-[17px] font-medium tabular-nums">
-                        {formatPrice(linePrice(item) * item.quantity)}
-                      </p>
-                    </div>
-                    <p className="mt-3 text-[13px] text-black/45">
-                      {(item.product.stock ?? 0) > 0
-                        ? "In stock"
-                        : "Out of stock"}
-                    </p>
-
-                    <div className="mt-5 flex flex-wrap items-center gap-4">
-                      <div className="inline-flex items-center border border-black/12">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateQuantity(
-                              lineId(item),
-                              Math.max(0, item.quantity - 1),
-                            )
-                          }
-                          className="flex h-10 w-10 items-center justify-center text-black/50 hover:text-black"
-                          aria-label="Decrease"
-                        >
-                          {item.quantity <= 1 ? (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          ) : (
-                            <Minus className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                        <span className="min-w-[2.5rem] text-center text-[14px] font-medium tabular-nums">
-                          {item.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateQuantity(lineId(item), item.quantity + 1)
-                          }
-                          className="flex h-10 w-10 items-center justify-center text-black/50 hover:text-black disabled:opacity-30"
-                          disabled={
-                            item.quantity >= (item.product.stock ?? 999)
-                          }
-                          aria-label="Increase"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFromCart(lineId(item))}
-                        className="text-[13px] underline underline-offset-4 decoration-black/25 hover:decoration-black"
-                      >
-                        Remove
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => saveForLater(lineId(item))}
-                        className="text-[13px] underline underline-offset-4 decoration-black/25 hover:decoration-black"
-                      >
-                        Save for later
-                      </button>
-                    </div>
-                  </div>
+            {deliveryItems.length > 0 ? (
+              <section className="space-y-8">
+                <div>
+                  <h2 className="text-[20px] font-medium tracking-tight">
+                    Delivery
+                  </h2>
+                  <p className="mt-1 text-[13px] text-black/45">
+                    Live fee by road distance · pin at checkout
+                  </p>
                 </div>
-              ))}
-            </div>
+                <div className="overflow-hidden">
+                  <AdvancedNavMap
+                    variant="compact"
+                    className="h-[220px] sm:h-[260px]"
+                    destination={destination}
+                    markers={deliveryMarkers}
+                    showSearch={false}
+                    showStreetPreview
+                    followUserDefault={Boolean(coords)}
+                    interactive={false}
+                  />
+                </div>
+                <div className="space-y-10 border-t border-black/[0.06] pt-10">
+                  {deliveryItems.map((item) => (
+                    <CartLineRow
+                      key={lineId(item)}
+                      item={item}
+                      onQty={(id, qty) => void updateQuantity(id, qty)}
+                      onRemove={(id) => void removeFromCart(id)}
+                      onSave={(id) => void saveForLater(id)}
+                      onMoveFulfilment={(id, next) =>
+                        void moveFulfilment(id, next)
+                      }
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
-            {savedForLater.length > 0 ? (
+            <section className="space-y-8">
               <div>
-                <h2 className="mb-8 text-[20px] font-medium tracking-tight">
+                <h2 className="text-[20px] font-medium tracking-tight">
+                  Click &amp; collect
+                </h2>
+                <p className="mt-1 text-[13px] text-black/45">
+                  Pick up from the shop
+                </p>
+              </div>
+              {pickupItems.length === 0 ? (
+                <p className="border-t border-black/[0.06] pt-8 text-[14px] text-black/40">
+                  No pickup items. Move a delivery line here, or add from a
+                  product page.
+                </p>
+              ) : (
+                <div className="space-y-10 border-t border-black/[0.06] pt-10">
+                  {pickupItems.map((item) => (
+                    <CartLineRow
+                      key={lineId(item)}
+                      item={item}
+                      onQty={(id, qty) => void updateQuantity(id, qty)}
+                      onRemove={(id) => void removeFromCart(id)}
+                      onSave={(id) => void saveForLater(id)}
+                      onMoveFulfilment={(id, next) =>
+                        void moveFulfilment(id, next)
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-8">
+              <div>
+                <h2 className="text-[20px] font-medium tracking-tight">
                   Saved for later
                 </h2>
+                <p className="mt-1 text-[13px] text-black/45">
+                  Kept on this device until you move them back
+                </p>
+              </div>
+              {savedForLater.length === 0 ? (
+                <p className="border-t border-black/[0.06] pt-8 text-[14px] text-black/40">
+                  Nothing saved. Use “Save for later” on a bag line.
+                </p>
+              ) : (
                 <div className="space-y-8 border-t border-black/[0.06] pt-8">
                   {savedForLater.map((item) => (
                     <div key={lineId(item)} className="flex gap-5">
@@ -271,19 +434,42 @@ export default function CartPage() {
                         </p>
                         {item.vendorName || item.product.vendorName ? (
                           <p className="mt-1 text-[12px] text-black/45">
-                            Sold by {item.vendorName || item.product.vendorName}
+                            Sold by{" "}
+                            {item.vendorName || item.product.vendorName}
                           </p>
                         ) : null}
+                        <p className="mt-1 text-[12px] text-black/40">
+                          Last as{" "}
+                          {item.fulfilment === "delivery"
+                            ? "delivery"
+                            : "pickup"}
+                        </p>
                         <p className="mt-1 text-[15px] tabular-nums">
                           {formatPrice(linePrice(item))}
                         </p>
-                        <div className="mt-3 flex gap-4">
+                        <div className="mt-3 flex flex-wrap gap-4">
                           <button
                             type="button"
-                            onClick={() => moveToCart(item)}
+                            onClick={() => void moveToCart(item)}
                             className="text-[13px] underline underline-offset-4"
                           >
                             Move to bag
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void moveToCart(item, "delivery")
+                            }
+                            className="text-[13px] underline underline-offset-4"
+                          >
+                            To delivery
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void moveToCart(item, "pickup")}
+                            className="text-[13px] underline underline-offset-4"
+                          >
+                            To pickup
                           </button>
                           <button
                             type="button"
@@ -297,8 +483,8 @@ export default function CartPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            ) : null}
+              )}
+            </section>
           </div>
 
           <aside className="lg:col-span-4">
@@ -312,7 +498,7 @@ export default function CartPage() {
               <p className="mt-1 text-[17px] font-medium tabular-nums text-black/70">
                 {formatPrice(subtotal)}
               </p>
-              {deliveryTotal > 0 ? (
+              {deliveryItems.length > 0 ? (
                 <div className="mt-4 flex items-end justify-between gap-3 border-t border-black/[0.06] pt-4">
                   <div>
                     <p className="text-[14px] text-black/50">
@@ -343,9 +529,9 @@ export default function CartPage() {
                 {formatPrice(grandTotal)}
               </p>
               <p className="mt-4 text-[13px] leading-relaxed text-black/40">
-                {deliveryTotal > 0
+                {deliveryItems.length > 0
                   ? "Delivery is priced by road distance · one fee per shop, not per product"
-                  : "Choose delivery or pickup at checkout"}
+                  : "Mixed bags are fine — confirm pickup or delivery at checkout"}
               </p>
               <Link
                 href="/checkout"

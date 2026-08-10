@@ -166,6 +166,16 @@ export type CartApi = {
   removeFromCart: (productOrOfferId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   replaceOffer: (lineOfferId: string, next: AddToCartOffer) => Promise<void>;
+  /** Switch a bag line between pickup and delivery (keeps qty / offer). */
+  setLineFulfilment: (
+    productOrOfferId: string,
+    fulfilment: FulfilmentMethod,
+    meta?: {
+      deliveryZoneId?: string;
+      deliveryZoneLabel?: string;
+      deliveryFee?: number;
+    },
+  ) => Promise<void>;
   reloadCart: () => Promise<void> | void;
 };
 
@@ -536,6 +546,68 @@ export function useCartState(): CartApi {
     [cartItems, isSignedIn, userId, removeFromCart],
   );
 
+  const setLineFulfilment = useCallback(
+    async (
+      productOrOfferId: string,
+      fulfilment: FulfilmentMethod,
+      meta?: {
+        deliveryZoneId?: string;
+        deliveryZoneLabel?: string;
+        deliveryFee?: number;
+      },
+    ) => {
+      const target = cartItems.find(
+        (item) =>
+          lineKey(item) === productOrOfferId ||
+          item.product.id === productOrOfferId,
+      );
+      if (!target) return;
+
+      const deliveryMeta =
+        fulfilment === "delivery"
+          ? {
+              deliveryZoneId: meta?.deliveryZoneId ?? target.deliveryZoneId,
+              deliveryZoneLabel:
+                meta?.deliveryZoneLabel ??
+                target.deliveryZoneLabel ??
+                "Delivery",
+              deliveryFee: meta?.deliveryFee ?? target.deliveryFee ?? 0,
+            }
+          : {
+              deliveryZoneId: undefined,
+              deliveryZoneLabel: undefined,
+              deliveryFee: 0,
+            };
+
+      setCartItems((prev) => {
+        const updated = dedupeCartItems(
+          prev.map((item) =>
+            lineKey(item) === productOrOfferId ||
+            item.product.id === productOrOfferId
+              ? { ...item, fulfilment, ...deliveryMeta }
+              : item,
+          ),
+        );
+        localStorage.setItem("cart", JSON.stringify(updated));
+        return updated;
+      });
+      window.dispatchEvent(new CustomEvent(CART_UPDATED_EVENT));
+
+      if (!userId || !isSignedIn) return;
+      void fetch("/api/user/cart", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: target.product.id || productOrOfferId,
+          offer_id: target.offerId || productOrOfferId,
+          quantity: target.quantity,
+          ...fulfilmentBody({ fulfilment, ...deliveryMeta }),
+        }),
+      }).catch(() => {});
+    },
+    [cartItems, isSignedIn, userId],
+  );
+
   useEffect(() => {
     void loadCart();
   }, [loadCart]);
@@ -559,6 +631,7 @@ export function useCartState(): CartApi {
     removeFromCart,
     clearCart,
     replaceOffer,
+    setLineFulfilment,
     reloadCart: () => {
       loadedForUser.current = null;
       cartFetchUserId = null;

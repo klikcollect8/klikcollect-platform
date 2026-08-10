@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Show, SignInButton, useUser } from "@clerk/nextjs";
+import { Show, useUser } from "@clerk/nextjs";
+import AuthModalTrigger from "@/components/auth/AuthModalTrigger";
 import { ModuleShell } from "@/components/os/ModuleShell";
 import { PrintSheet, printSheet } from "@/components/os/PrintSheet";
 import { osUi } from "@/components/os/os-ui";
@@ -191,11 +192,9 @@ export default function PosPage() {
           <span className={osUi.muted}>
             Sign in as a vendor operator to sell
           </span>
-          <SignInButton mode="redirect">
-            <button type="button" className={osUi.btnPrimary}>
-              Sign in
-            </button>
-          </SignInButton>
+          <AuthModalTrigger redirect="/app/pos" className={osUi.btnPrimary}>
+            Sign in
+          </AuthModalTrigger>
         </div>
       </Show>
 

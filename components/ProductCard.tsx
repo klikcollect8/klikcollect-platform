@@ -5,13 +5,12 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { Minus, Plus, X } from "lucide-react";
-import { Product, ProductOffer, type FulfilmentMethod } from "@/types";
+import { Product, ProductOffer } from "@/types";
 import { formatPrice } from "@/lib/currency";
 import { resolveProductImage } from "@/lib/product-image";
 import { track } from "@/lib/track";
 import { useCart } from "@/lib/hooks/useCart";
 import { lineKey } from "@/lib/cart/lines";
-import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
@@ -86,8 +85,6 @@ export default function ProductCard({
         }
       : null,
   );
-  const [fulfilment, setFulfilment] = useState<FulfilmentMethod>("pickup");
-
   const activeOfferId = resolvedOffer?.offerId || offerId;
   const cartQty = useMemo(() => {
     if (!activeOfferId) return 0;
@@ -188,10 +185,7 @@ export default function ProductCard({
           vendorName: offer.vendorName,
           neighbourhood: offer.neighbourhood,
           stock: offer.stock,
-          fulfilment,
-          deliveryZoneLabel:
-            fulfilment === "delivery" ? "Delivery" : undefined,
-          deliveryFee: fulfilment === "delivery" ? 0 : 0,
+          fulfilment: "pickup",
         },
       );
     } catch (err) {
@@ -254,10 +248,7 @@ export default function ProductCard({
           vendorName: o.vendorName,
           neighbourhood: o.neighbourhood,
           stock: o.stock,
-          fulfilment,
-          deliveryZoneLabel:
-            fulfilment === "delivery" ? "Delivery" : undefined,
-          deliveryFee: 0,
+          fulfilment: "pickup",
         },
       );
     } finally {
@@ -391,31 +382,6 @@ export default function ProductCard({
         </button>
       ) : null}
 
-      {!needsOptions ? (
-        <div className="mt-3 flex items-center gap-1 border border-black/10 p-0.5">
-          {(
-            [
-              { id: "pickup" as const, label: "Pickup" },
-              { id: "delivery" as const, label: "Deliver" },
-            ] as const
-          ).map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setFulfilment(opt.id)}
-              className={cn(
-                "min-h-7 flex-1 px-1 text-[10px] font-medium uppercase tracking-[0.12em] transition-colors",
-                fulfilment === opt.id
-                  ? "bg-black text-white"
-                  : "text-black/45 hover:text-black",
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       {priceOpen && typeof document !== "undefined"
         ? createPortal(
             <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center sm:p-6">
@@ -477,10 +443,7 @@ export default function ProductCard({
                                 <span className="mt-0.5 block text-[12px] text-black/40">
                                   {[o.neighbourhood, out ? "Out of stock" : null]
                                     .filter(Boolean)
-                                    .join(" · ") ||
-                                    (fulfilment === "delivery"
-                                      ? "Delivery available"
-                                      : "Click & collect")}
+                                    .join(" · ") || "Click & collect"}
                                 </span>
                               </span>
                               <span className="shrink-0 text-[15px] font-medium tabular-nums">

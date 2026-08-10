@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { queueAuthModal } from "@/components/SignInModalProvider";
 import {
+  persistAuthRedirect,
   publicLandingForAuth,
   resolveAuthReturnPath,
 } from "@/lib/auth/return-path";
@@ -16,6 +17,7 @@ export default function SignUpPage() {
   useEffect(() => {
     const target = resolveAuthReturnPath(searchParams);
     const landing = publicLandingForAuth(target);
+    persistAuthRedirect(target);
 
     const intent = {
       mode: "sign-up" as const,

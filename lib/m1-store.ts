@@ -2,10 +2,11 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { CurationApplication } from "./curation-policy";
 import { getServiceSupabase } from "@/lib/supabase/admin";
-import { DATA_DIR, ensureDataDir } from "@/lib/data-dir";
+import { DATA_DIR, ensureDataDir, isServerlessRuntime } from "@/lib/data-dir";
 
 async function ensureDir() {
-  await ensureDataDir();
+  if (isServerlessRuntime()) return false;
+  return ensureDataDir();
 }
 
 export type UsageEvent = {
@@ -221,8 +222,11 @@ export async function saveApplications(
 }
 
 export async function appendUsageEvent(event: UsageEvent): Promise<void> {
+  // Never write usage JSONL on serverless — PostHog / analytics own this path.
+  if (isServerlessRuntime()) return;
   try {
-    await ensureDir();
+    const ok = await ensureDir();
+    if (!ok) return;
     const full = path.join(DATA_DIR, "usage-events.jsonl");
     await fs.appendFile(full, `${JSON.stringify(event)}\n`, "utf8");
   } catch (err) {

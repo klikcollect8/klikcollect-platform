@@ -5,7 +5,7 @@ import {
   FEATURE_FLAG_KEYS,
   type FeatureFlags,
 } from "@/lib/feature-flag-types";
-import { DATA_DIR, ensureDataDir } from "@/lib/data-dir";
+import { DATA_DIR, ensureDataDir, isServerlessRuntime } from "@/lib/data-dir";
 
 export {
   DEFAULT_FEATURE_FLAGS,
@@ -23,6 +23,10 @@ function mergeWithDefaults(partial: Partial<FeatureFlags>): FeatureFlags {
 }
 
 export async function getFeatureFlags(): Promise<FeatureFlags> {
+  // Serverless: never touch FS — defaults are safe for admin shell.
+  if (isServerlessRuntime()) {
+    return { ...DEFAULT_FEATURE_FLAGS };
+  }
   try {
     await ensureDataDir();
     const raw = await fs.readFile(path.join(DATA_DIR, FILE), "utf8");
@@ -38,6 +42,7 @@ export async function setFeatureFlags(
 ): Promise<FeatureFlags> {
   const current = await getFeatureFlags();
   const next = mergeWithDefaults({ ...current, ...updates });
+  if (isServerlessRuntime()) return next;
   const ok = await ensureDataDir();
   if (ok) {
     try {

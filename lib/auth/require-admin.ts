@@ -78,8 +78,8 @@ export async function requireAdminPermission(
 
   const actor = await resolveActor(user);
   if (!actor.isPlatformStaff) {
-    const error = new Error("Unauthorized") as Error & { status: number };
-    error.status = 401;
+    const error = new Error("Forbidden") as Error & { status: number };
+    error.status = 403;
     throw error;
   }
 

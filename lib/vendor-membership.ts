@@ -1,6 +1,7 @@
 /**
  * Vendor membership - Postgres staff_memberships preferred; file fallback when
- * RBAC_FILE_MEMBERSHIPS=true (local M1). Soft-open demo only when RBAC_SOFT_OPEN_DEMO=true.
+ * enabled (local default unless RBAC_FILE_MEMBERSHIPS=false). Soft-open demo
+ * when softOpenDemoVendor() is true (local default; never in production).
  */
 import { promises as fs } from "fs";
 import path from "path";
@@ -16,6 +17,10 @@ import {
   upsertStaffMembership,
 } from "@/lib/authz/memberships";
 import { DATA_DIR, ensureDataDir } from "@/lib/data-dir";
+import {
+  shouldUseFileMembershipFallback,
+  softOpenDemoVendor,
+} from "@/lib/authz/rbac-env";
 
 const FILE = "vendor-memberships.json";
 
@@ -30,19 +35,6 @@ export type VendorMembership = {
   storeId?: string | null;
   createdAt: string;
 };
-
-function softOpenDemoVendor(): boolean {
-  if (process.env.RBAC_SOFT_OPEN_DEMO === "true") return true;
-  if (process.env.RBAC_SOFT_OPEN_DEMO === "false") return false;
-  // Local M1 default: soft-open demo tenant. Production must set false.
-  return process.env.NODE_ENV !== "production";
-}
-
-/** File fallback for local M1 unless explicitly disabled. */
-function shouldUseFileMembershipFallback(): boolean {
-  if (process.env.RBAC_FILE_MEMBERSHIPS === "false") return false;
-  return true;
-}
 
 async function ensureDir() {
   await ensureDataDir();

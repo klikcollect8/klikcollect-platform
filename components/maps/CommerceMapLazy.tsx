@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 
+/** Full commerce map — hosts AdvancedNavMap street preview + shop pins. */
 const CommerceMapPage = dynamic(
   () => import("@/components/maps/CommerceMapPage"),
   {

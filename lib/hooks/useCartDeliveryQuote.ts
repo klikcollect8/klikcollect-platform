@@ -91,7 +91,7 @@ export function useCartDeliveryQuote(items: CartItem[]) {
     };
   }, [vendorIds.join("|")]);
 
-  // Live quote
+  // Live quote — debounce GPS jitter so we don't storm the API
   useEffect(() => {
     if (!wantsDelivery) {
       setQuote(null);
@@ -107,40 +107,43 @@ export function useCartDeliveryQuote(items: CartItem[]) {
     const controller = new AbortController();
     setLoading(true);
 
-    void (async () => {
-      try {
-        const res = await fetch("/api/checkout/delivery-quote", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            fulfilment: "delivery",
-            areaLabel,
-            drop:
-              coords &&
-              Number.isFinite(coords.lat) &&
-              Number.isFinite(coords.lng)
-                ? { lat: coords.lat, lng: coords.lng }
-                : null,
-            shops: shopCoords.map((s) => ({ lat: s.lat, lng: s.lng })),
-          }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        const q = (json?.data || null) as DeliveryQuote | null;
-        if (q && typeof q.deliveryMinor === "number") {
-          setQuote(q);
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch("/api/checkout/delivery-quote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify({
+              fulfilment: "delivery",
+              areaLabel,
+              drop:
+                coords &&
+                Number.isFinite(coords.lat) &&
+                Number.isFinite(coords.lng)
+                  ? { lat: coords.lat, lng: coords.lng }
+                  : null,
+              shops: shopCoords.map((s) => ({ lat: s.lat, lng: s.lng })),
+            }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (cancelled) return;
+          const q = (json?.data || null) as DeliveryQuote | null;
+          if (q && typeof q.deliveryMinor === "number") {
+            setQuote(q);
+          }
+        } catch (e) {
+          if (cancelled) return;
+          if (e instanceof DOMException && e.name === "AbortError") return;
+        } finally {
+          if (!cancelled) setLoading(false);
         }
-      } catch (e) {
-        if (cancelled) return;
-        if (e instanceof DOMException && e.name === "AbortError") return;
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+      })();
+    }, 800);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
       controller.abort();
     };
   }, [

@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 import { Bell, Menu, Search, X } from "lucide-react";
+import AuthModalTrigger from "@/components/auth/AuthModalTrigger";
 import { messages } from "@/messages/en-KE";
 import {
   OS_NAV_GROUPS,
@@ -375,19 +376,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ) : null}
             </Link>
             <Show when="signed-out">
-              <SignInButton mode="redirect">
-                <button type="button" className={osUi.btnPrimary}>
-                  {messages.nav.signIn}
-                </button>
-              </SignInButton>
-              <SignUpButton mode="redirect">
-                <button
-                  type="button"
-                  className={cn(osUi.btnSecondary, "hidden sm:inline-flex")}
-                >
-                  {messages.nav.signUp}
-                </button>
-              </SignUpButton>
+              <AuthModalTrigger redirect="/app" className={osUi.btnPrimary}>
+                {messages.nav.signIn}
+              </AuthModalTrigger>
+              <AuthModalTrigger
+                mode="sign-up"
+                redirect="/app"
+                className={cn(osUi.btnSecondary, "hidden sm:inline-flex")}
+              >
+                {messages.nav.signUp}
+              </AuthModalTrigger>
             </Show>
             <Show when="signed-in">
               <div className="flex h-11 items-center">

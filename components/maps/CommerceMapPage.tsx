@@ -8,6 +8,7 @@ import { useUserLocation } from "@/components/providers/LocationProvider";
 import type { MapMarker } from "@/components/map/MapCanvas";
 import MapChrome, { mapGlass } from "@/components/map/MapChrome";
 import AdvancedMapSearch from "@/components/map/AdvancedMapSearch";
+import AdvancedNavMap from "@/components/map/AdvancedNavMap";
 import PlaceSheet, { RoutePanel } from "@/components/map/PlaceSheet";
 import {
   vendorsToGeoJSON,
@@ -159,6 +160,8 @@ export default function CommerceMapPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showTraffic, setShowTraffic] = useState(false);
   const [fitKey, setFitKey] = useState(0);
+  const [followLive, setFollowLive] = useState(false);
+  const [streetPreview, setStreetPreview] = useState(false);
 
   const [listOpen, setListOpen] = useState(false);
   const [stepsOpen, setStepsOpen] = useState(false);
@@ -1175,7 +1178,7 @@ export default function CommerceMapPage() {
             interactive
             showNavControls={false}
             showTraffic={showTraffic}
-            followUser={false}
+            followUser={followLive}
             userLngLat={userPoint ? [userPoint.lng, userPoint.lat] : null}
             cameraKey={`${cameraKey}-${povCameraKey}`}
             onVendorClick={selectVendor}
@@ -1388,11 +1391,60 @@ export default function CommerceMapPage() {
               onZoomOut={() => zoomBy(-1)}
               onRecenter={() => {
                 track();
+                setFollowLive(true);
                 if (userPoint) flyTo(userPoint.lng, userPoint.lat, 15.6);
                 else flyTo(NAIROBI_CENTER[0], NAIROBI_CENTER[1], 13);
               }}
             />
           </div>
+
+          {streetPreview && (selectedPlace || selected) ? (
+            <div className="absolute bottom-24 right-3 z-40 w-[min(100%-1.5rem,280px)] overflow-hidden sm:bottom-28 sm:right-5">
+              <div className="mb-1 flex items-center justify-between gap-2 px-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-black/45">
+                  Street preview
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setStreetPreview(false)}
+                  className="text-[10px] uppercase tracking-[0.12em] text-black/40 hover:text-black"
+                >
+                  Close
+                </button>
+              </div>
+              <AdvancedNavMap
+                variant="compact"
+                className="h-[160px]"
+                destination={{
+                  lng: selectedPlace?.lng ?? selected!.lng,
+                  lat: selectedPlace?.lat ?? selected!.lat,
+                  label: selectedPlace?.name ?? selected!.name,
+                }}
+                showSearch={false}
+                showStyleSwitcher={false}
+                showStreetPreview
+                followUserDefault={false}
+                interactive={false}
+              />
+            </div>
+          ) : null}
+
+          {(selectedPlace || selected) && !streetPreview ? (
+            <button
+              type="button"
+              onClick={() => {
+                setStreetPreview(true);
+                setPovId("street");
+                setPovCameraKey((k) => k + 1);
+              }}
+              className={cn(
+                "absolute bottom-24 right-3 z-40 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.14em] sm:bottom-28 sm:right-5",
+                frost,
+              )}
+            >
+              Street preview
+            </button>
+          ) : null}
 
           {/* Bottom-left cards */}
           <div className="absolute bottom-4 left-3 z-30 w-[min(100%-5.5rem,22rem)] sm:bottom-6 sm:left-5 sm:w-[min(100%-7rem,24rem)]">

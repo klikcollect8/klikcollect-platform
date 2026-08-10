@@ -35,7 +35,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { Show, SignInButton, UserButton, useUser } from "@clerk/nextjs";
+import { Show, UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/components/admin/admin-ui";
 import { ControlPanel } from "@/components/os/ControlPanel";
@@ -814,11 +814,9 @@ export default function AdminNav({
             <Bell className="h-4 w-4" strokeWidth={1.5} />
           </Link>
           <Show when="signed-out">
-            <SignInButton mode="redirect" forceRedirectUrl="/admin">
-              <button type="button" className={adminUi.btnPrimary}>
-                Sign in
-              </button>
-            </SignInButton>
+            <Link href="/admin/login?redirect=%2Fadmin" className={adminUi.btnPrimary}>
+              Sign in
+            </Link>
           </Show>
           <Show when="signed-in">
             <div className="flex h-11 items-center">

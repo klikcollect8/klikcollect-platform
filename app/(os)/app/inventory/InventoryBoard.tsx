@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Show, SignInButton } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
+import AuthModalTrigger from "@/components/auth/AuthModalTrigger";
 import { Minus, Plus } from "lucide-react";
 import { formatKesMajor } from "@/lib/money";
 import { StatusBadge } from "@/components/os/StatusBadge";
@@ -147,11 +148,9 @@ export function InventoryBoard({
       <Show when="signed-out">
         <div className="flex items-center justify-between gap-3 border-b border-black/10 py-3 text-[13px]">
           <span className={osUi.muted}>Sign in to adjust stock</span>
-          <SignInButton mode="redirect">
-            <button type="button" className={osUi.btnPrimary}>
-              Sign in
-            </button>
-          </SignInButton>
+          <AuthModalTrigger redirect="/app/inventory" className={osUi.btnPrimary}>
+            Sign in
+          </AuthModalTrigger>
         </div>
       </Show>
 

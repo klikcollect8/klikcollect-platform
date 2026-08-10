@@ -1,23 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import {
+  handleRequireAdminError,
+  requireAdmin,
+} from "@/lib/auth/require-admin";
 
 /**
- * Comprehensive role verification endpoint
- * Uses admin client to bypass RLS and check all roles in database
- * Accessible to head_admin only
+ * Comprehensive role verification endpoint.
+ * Super admin only — uses service role to inspect profiles.
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // TODO: Role check temporarily disabled - will be re-enabled after basic auth is working
-    // const roleResponse = await fetch(new URL('/api/admin/current-role', request.url));
-    // const roleData = await roleResponse.json();
-    // if (roleData.role !== 'head_admin') {
-    //   return NextResponse.json({
-    //     error: 'Access denied. Head administrator only.'
-    //   }, { status: 403 });
-    // }
+    await requireAdmin(["super_admin"]);
 
-    // Use admin client to fetch all profiles
     const adminClient = createAdminClient();
     if (!adminClient) {
       return NextResponse.json(
@@ -28,7 +23,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all profiles
     const { data: allProfiles, error: profilesError } = await adminClient
       .from("profiles")
       .select("id, email, role, status, created_at")
@@ -55,19 +49,27 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Expected roles
     const expectedRoles = [
       "user",
       "editor",
       "moderator",
       "admin",
       "head_admin",
+      "super_admin",
+      "platform_admin",
     ];
-    const adminRoles = ["head_admin", "admin", "editor", "moderator"];
+    const adminRoles = [
+      "head_admin",
+      "admin",
+      "editor",
+      "moderator",
+      "super_admin",
+      "platform_admin",
+    ];
 
-    // Calculate role distribution
     const roleCounts: { [key: string]: number } = {};
-    const roleUsers: { [key: string]: any[] } = {};
+    const roleUsers: { [key: string]: Array<{ email: string; id: string; status: string }> } =
+      {};
 
     expectedRoles.forEach((role) => {
       roleCounts[role] = 0;
@@ -76,17 +78,18 @@ export async function GET(request: NextRequest) {
 
     allProfiles.forEach((profile) => {
       const role = profile.role || "user";
-      if (expectedRoles.includes(role)) {
-        roleCounts[role]++;
-        roleUsers[role].push({
-          email: profile.email,
-          id: profile.id,
-          status: profile.status || "active",
-        });
+      if (!roleCounts[role]) {
+        roleCounts[role] = 0;
+        roleUsers[role] = [];
       }
+      roleCounts[role]++;
+      roleUsers[role].push({
+        email: profile.email,
+        id: profile.id,
+        status: profile.status || "active",
+      });
     });
 
-    // Separate admin and regular users
     const adminUsers = allProfiles.filter((p) =>
       adminRoles.includes(p.role || ""),
     );
@@ -94,20 +97,22 @@ export async function GET(request: NextRequest) {
       (p) => !p.role || p.role === "user",
     );
 
-    // Check for issues
     const issues: string[] = [];
     const invalidRoles = allProfiles.filter(
       (p) => p.role && !expectedRoles.includes(p.role),
     );
     const usersWithoutRoles = allProfiles.filter((p) => !p.role);
 
-    if (roleCounts["head_admin"] === 0) {
-      issues.push("No head_admin users found - at least one is required");
+    if (
+      (roleCounts["head_admin"] || 0) + (roleCounts["super_admin"] || 0) ===
+      0
+    ) {
+      issues.push("No super_admin / head_admin users found");
     }
 
     if (invalidRoles.length > 0) {
       issues.push(
-        `${invalidRoles.length} user(s) have invalid roles: ${invalidRoles.map((u) => `${u.email} (${u.role})`).join(", ")}`,
+        `${invalidRoles.length} user(s) have unexpected roles: ${invalidRoles.map((u) => `${u.email} (${u.role})`).join(", ")}`,
       );
     }
 
@@ -116,32 +121,6 @@ export async function GET(request: NextRequest) {
         `${usersWithoutRoles.length} user(s) without roles (will default to 'user')`,
       );
     }
-
-    // Access control matrix
-    const accessMatrix = {
-      head_admin: [
-        "Dashboard",
-        "Products",
-        "Orders",
-        "Reviews",
-        "Questions",
-        "Categories",
-        "Homepage",
-        "Role Management",
-      ],
-      admin: [
-        "Dashboard",
-        "Products",
-        "Orders",
-        "Reviews",
-        "Questions",
-        "Categories",
-        "Homepage",
-      ],
-      editor: ["Dashboard", "Products", "Categories", "Homepage"],
-      moderator: ["Dashboard", "Reviews", "Questions"],
-      user: ["Marketplace Only (No Admin Access)"],
-    };
 
     return NextResponse.json({
       success: true,
@@ -159,7 +138,6 @@ export async function GET(request: NextRequest) {
         role: u.role || "user",
         status: u.status || "active",
       })),
-      accessMatrix,
       issues:
         issues.length > 0
           ? issues
@@ -168,30 +146,15 @@ export async function GET(request: NextRequest) {
         totalUsers: allProfiles.length,
         adminUsers: adminUsers.length,
         regularUsers: regularUsers.length,
-        headAdmins: roleCounts["head_admin"],
-        admins: roleCounts["admin"],
-        editors: roleCounts["editor"],
-        moderators: roleCounts["moderator"],
-        users: roleCounts["user"],
+        headAdmins: roleCounts["head_admin"] || 0,
+        superAdmins: roleCounts["super_admin"] || 0,
+        admins: roleCounts["admin"] || 0,
+        editors: roleCounts["editor"] || 0,
+        moderators: roleCounts["moderator"] || 0,
+        users: roleCounts["user"] || 0,
       },
-      recommendations: [
-        roleCounts["head_admin"] === 0
-          ? "Assign head_admin role to at least one user"
-          : null,
-        invalidRoles.length > 0 ? "Fix invalid role values in database" : null,
-        usersWithoutRoles.length > 0
-          ? "Assign roles to users without roles"
-          : null,
-      ].filter(Boolean),
     });
-  } catch (error: any) {
-    console.error("[verify-all-roles] Error:", error);
-    return NextResponse.json(
-      {
-        error: error.message,
-        stack: error.stack,
-      },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    return handleRequireAdminError(error);
   }
 }

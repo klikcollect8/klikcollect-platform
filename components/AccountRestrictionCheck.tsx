@@ -19,7 +19,12 @@ export default function AccountRestrictionCheck() {
       loading ||
       pathname === "/account-restricted" ||
       pathname === "/sign-in" ||
-      pathname === "/sign-up"
+      pathname === "/sign-up" ||
+      pathname?.startsWith("/sign-in/") ||
+      pathname?.startsWith("/sign-up/") ||
+      pathname === "/admin/login" ||
+      pathname?.startsWith("/admin/login/") ||
+      pathname === "/sso-callback"
     ) {
       return;
     }

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Show, SignInButton } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
+import AuthModalTrigger from "@/components/auth/AuthModalTrigger";
 import { formatKesMajor } from "@/lib/money";
 import { StatusBadge } from "@/components/os/StatusBadge";
 import { osUi } from "@/components/os/os-ui";
@@ -297,14 +298,12 @@ export function OrdersBoard() {
             ) : null}
 
             <Show when="signed-out">
-              <SignInButton mode="redirect">
-                <button
-                  type="button"
-                  className={cn(osUi.btnSecondary, "w-full")}
-                >
-                  Sign in to update
-                </button>
-              </SignInButton>
+              <AuthModalTrigger
+                redirect="/app/orders"
+                className={cn(osUi.btnSecondary, "w-full")}
+              >
+                Sign in to update
+              </AuthModalTrigger>
             </Show>
             <Show when="signed-in">
               <div className="flex flex-wrap gap-2">

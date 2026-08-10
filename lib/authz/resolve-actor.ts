@@ -16,35 +16,17 @@ import {
   listStaffMembershipsForClerkUser,
 } from "@/lib/authz/memberships";
 import { DEMO_VENDOR_ID } from "@/lib/tenancy";
+import {
+  allowMetadataVendorShortcut,
+  shouldUseFileMembershipFallback,
+  softOpenDemoVendor,
+} from "@/lib/authz/rbac-env";
 
 function platformAdminEmails(): string[] {
   return (process.env.PLATFORM_ADMIN_EMAILS || "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-}
-
-/**
- * Soft-open demo memberships are NEVER allowed in production.
- * Opt-in only via RBAC_SOFT_OPEN_DEMO=true in non-production.
- */
-function softOpenDemoVendor(): boolean {
-  if (process.env.NODE_ENV === "production") return false;
-  return process.env.RBAC_SOFT_OPEN_DEMO === "true";
-}
-
-function shouldUseFileMembershipFallback(): boolean {
-  if (process.env.NODE_ENV === "production") return false;
-  return process.env.RBAC_FILE_MEMBERSHIPS === "true";
-}
-
-/**
- * Metadata vendor grants only when explicitly enabled (dev/bootstrap).
- * Never in production — memberships must come from staff_memberships.
- */
-function allowMetadataVendorShortcut(): boolean {
-  if (process.env.NODE_ENV === "production") return false;
-  return process.env.RBAC_ALLOW_METADATA_VENDOR === "true";
 }
 
 async function resolvePlatformRole(user: User): Promise<PlatformRole | null> {

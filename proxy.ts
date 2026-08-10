@@ -5,6 +5,13 @@ const isAdminPublic = createRouteMatcher(["/admin/login(.*)"]);
 const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
 const isOsRoute = createRouteMatcher(["/app(.*)"]);
 const isAccountRoute = createRouteMatcher(["/account(.*)"]);
+/** Session-required APIs (handlers still enforce permissions). Webhooks stay public. */
+const isProtectedApi = createRouteMatcher([
+  "/api/admin(.*)",
+  "/api/os(.*)",
+  "/api/user(.*)",
+  "/api/me(.*)",
+]);
 
 /** Platform-only legacy /app paths - bounce before page render. */
 const OS_PLATFORM_REDIRECTS: Record<string, string> = {
@@ -39,6 +46,16 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
     pathname.startsWith("/app/couriers/")
   ) {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  if (isProtectedApi(request)) {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized", authenticated: false },
+        { status: 401 },
+      );
+    }
   }
 
   const needsAuth =

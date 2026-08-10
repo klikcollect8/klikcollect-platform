@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
+import { requireVendorActor } from "@/lib/auth/require-vendor";
 import { getServiceSupabase } from "@/lib/supabase/admin";
-import { unauthorizedJson } from "@/lib/auth/require-clerk-user";
 
 export async function GET() {
-  const user = await currentUser();
-  if (!user) return unauthorizedJson();
+  const gate = await requireVendorActor();
+  if (!gate.ok) {
+    // Still allow platform-less customers? OS notifications are vendor panel —
+    // fall back to clerk user scoped rows for any signed-in user with membership.
+    return gate.response;
+  }
 
   const { data, error } = await getServiceSupabase()
     .from("panel_notifications")
     .select("*")
-    .eq("clerk_user_id", user.id)
+    .eq("clerk_user_id", gate.actor.userId)
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -24,8 +27,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const user = await currentUser();
-  if (!user) return unauthorizedJson();
+  const gate = await requireVendorActor();
+  if (!gate.ok) return gate.response;
+
   const body = await request.json();
   const id = String(body?.id || "");
   if (!id) {
@@ -39,7 +43,7 @@ export async function PATCH(request: NextRequest) {
     .from("panel_notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("clerk_user_id", user.id)
+    .eq("clerk_user_id", gate.actor.userId)
     .select("*")
     .single();
 
@@ -53,8 +57,9 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await currentUser();
-  if (!user) return unauthorizedJson();
+  const gate = await requireVendorActor();
+  if (!gate.ok) return gate.response;
+
   const body = await request.json();
   const title = String(body?.title || "").trim();
   if (!title) {
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await getServiceSupabase()
     .from("panel_notifications")
     .insert({
-      clerk_user_id: user.id,
+      clerk_user_id: gate.actor.userId,
       title,
       body: body?.body || null,
       href: body?.href || null,

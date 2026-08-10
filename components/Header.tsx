@@ -48,6 +48,11 @@ const MOBILE_MENU_EXTRA_BASE = [
 const iconBtn =
   "inline-flex h-11 w-11 shrink-0 items-center justify-center text-black/80 transition-opacity hover:opacity-50";
 
+/** Compact mobile burger row — smaller than the oversized clamp titles */
+const menuItem =
+  "flex min-h-10 items-center border-b border-black/10 py-2.5 text-[15px] font-medium tracking-tight text-black";
+const menuItemBtn = `${menuItem} w-full text-left`;
+
 /** Obscura top bar - aligned logo / nav / actions; notifications panel like search */
 export default function Header() {
   const pathname = usePathname();
@@ -225,9 +230,9 @@ export default function Header() {
       </header>
 
       {menuOpen ? (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-[#f7f7f5] md:hidden">
-          <div className="mx-auto flex h-16 w-full max-w-[1600px] shrink-0 items-center justify-between px-4 sm:px-10">
-            <span className="inline-flex h-11 items-center text-[17px] font-medium uppercase tracking-[0.12em] sm:text-[19px]">
+        <div className="fixed inset-0 z-[10050] flex flex-col bg-[#f7f7f5] md:hidden">
+          <div className="mx-auto flex h-14 w-full max-w-[1600px] shrink-0 items-center justify-between border-b border-black/10 px-4 sm:px-10">
+            <span className="inline-flex h-10 items-center text-[15px] font-medium uppercase tracking-[0.12em]">
               KLIKCOLLECT
               <span className="align-super text-[0.55em] tracking-normal">
                 ™
@@ -242,21 +247,17 @@ export default function Header() {
               <CloseIcon size={20} />
             </button>
           </div>
-          <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-10 sm:pt-10">
-            <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-black/40">
+          <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-4 sm:px-10">
+            <p className="mb-1 text-[10px] uppercase tracking-[0.18em] text-black/40">
               Menu
             </p>
-            <Link
-              href="/"
-              onClick={() => setMenuOpen(false)}
-              className="border-b border-black/10 py-3.5 text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
-            >
+            <Link href="/" onClick={() => setMenuOpen(false)} className={menuItem}>
               Home
             </Link>
             <Link
               href="/shop"
               onClick={() => setMenuOpen(false)}
-              className="border-b border-black/10 py-3.5 text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+              className={menuItem}
             >
               Explore
             </Link>
@@ -266,7 +267,7 @@ export default function Header() {
                 setMenuOpen(false);
                 window.dispatchEvent(new CustomEvent("toggleCart"));
               }}
-              className="border-b border-black/10 py-3.5 text-left text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+              className={menuItemBtn}
             >
               Cart
             </button>
@@ -277,7 +278,7 @@ export default function Header() {
                   setMenuOpen(false);
                   window.dispatchEvent(new CustomEvent("toggleOrders"));
                 }}
-                className="border-b border-black/10 py-3.5 text-left text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+                className={menuItemBtn}
               >
                 Orders
               </button>
@@ -287,7 +288,7 @@ export default function Header() {
                   setMenuOpen(false);
                   window.dispatchEvent(new CustomEvent("toggleProfile"));
                 }}
-                className="border-b border-black/10 py-3.5 text-left text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+                className={menuItemBtn}
               >
                 Profile
               </button>
@@ -299,7 +300,7 @@ export default function Header() {
                   setMenuOpen(false);
                   showSignInModal("Sign in to view orders", { redirect: "/" });
                 }}
-                className="border-b border-black/10 py-3.5 text-left text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+                className={menuItemBtn}
               >
                 Orders
               </button>
@@ -309,7 +310,7 @@ export default function Header() {
                   setMenuOpen(false);
                   showSignInModal();
                 }}
-                className="border-b border-black/10 py-3.5 text-left text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+                className={menuItemBtn}
               >
                 Profile
               </button>
@@ -319,7 +320,7 @@ export default function Header() {
                 key={l.href}
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
-                className="border-b border-black/10 py-3.5 text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+                className={menuItem}
               >
                 {l.name}
               </Link>
@@ -330,7 +331,7 @@ export default function Header() {
                 setMenuOpen(false);
                 openInstallAppPrompt();
               }}
-              className="border-b border-black/10 py-3.5 text-left text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
+              className={menuItemBtn}
             >
               Get the app
             </button>

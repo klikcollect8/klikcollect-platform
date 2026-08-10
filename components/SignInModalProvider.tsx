@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useAuth } from "@clerk/nextjs";
 import SignInModal, { type AuthModalMode } from "./SignInModal";
+import { persistAuthRedirect } from "@/lib/auth/return-path";
 
 export type AuthModalOptions = {
   mode?: AuthModalMode;
@@ -61,11 +62,12 @@ export function SignInModalProvider({ children }: { children: ReactNode }) {
 
   const showSignInModal = useCallback(
     (customMessage?: string, options?: AuthModalOptions) => {
+      const redirect =
+        options?.redirect?.startsWith("/") ? options.redirect : "/";
       setMessage(customMessage?.trim() || null);
       setMode(options?.mode ?? "sign-in");
-      setRedirectUrl(
-        options?.redirect?.startsWith("/") ? options.redirect : "/",
-      );
+      setRedirectUrl(redirect);
+      persistAuthRedirect(redirect);
       setOpen(true);
     },
     [],

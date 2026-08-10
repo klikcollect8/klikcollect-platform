@@ -25,18 +25,20 @@ import {
 import {
   formatDistanceKm,
   getMapboxToken,
-  MAPBOX_3D_STYLE,
 } from "@/lib/mapbox";
 import { formatPrice } from "@/lib/currency";
 
-const MapCanvas = dynamic(() => import("@/components/map/MapCanvas"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full min-h-[200px] items-center justify-center bg-black/[0.03] text-[11px] uppercase tracking-[0.2em] text-black/35">
-      Loading map
-    </div>
-  ),
-});
+const AdvancedNavMap = dynamic(
+  () => import("@/components/map/AdvancedNavMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full min-h-[200px] items-center justify-center bg-black/[0.03] text-[11px] uppercase tracking-[0.2em] text-black/35">
+        Loading map
+      </div>
+    ),
+  },
+);
 
 const MapSearchBox = dynamic(() => import("@/components/map/MapSearchBox"), {
   ssr: false,
@@ -424,23 +426,24 @@ export default function DeliveryLocationStep({
       : null;
 
   const previewMap = (
-    <MapCanvas
-      mapStyle={MAPBOX_3D_STYLE}
-      flat={false}
-      freeCamera
-      pitch={58}
-      bearing={-14}
-      interactive={false}
-      showNavControls={false}
-      minimalControls
-      center={pin ? [pin.lng, pin.lat] : undefined}
-      zoom={14}
-      markers={markers}
+    <AdvancedNavMap
+      variant="compact"
+      className="h-full w-full min-h-[220px]"
+      markers={markers.filter((m) => m.id !== "delivery")}
+      destination={
+        pin
+          ? { lng: pin.lng, lat: pin.lat, label: pin.label || "Deliver here" }
+          : null
+      }
       routeGeoJSON={primaryRoute}
       altRoutesGeoJSON={altRoutesGeoJSON}
+      showSearch={false}
+      showStyleSwitcher
+      showStreetPreview
+      showTraffic
+      followUserDefault={Boolean(coords)}
+      interactive={false}
       fitMarkers={primaryRoute ? false : fitKey || markers.length > 1}
-      fitRoute={Boolean(primaryRoute)}
-      className="h-full w-full"
     />
   );
 
@@ -451,38 +454,30 @@ export default function DeliveryLocationStep({
       </h2>
       <p className="mt-2 text-[14px] leading-relaxed text-black/45">
         Green line = best driver route (shop pickups → your door). Grey lines =
-        each shop’s best path home. Fee updates when the pin moves.
+        each shop’s best path home. Fee updates when the pin moves. Use street
+        preview for a pitched ground-level look (not Street View panoramas).
       </p>
 
       {hasToken ? (
         <div className="mt-8 overflow-hidden border border-black/10">
-          <div className="relative h-[220px] sm:h-[280px]">
+          <div className="relative h-[240px] sm:h-[300px]">
             {markers.length > 0 ? (
               previewMap
             ) : (
-              <MapCanvas
-                mapStyle={MAPBOX_3D_STYLE}
-                flat={false}
-                freeCamera
-                pitch={48}
-                bearing={-12}
-                interactive={false}
-                showNavControls={false}
-                minimalControls
-                center={
-                  coords
-                    ? [coords.lng, coords.lat]
-                    : undefined
-                }
-                zoom={12}
-                markers={[]}
+              <AdvancedNavMap
+                variant="compact"
                 className="h-full w-full"
+                showSearch={false}
+                showStyleSwitcher
+                showStreetPreview
+                followUserDefault
+                interactive={false}
               />
             )}
             <button
               type="button"
               onClick={() => setMapOpen(true)}
-              className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 bg-white/95 px-3 py-2 text-[12px] font-medium uppercase tracking-[0.12em] text-black shadow-sm ring-1 ring-black/10 hover:bg-white"
+              className="absolute bottom-14 right-3 z-20 inline-flex items-center gap-1.5 bg-white/95 px-3 py-2 text-[12px] font-medium uppercase tracking-[0.12em] text-black shadow-sm ring-1 ring-black/10 hover:bg-white sm:bottom-3"
             >
               <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} />
               {markers.length > 0 ? "Enlarge" : "Open map"}
