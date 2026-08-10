@@ -27,12 +27,11 @@ export default function ConditionalHeader() {
 
   return (
     <Suspense fallback={null}>
-      {/* Banner scrolls away; solid sticky shell (no backdrop-blur — blur clips fixed menus) */}
-      <WorkspaceAccessBanner />
-      <div className="kc-storefront-top sticky top-0 z-40">
+      {/* Banner sits above the header in the docked top chrome (never under it) */}
+      <div className="kc-storefront-top bg-[#f7f7f5]">
+        <WorkspaceAccessBanner />
         <Header />
       </div>
-      <div className="kc-storefront-top-spacer" aria-hidden />
     </Suspense>
   );
 }

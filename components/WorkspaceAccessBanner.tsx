@@ -19,7 +19,8 @@ const PLANE_BG: Record<RoleChromePlane, string> = {
 
 /**
  * Thin workspace strip for signed-in staff.
- * Scrolls with the page (not sticky). Sole storefront entry to /app|/admin.
+ * Lives in the docked top chrome above the header (never under it).
+ * Sole storefront entry to /app|/admin.
  */
 export default function WorkspaceAccessBanner() {
   const {
