@@ -57,7 +57,7 @@ export function ControlPanel({
   onClose,
   onChanged,
   variant = "os",
-  title = "Enable modules",
+  title = "Modules",
   subtitle = "Turn planes, modules, and dashboard widgets on when you need them.",
 }: Props) {
   const [flags, setFlags] = useState<FeatureFlags | null>(null);
@@ -67,8 +67,6 @@ export function ControlPanel({
   const [filter, setFilter] = useState<
     "all" | "modules" | "planes" | "widgets"
   >("all");
-
-  const accent = variant === "admin" ? "#2563EB" : "#3B82F6";
 
   const load = useCallback(async () => {
     try {
@@ -109,6 +107,11 @@ export function ControlPanel({
       filter === "all" ? true : FEATURE_FLAG_META[k].group === filter,
     );
   }, [filter]);
+
+  const enabledCount = useMemo(() => {
+    if (!flags) return 0;
+    return keys.filter((k) => flags[k]).length;
+  }, [flags, keys]);
 
   const toggle = async (key: FeatureFlagKey) => {
     if (!flags || !canEdit) return;
@@ -151,35 +154,42 @@ export function ControlPanel({
     <div className="fixed inset-0 z-[90] flex justify-end">
       <button
         type="button"
-        className="absolute inset-0 bg-slate-900/35 backdrop-blur-[3px]"
+        className="absolute inset-0 bg-black/40"
         aria-label="Close control panel"
         onClick={onClose}
       />
-      <aside className="relative flex h-full w-full max-w-[440px] flex-col bg-white shadow-[-24px_0_64px_rgba(15,23,42,0.14)]">
-        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-5">
-          <div>
-            <p
-              className="text-[11px] font-semibold uppercase tracking-[0.14em]"
-              style={{ color: accent }}
-            >
+      <aside className="relative flex h-full w-full max-w-[420px] flex-col border-l border-black/10 bg-[#f7f7f5]">
+        <div className="flex items-start justify-between gap-3 border-b border-black/10 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-black/35">
               Control panel
             </p>
-            <h2 className="mt-1 text-[20px] font-bold text-slate-900">
+            <h2
+              className="mt-1 text-[22px] font-medium tracking-tight text-black"
+              style={{ fontFamily: "var(--font-display), sans-serif" }}
+            >
               {title}
             </h2>
-            <p className="mt-1 text-[13px] text-slate-500">{subtitle}</p>
+            <p className="mt-1 text-[13px] leading-snug text-black/45">
+              {subtitle}
+            </p>
+            {flags ? (
+              <p className="mt-2 text-[11px] tabular-nums text-black/35">
+                {enabledCount} / {keys.length} on in this view
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-black/40 hover:text-black"
             aria-label="Close"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" strokeWidth={1.5} />
           </button>
         </div>
 
-        <div className="flex gap-2 border-b border-slate-100 px-5 py-3">
+        <div className="flex gap-1 border-b border-black/10 px-3 py-2">
           {(
             [
               ["all", "All"],
@@ -193,26 +203,25 @@ export function ControlPanel({
               type="button"
               onClick={() => setFilter(id)}
               className={cn(
-                "rounded-full px-3 py-1.5 text-[12px] font-semibold transition",
+                "min-h-9 flex-1 px-2 text-[11px] font-medium uppercase tracking-[0.12em] transition-colors",
                 filter === id
-                  ? "text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                  ? "bg-black text-white"
+                  : "text-black/45 hover:text-black",
               )}
-              style={filter === id ? { background: accent } : undefined}
             >
               {label}
             </button>
           ))}
         </div>
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+        <div className="flex-1 space-y-0 overflow-y-auto">
           {error ? (
-            <p className="rounded-xl bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
+            <p className="m-4 border border-red-900/15 bg-red-50 px-3 py-2 text-[13px] text-red-800">
               {error}
             </p>
           ) : null}
           {!flags ? (
-            <p className="py-10 text-center text-[13px] text-slate-400">
+            <p className="py-16 text-center text-[13px] text-black/35">
               Loading…
             </p>
           ) : (
@@ -223,64 +232,59 @@ export function ControlPanel({
               return (
                 <div
                   key={key}
-                  className={cn(
-                    "rounded-2xl border p-4 transition",
-                    on ? "bg-blue-50/80" : "border-slate-200 bg-white",
-                  )}
-                  style={on ? { borderColor: `${accent}55` } : undefined}
+                  className="flex items-start gap-3 border-b border-black/[0.06] px-5 py-4"
                 >
-                  <div className="flex gap-3">
-                    <div
-                      className={cn(
-                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
-                        on ? "text-white" : "bg-slate-100 text-slate-500",
-                      )}
-                      style={on ? { background: accent } : undefined}
-                    >
-                      <Icon className="h-5 w-5" strokeWidth={1.75} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-semibold text-slate-900">
-                        {meta.label}
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-slate-500">
-                        {meta.description}
-                      </p>
-                      <p className="mt-1 text-[11px] font-medium text-slate-400">
-                        #{meta.group}
-                      </p>
-                      <div className="mt-3 flex items-center justify-between">
+                  <div
+                    className={cn(
+                      "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center",
+                      on ? "bg-black text-white" : "bg-black/[0.04] text-black/35",
+                    )}
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-medium tracking-tight text-black">
+                          {meta.label}
+                        </p>
+                        <p className="mt-0.5 text-[12px] leading-snug text-black/45">
+                          {meta.description}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={on}
+                        disabled={!canEdit || saving === key}
+                        onClick={() => void toggle(key)}
+                        className={cn(
+                          "relative mt-0.5 h-7 w-11 shrink-0 border transition-colors disabled:opacity-40",
+                          on
+                            ? "border-black bg-black"
+                            : "border-black/20 bg-transparent",
+                        )}
+                      >
                         <span
                           className={cn(
-                            "text-[11px] font-bold uppercase tracking-wide",
-                            on ? "text-emerald-600" : "text-slate-400",
+                            "absolute top-0.5 h-5 w-5 bg-white transition-transform",
+                            on ? "left-[22px]" : "left-0.5",
+                            on ? "" : "bg-black/25",
                           )}
-                        >
-                          {on ? "Enabled" : "Disabled"}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={!canEdit || saving === key}
-                          onClick={() => void toggle(key)}
-                          className={cn(
-                            "min-w-[88px] rounded-xl px-3 py-2 text-[12px] font-semibold transition disabled:opacity-40",
-                            on
-                              ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                              : "text-white",
-                          )}
-                          style={!on ? { background: accent } : undefined}
-                        >
-                          {saving === key ? "…" : on ? "Disable" : "Enable"}
-                        </button>
-                      </div>
+                        />
+                      </button>
                     </div>
+                    <p className="mt-2 text-[10px] uppercase tracking-[0.14em] text-black/30">
+                      {meta.group}
+                      {saving === key ? " · saving" : on ? " · on" : " · off"}
+                    </p>
                   </div>
                 </div>
               );
             })
           )}
           {flags && !canEdit ? (
-            <p className="pb-4 text-center text-[12px] text-slate-400">
+            <p className="px-5 py-6 text-center text-[12px] text-black/40">
               You need permission to change these settings.
             </p>
           ) : null}

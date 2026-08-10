@@ -43,20 +43,22 @@ const SIGNED_OUT: WorkspaceAccess = {
 };
 
 /** One in-flight / cached workspaces fetch for all storefront chrome. */
+const CACHE_VERSION = 2;
 let cacheKey: string | null = null;
 let cacheValue: WorkspaceAccess | null = null;
 let inflight: Promise<WorkspaceAccess> | null = null;
 
 function loadWorkspaces(userId: string): Promise<WorkspaceAccess> {
-  if (cacheKey === userId && cacheValue) {
+  const key = `${CACHE_VERSION}:${userId}`;
+  if (cacheKey === key && cacheValue) {
     return Promise.resolve(cacheValue);
   }
-  if (cacheKey === userId && inflight) {
+  if (cacheKey === key && inflight) {
     return inflight;
   }
 
-  cacheKey = userId;
-  inflight = fetch("/api/me/workspaces")
+  cacheKey = key;
+  inflight = fetch("/api/me/workspaces", { cache: "no-store" })
     .then((r) => r.json())
     .then((body) => {
       const d = body?.data || {};
@@ -85,7 +87,7 @@ function loadWorkspaces(userId: string): Promise<WorkspaceAccess> {
         primaryRoleId,
         platformRoleId,
         chromePlane: (d.chromePlane as RoleChromePlane) || chrome.plane,
-        chrome,
+        chrome: vendor || admin ? chrome : null,
       };
       cacheValue = next;
       return next;
@@ -112,7 +114,8 @@ export function useWorkspaceAccess(): WorkspaceAccess {
   const [state, setState] = useState<WorkspaceAccess>(() => {
     if (!isLoaded) return EMPTY;
     if (!isSignedIn || !userId) return SIGNED_OUT;
-    if (cacheKey === userId && cacheValue) return cacheValue;
+    const key = `${CACHE_VERSION}:${userId}`;
+    if (cacheKey === key && cacheValue) return cacheValue;
     return { ...EMPTY, signedIn: true };
   });
 
@@ -127,7 +130,8 @@ export function useWorkspaceAccess(): WorkspaceAccess {
     }
 
     let cancelled = false;
-    if (cacheKey === userId && cacheValue) {
+    const key = `${CACHE_VERSION}:${userId}`;
+    if (cacheKey === key && cacheValue) {
       setState(cacheValue);
       return;
     }

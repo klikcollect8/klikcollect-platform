@@ -40,6 +40,8 @@ export default function CapacitorInit() {
       const { Capacitor } = await import("@capacitor/core");
       if (cancelled || !Capacitor.isNativePlatform()) return;
 
+      document.documentElement.classList.add("kc-native");
+
       const [{ App }, { StatusBar, Style }, { Keyboard }, { SplashScreen }] =
         await Promise.all([
           import("@capacitor/app"),
@@ -52,7 +54,14 @@ export default function CapacitorInit() {
 
       try {
         await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setBackgroundColor({ color: "#f7f7f5" });
+        await StatusBar.setBackgroundColor({ color: "#f7f7f5"});
+        if (Capacitor.getPlatform() === "android") {
+          try {
+            await StatusBar.setOverlaysWebView({ overlay: false });
+          } catch {
+            /* older plugin */
+          }
+        }
         await SplashScreen.hide();
       } catch (error) {
         console.log("Native features not available:", error);
@@ -74,14 +83,28 @@ export default function CapacitorInit() {
         }),
       );
 
+      const setKeyboardOpen = (open: boolean) => {
+        document.documentElement.classList.toggle("kc-keyboard-open", open);
+      };
+
       handles.push(
         await Keyboard.addListener("keyboardWillShow", () => {
-          document.documentElement.classList.add("kc-keyboard-open");
+          setKeyboardOpen(true);
+        }),
+      );
+      handles.push(
+        await Keyboard.addListener("keyboardDidShow", () => {
+          setKeyboardOpen(true);
         }),
       );
       handles.push(
         await Keyboard.addListener("keyboardWillHide", () => {
-          document.documentElement.classList.remove("kc-keyboard-open");
+          setKeyboardOpen(false);
+        }),
+      );
+      handles.push(
+        await Keyboard.addListener("keyboardDidHide", () => {
+          setKeyboardOpen(false);
         }),
       );
 
@@ -100,7 +123,10 @@ export default function CapacitorInit() {
 
     return () => {
       cancelled = true;
-      document.documentElement.classList.remove("kc-keyboard-open");
+      document.documentElement.classList.remove(
+        "kc-keyboard-open",
+        "kc-native",
+      );
       for (const h of handles) {
         void h.remove();
       }

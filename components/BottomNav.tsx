@@ -10,14 +10,16 @@ import {
   ExploreIcon,
   HomeIcon,
   OrdersIcon,
-  StoreIcon,
 } from "@/components/NavIcons";
 import { useCart } from "@/lib/hooks/useCart";
 import { useSignInModal } from "@/components/SignInModalProvider";
-import { useWorkspaceAccess } from "@/lib/hooks/useWorkspaceAccess";
 import { showsMobileBottomNav } from "@/lib/mobile-nav";
 import { useIsClient } from "@/lib/hooks/useIsClient";
 
+/**
+ * Fixed mobile dock — always pinned to the visual viewport bottom.
+ * Hides while the soft keyboard is open (Capacitor / iOS).
+ */
 const dockStyle: React.CSSProperties = {
   position: "fixed",
   left: 0,
@@ -26,17 +28,22 @@ const dockStyle: React.CSSProperties = {
   top: "auto",
   zIndex: 9999,
   width: "100%",
+  maxWidth: "100vw",
   margin: 0,
+  transform: "translate3d(0,0,0)",
+  WebkitTransform: "translate3d(0,0,0)",
   borderTop: "1px solid rgba(10, 10, 10, 0.1)",
   background: "#f7f7f5",
   paddingBottom: "env(safe-area-inset-bottom, 0px)",
+  // Stay above iOS rubber-band / Capacitor WebView quirks
+  paddingLeft: "env(safe-area-inset-left, 0px)",
+  paddingRight: "env(safe-area-inset-right, 0px)",
 };
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { showSignInModal } = useSignInModal();
   const { cartItems } = useCart();
-  const { vendor, admin } = useWorkspaceAccess();
   const mounted = useIsClient();
 
   if (!mounted) return null;
@@ -48,12 +55,6 @@ export default function BottomNav() {
   const ordersActive = Boolean(
     pathname?.startsWith("/account/orders") || pathname === "/orders",
   );
-  // Prefer vendor workspace on the dock; admin-only accounts get Admin.
-  const workspaceHref = vendor ? "/app" : admin ? "/admin" : null;
-  const workspaceActive = Boolean(
-    workspaceHref && pathname?.startsWith(workspaceHref),
-  );
-  const workspaceLabel = vendor ? "My business" : "Admin";
 
   const tabClass = (active: boolean) =>
     `relative flex h-12 flex-1 items-center justify-center transition-colors ${
@@ -62,7 +63,7 @@ export default function BottomNav() {
 
   return createPortal(
     <nav
-      className="lg:hidden"
+      className="kc-bottom-nav lg:hidden"
       aria-label="Primary"
       style={dockStyle}
       data-kc-bottom-nav=""
@@ -85,17 +86,6 @@ export default function BottomNav() {
         >
           <ExploreIcon active={exploreActive} />
         </Link>
-
-        {workspaceHref ? (
-          <Link
-            href={workspaceHref}
-            className={tabClass(workspaceActive)}
-            aria-label={workspaceLabel}
-            aria-current={workspaceActive ? "page" : undefined}
-          >
-            <StoreIcon active={workspaceActive} />
-          </Link>
-        ) : null}
 
         <button
           type="button"

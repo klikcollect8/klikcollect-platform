@@ -9,12 +9,10 @@ import WorkspaceAccessBanner from "./WorkspaceAccessBanner";
 export default function ConditionalHeader() {
   const pathname = usePathname();
 
-  // Don't show header on admin login page
   if (pathname?.startsWith("/code-admin")) {
     return null;
   }
 
-  // Don't show storefront header on OS / admin / account shells
   if (
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/app") ||
@@ -23,16 +21,15 @@ export default function ConditionalHeader() {
     return null;
   }
 
-  // Don't show header on auth pages (they have their own layouts)
   if (pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up")) {
     return null;
   }
 
   return (
     <Suspense fallback={null}>
-      {/* Sticky stack so the workspace banner stays visible on mobile scroll */}
-      <div className="sticky top-0 z-40">
-        <WorkspaceAccessBanner />
+      {/* Banner scrolls away; header stays sticky */}
+      <WorkspaceAccessBanner />
+      <div className="sticky top-0 z-40 bg-[#f7f7f5]/90 backdrop-blur-md">
         <Header />
       </div>
     </Suspense>
@@ -42,7 +39,6 @@ export default function ConditionalHeader() {
 export function ConditionalFooter() {
   const pathname = usePathname();
 
-  // Don't show footer on OS / admin shells or branded auth pages
   if (
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/app") ||

@@ -207,6 +207,27 @@
       padding-bottom: 0;
     }
   }
+
+  /* Soft keyboard open (Capacitor) — tuck the dock so inputs stay usable */
+  html.kc-keyboard-open .kc-bottom-nav,
+  html.kc-keyboard-open [data-kc-bottom-nav] {
+    transform: translate3d(0, 110%, 0) !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+  }
+
+  html.kc-keyboard-open .kc-mobile-nav-pad {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Pin bottom nav to the visual viewport on mobile WebViews */
+  .kc-bottom-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+  }
   html {
     @apply font-sans;
   }

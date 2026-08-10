@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, X } from "lucide-react";
 import { Product, ProductOffer } from "@/types";
 import { formatPrice } from "@/lib/currency";
 import { resolveProductImage } from "@/lib/product-image";
@@ -50,6 +51,12 @@ function pickCheapestInStock(offers: ProductOffer[]): ResolvedOffer | null {
   };
 }
 
+function sortOffers(offers: ProductOffer[]): ProductOffer[] {
+  return [...offers]
+    .filter((o) => o.status === "published")
+    .sort((a, b) => a.price - b.price);
+}
+
 export default function ProductCard({
   product,
   offerPrice,
@@ -62,6 +69,9 @@ export default function ProductCard({
 }: ProductCardProps) {
   const { cartItems, addToCart, updateQuantity } = useCart();
   const [busy, setBusy] = useState(false);
+  const [priceOpen, setPriceOpen] = useState(false);
+  const [offerList, setOfferList] = useState<ProductOffer[] | null>(null);
+  const [offersLoading, setOffersLoading] = useState(false);
   const [resolvedOffer, setResolvedOffer] = useState<ResolvedOffer | null>(
     offerId
       ? {
@@ -117,10 +127,38 @@ export default function ProductCard({
     const res = await fetch(`/api/products/${product.id}`);
     if (!res.ok) return null;
     const detail = (await res.json()) as Product & { offers?: ProductOffer[] };
-    const picked = pickCheapestInStock(detail.offers || product.offers || []);
+    const offers = detail.offers || product.offers || [];
+    setOfferList(sortOffers(offers));
+    const picked = pickCheapestInStock(offers);
     if (!picked) return null;
     setResolvedOffer(picked);
     return picked;
+  };
+
+  const openPriceSheet = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (vendorExact) return;
+    setPriceOpen(true);
+    if (offerList) return;
+    setOffersLoading(true);
+    try {
+      const existing = product.offers?.length
+        ? sortOffers(product.offers)
+        : null;
+      if (existing?.length) {
+        setOfferList(existing);
+        return;
+      }
+      const res = await fetch(`/api/products/${product.id}`);
+      if (!res.ok) return;
+      const detail = (await res.json()) as Product & {
+        offers?: ProductOffer[];
+      };
+      setOfferList(sortOffers(detail.offers || []));
+    } finally {
+      setOffersLoading(false);
+    }
   };
 
   const handleAdd = async (e: React.MouseEvent) => {
@@ -182,6 +220,46 @@ export default function ProductCard({
     }
   };
 
+  const selectOffer = async (o: ProductOffer) => {
+    const next: ResolvedOffer = {
+      offerId: o.id,
+      offerPrice: o.price,
+      vendorId: o.vendorId,
+      vendorName: o.vendorName,
+      neighbourhood: o.neighbourhood,
+      stock: o.stock,
+    };
+    setResolvedOffer(next);
+    setPriceOpen(false);
+    setBusy(true);
+    try {
+      await addToCart(
+        {
+          ...product,
+          price: o.price,
+          stock: o.stock,
+          vendorName: o.vendorName,
+          neighbourhood: o.neighbourhood,
+        },
+        1,
+        {
+          offerId: o.id,
+          offerPrice: o.price,
+          vendorId: o.vendorId,
+          vendorName: o.vendorName,
+          neighbourhood: o.neighbourhood,
+          stock: o.stock,
+          fulfilment: "pickup",
+        },
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const qtyChip =
+    "rounded-none border border-black/10 bg-white/35 text-black shadow-none backdrop-blur-[1px]";
+
   return (
     <article className="group flex h-full flex-col">
       <div className="relative mb-5">
@@ -207,10 +285,10 @@ export default function ProductCard({
           <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-500 group-hover:bg-black/[0.04]" />
         </Link>
 
-        <div className="absolute bottom-3 right-3 z-10">
+        <div className="absolute bottom-2 right-2 z-10">
           {cartQty > 0 && activeOfferId ? (
             <div
-              className="flex items-center rounded-full border border-black/10 bg-white/90 text-black shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-md"
+              className={`flex items-center ${qtyChip}`}
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -218,11 +296,11 @@ export default function ProductCard({
                 aria-label="Decrease quantity"
                 disabled={busy}
                 onClick={handleDec}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center text-black/55 transition-opacity active:opacity-50 disabled:opacity-35"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-none text-black/45 transition-opacity active:opacity-35 disabled:opacity-25"
               >
-                <Minus className="h-3.5 w-3.5" strokeWidth={2} />
+                <Minus className="h-3 w-3" strokeWidth={1.5} />
               </button>
-              <span className="min-w-[1.5rem] text-center text-[13px] font-medium tabular-nums tracking-tight">
+              <span className="min-w-[1rem] text-center text-[11px] font-medium tabular-nums tracking-tight text-black/75">
                 {cartQty}
               </span>
               <button
@@ -230,9 +308,9 @@ export default function ProductCard({
                 aria-label="Increase quantity"
                 disabled={busy}
                 onClick={handleInc}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center text-black/55 transition-opacity active:opacity-50 disabled:opacity-35"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-none text-black/45 transition-opacity active:opacity-35 disabled:opacity-25"
               >
-                <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                <Plus className="h-3 w-3" strokeWidth={1.5} />
               </button>
             </div>
           ) : (
@@ -241,9 +319,9 @@ export default function ProductCard({
               aria-label="Add to bag"
               disabled={busy}
               onClick={handleAdd}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-black/10 bg-white/90 text-black shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-md transition-opacity active:opacity-60 disabled:opacity-35"
+              className={`inline-flex h-7 w-7 items-center justify-center rounded-none ${qtyChip} transition-opacity active:opacity-45 disabled:opacity-25`}
             >
-              <Plus className="h-4 w-4" strokeWidth={2} />
+              <Plus className="h-3 w-3" strokeWidth={1.5} />
             </button>
           )}
         </div>
@@ -265,20 +343,124 @@ export default function ProductCard({
           {formatPrice(offerPrice)}
         </p>
       ) : fromPrice != null ? (
-        <div>
-          <p className="text-[17px] font-medium tabular-nums tracking-tight">
+        <button
+          type="button"
+          onClick={openPriceSheet}
+          className="group/price text-left transition-opacity hover:opacity-60"
+          aria-label={
+            shopCount > 1
+              ? `From ${formatPrice(fromPrice)}, ${shopCount} shops — compare prices`
+              : `From ${formatPrice(fromPrice)}`
+          }
+        >
+          <p className="text-[17px] font-medium tabular-nums tracking-tight underline decoration-black/15 underline-offset-4 group-hover/price:decoration-black/40">
             <span className="text-[13px] font-normal text-black/40">From </span>
             {formatPrice(fromPrice)}
           </p>
           {shopCount > 1 ? (
             <p className="mt-0.5 text-[12px] text-black/35">
-              {shopCount} shops
+              {shopCount} shops · tap to compare
             </p>
           ) : null}
-        </div>
+        </button>
       ) : shopCount > 1 ? (
-        <p className="text-[12px] text-black/35">{shopCount} shops</p>
+        <button
+          type="button"
+          onClick={openPriceSheet}
+          className="text-left text-[12px] text-black/35 underline decoration-black/15 underline-offset-2 hover:text-black/55"
+        >
+          {shopCount} shops · compare
+        </button>
       ) : null}
+
+      {priceOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center sm:p-6">
+              <button
+                type="button"
+                className="absolute inset-0 bg-black/40"
+                aria-label="Close"
+                onClick={() => setPriceOpen(false)}
+              />
+              <div className="relative z-10 flex max-h-[78vh] w-full max-w-md flex-col border border-black/10 bg-[#f7f7f5] sm:max-h-[70vh]">
+                <div className="flex items-start justify-between gap-3 border-b border-black/10 px-5 py-4">
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-black/35">
+                      Prices
+                    </p>
+                    <p className="mt-1 truncate text-[16px] font-medium tracking-tight">
+                      {product.name}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPriceOpen(false)}
+                    className="inline-flex h-10 w-10 items-center justify-center text-black/40 hover:text-black"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.75} />
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {offersLoading ? (
+                    <p className="px-5 py-10 text-center text-[13px] text-black/40">
+                      Loading shops…
+                    </p>
+                  ) : !offerList?.length ? (
+                    <p className="px-5 py-10 text-center text-[13px] text-black/40">
+                      No shop prices yet.
+                    </p>
+                  ) : (
+                    <ul className="divide-y divide-black/[0.06]">
+                      {offerList.map((o, i) => {
+                        const out = (o.stock ?? 0) <= 0;
+                        return (
+                          <li key={o.id}>
+                            <button
+                              type="button"
+                              disabled={out || busy}
+                              onClick={() => void selectOffer(o)}
+                              className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-black/[0.03] disabled:opacity-40"
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate text-[14px] font-medium">
+                                  {o.vendorName}
+                                  {i === 0 && !out ? (
+                                    <span className="ml-2 text-[10px] font-normal uppercase tracking-[0.12em] text-black/35">
+                                      Best
+                                    </span>
+                                  ) : null}
+                                </span>
+                                <span className="mt-0.5 block text-[12px] text-black/40">
+                                  {[o.neighbourhood, out ? "Out of stock" : null]
+                                    .filter(Boolean)
+                                    .join(" · ") || "Click & collect"}
+                                </span>
+                              </span>
+                              <span className="shrink-0 text-[15px] font-medium tabular-nums">
+                                {formatPrice(o.price)}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+                <div className="border-t border-black/10 px-5 py-3">
+                  <Link
+                    href={href}
+                    onClick={() => setPriceOpen(false)}
+                    className="inline-flex min-h-10 w-full items-center justify-center bg-black text-[11px] font-medium uppercase tracking-[0.14em] text-white"
+                  >
+                    View product
+                  </Link>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </article>
   );
 }

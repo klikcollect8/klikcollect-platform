@@ -72,6 +72,22 @@ function planeForRole(
   return "unknown";
 }
 
+/** Prefer driver / store / warehouse over generic vendor when multiple memberships. */
+export function pickPrimaryStaffRole(
+  roles: Array<string | null | undefined>,
+): string | null {
+  const cleaned = roles.map((r) => (r ? String(r) : "")).filter(Boolean);
+  if (!cleaned.length) return null;
+  const rank = (r: string) => {
+    if (DRIVER.has(r)) return 0;
+    if (STORE.has(r)) return 1;
+    if (WAREHOUSE.has(r)) return 2;
+    if (VENDOR.has(r)) return 3;
+    return 4;
+  };
+  return [...cleaned].sort((a, b) => rank(a) - rank(b))[0] || null;
+}
+
 /** Visual chrome for workspace banners / soft role dashboards. */
 export function resolveRoleChrome(input: {
   staffRole?: string | null;

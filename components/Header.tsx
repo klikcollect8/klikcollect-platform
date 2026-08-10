@@ -17,7 +17,6 @@ import { useSignInModal } from "./SignInModalProvider";
 import { openInstallAppPrompt } from "@/components/InstallAppPrompt";
 import { useCart } from "@/lib/hooks/useCart";
 import { useWishlist } from "@/lib/hooks/useWishlist";
-import { useWorkspaceAccess } from "@/lib/hooks/useWorkspaceAccess";
 
 const Cart = dynamic(() => import("./Cart"), { ssr: false });
 const WishlistSidebar = dynamic(() => import("./WishlistSidebar"), {
@@ -59,15 +58,7 @@ export default function Header() {
   const { wishlist, removeFromWishlist } = useWishlist({
     enabled: isWishlistOpen,
   });
-  const { vendor, admin, chrome } = useWorkspaceAccess();
-  const nav = [
-    ...NAV_BASE,
-    ...(vendor
-      ? [{ name: chrome?.hrefLabel || "My business", href: chrome?.href || "/app" }]
-      : []),
-    ...(admin ? [{ name: "Admin", href: "/admin" }] : []),
-  ];
-  // Workspace links render in a dedicated burger section above Menu.
+  const nav = [...NAV_BASE];
   const mobileMenuExtra = [...MOBILE_MENU_EXTRA_BASE];
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -252,31 +243,6 @@ export default function Header() {
             </button>
           </div>
           <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-10 sm:pt-10">
-            {vendor || admin ? (
-              <div className="mb-6">
-                <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-black/40">
-                  Workspaces
-                </p>
-                {vendor ? (
-                  <Link
-                    href={chrome?.href || "/app"}
-                    onClick={() => setMenuOpen(false)}
-                    className="flex min-h-12 items-center border-b border-black/10 py-3.5 text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
-                  >
-                    {chrome?.hrefLabel || "My business"}
-                  </Link>
-                ) : null}
-                {admin ? (
-                  <Link
-                    href="/admin"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex min-h-12 items-center border-b border-black/10 py-3.5 text-[clamp(1.5rem,6vw,1.75rem)] font-medium tracking-tight"
-                  >
-                    Admin
-                  </Link>
-                ) : null}
-              </div>
-            ) : null}
             <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-black/40">
               Menu
             </p>

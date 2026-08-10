@@ -64,7 +64,8 @@ const config: CapacitorConfig = {
       backgroundColor: "#f7f7f5",
     },
     Keyboard: {
-      resizeOnFullScreen: true,
+      // Keep fixed bottom nav stable; hide via .kc-keyboard-open instead
+      resizeOnFullScreen: false,
     },
   },
   android: {
