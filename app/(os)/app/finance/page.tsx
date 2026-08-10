@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ModuleShell } from "@/components/os/ModuleShell";
+import { OsFilterRail } from "@/components/os/OsFilterRail";
+import { OsStatStrip } from "@/components/os/OsStatStrip";
 import { osUi } from "@/components/os/os-ui";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -65,6 +67,8 @@ export default function FinancePage() {
     totalMinor: number;
     customerName: string;
   } | null>(null);
+
+  const [tab, setTab] = useState("balance");
 
   const load = (vid: string) =>
     void fetch(`/api/os/finance?vendorId=${encodeURIComponent(vid)}`)
@@ -223,19 +227,31 @@ export default function FinancePage() {
       }
     >
       <div className="space-y-8">
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Available" value={`${kes(availableMinor)} KES`} />
-          <Stat label="Pending" value={`${kes(pendingMinor)} KES`} />
-          <Stat label="Held" value={`${kes(heldMinor)} KES`} />
-          <Stat
-            label="Next payout"
-            value={
-              nextPayout
-                ? `${kes(nextPayout.amount_minor)} · ${nextPayout.status}`
-                : "None queued"
-            }
-          />
-        </div>
+        <OsStatStrip
+          items={[
+            { label: "Available", value: `${kes(availableMinor)} KES` },
+            { label: "Pending", value: `${kes(pendingMinor)} KES` },
+            { label: "Held", value: `${kes(heldMinor)} KES` },
+            {
+              label: "Next payout",
+              value: nextPayout
+                ? `${kes(nextPayout.amount_minor)}`
+                : "None queued",
+              hint: nextPayout?.status,
+            },
+          ]}
+        />
+
+        <OsFilterRail
+          options={[
+            { id: "balance", label: "Balance" },
+            { id: "recipients", label: "Recipients" },
+            { id: "activity", label: "Activity" },
+            { id: "receipts", label: "Receipts" },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
 
         {refundOrder ? (
           <div className="border-b border-black/10 pb-6">
@@ -252,10 +268,7 @@ export default function FinancePage() {
             )}
             <p className={cn("mt-2 text-[13px]", osUi.muted)}>
               Vendors cannot issue Paystack refunds from this workspace.
-              Marketplace refunds are processed by platform finance (Admin →
-              Paystack). For POS returns, restock from Inventory and note the
-              customer in CRM — then message platform support if a card/M-Pesa
-              refund is needed.
+              Marketplace refunds are processed by platform finance.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link href="/app/orders" className={osUi.btnSecondary}>
@@ -264,207 +277,186 @@ export default function FinancePage() {
               <Link href="/app/inventory" className={osUi.btnGhost}>
                 Inventory
               </Link>
-              {receipts
-                .filter(
-                  (r) =>
-                    r.order_public_id &&
-                    (r.order_public_id === refundOrder ||
-                      r.order_public_id === refundInfo?.id),
-                )
-                .slice(0, 1)
-                .map((r) => (
-                  <Link
-                    key={r.public_id}
-                    href={`/r/${encodeURIComponent(r.public_id)}`}
-                    className={osUi.btnGhost}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open receipt
-                  </Link>
-                ))}
             </div>
           </div>
         ) : null}
 
-        {canWithdraw ? (
-          <div className="flex flex-col gap-3 border-b border-black/10 pb-6 sm:flex-row sm:items-end">
-            <label className="min-w-0 flex-1">
-              <span className={osUi.sectionLabel}>Withdraw (KES)</span>
+        {tab === "balance" ? (
+          <div className="space-y-6">
+            {canWithdraw ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <label className="min-w-0 flex-1">
+                  <span className={osUi.sectionLabel}>Withdraw (KES)</span>
+                  <input
+                    className={osUi.input}
+                    value={amountKes}
+                    onChange={(e) => setAmountKes(e.target.value)}
+                    placeholder="e.g. 500.00"
+                    inputMode="decimal"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void withdraw()}
+                  className={cn(osUi.btnPrimary, "min-h-12")}
+                >
+                  Request withdrawal
+                </button>
+              </div>
+            ) : (
+              <p className={cn("text-[13px]", osUi.muted)}>
+                Withdrawals require Vendor Owner or Finance Manager.
+              </p>
+            )}
+            <div className="grid gap-8 lg:grid-cols-2">
+              <List
+                title="Settlements"
+                rows={settlements.map(
+                  (s) => `${s.public_id} · ${kes(s.net_minor)} · ${s.status}`,
+                )}
+              />
+              <List
+                title="Payouts"
+                rows={payouts.map(
+                  (p) =>
+                    `${p.public_id} · ${kes(p.amount_minor)} · ${p.status}`,
+                )}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {tab === "recipients" ? (
+          <div>
+            <p className={osUi.sectionLabel}>Payout recipient (M-Pesa / bank)</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <input
                 className={osUi.input}
-                value={amountKes}
-                onChange={(e) => setAmountKes(e.target.value)}
-                placeholder="e.g. 500.00"
-                inputMode="decimal"
+                placeholder="Account name"
+                value={rcptName}
+                onChange={(e) => setRcptName(e.target.value)}
               />
-            </label>
+              <input
+                className={osUi.input}
+                placeholder="Phone / account number"
+                value={rcptAccount}
+                onChange={(e) => setRcptAccount(e.target.value)}
+              />
+              <input
+                className={osUi.input}
+                placeholder="Bank code (e.g. MPESA)"
+                value={rcptBank}
+                onChange={(e) => setRcptBank(e.target.value)}
+              />
+              <select
+                className={cn(osUi.input, "bg-transparent")}
+                value={rcptType}
+                onChange={(e) => setRcptType(e.target.value)}
+              >
+                <option value="mobile_money">mobile_money</option>
+                <option value="nuban">nuban</option>
+                <option value="basa">basa</option>
+              </select>
+            </div>
             <button
               type="button"
-              onClick={() => void withdraw()}
-              className={osUi.btnPrimary}
+              onClick={() => void registerRecipient()}
+              className={cn(osUi.btnSecondary, "mt-4 min-h-12")}
             >
-              Request withdrawal
+              Register recipient
             </button>
+            <div className="mt-4 divide-y divide-black/10 border-y border-black/10">
+              {recipients.map((r) => (
+                <p key={r.recipient_code} className="py-3.5 text-[13px]">
+                  {r.name} · {r.type} · <code>{r.recipient_code}</code>
+                </p>
+              ))}
+              {!recipients.length ? (
+                <p className={cn("py-8 text-center", osUi.muted)}>
+                  No recipients yet
+                </p>
+              ) : null}
+            </div>
           </div>
-        ) : (
-          <p className={cn("text-[13px]", osUi.muted)}>
-            Withdrawals require Vendor Owner or Finance Manager.
-          </p>
-        )}
+        ) : null}
 
-        <div>
-          <p className={osUi.sectionLabel}>Payout recipient (M-Pesa / bank)</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <input
-              className={osUi.input}
-              placeholder="Account name"
-              value={rcptName}
-              onChange={(e) => setRcptName(e.target.value)}
-            />
-            <input
-              className={osUi.input}
-              placeholder="Phone / account number"
-              value={rcptAccount}
-              onChange={(e) => setRcptAccount(e.target.value)}
-            />
-            <input
-              className={osUi.input}
-              placeholder="Bank code (e.g. MPESA)"
-              value={rcptBank}
-              onChange={(e) => setRcptBank(e.target.value)}
-            />
-            <select
-              className={cn(osUi.input, "bg-transparent")}
-              value={rcptType}
-              onChange={(e) => setRcptType(e.target.value)}
-            >
-              <option value="mobile_money">mobile_money</option>
-              <option value="nuban">nuban</option>
-              <option value="basa">basa</option>
-            </select>
+        {tab === "activity" ? (
+          <div>
+            <p className={cn("mb-1", osUi.sectionLabel)}>Ledger statement</p>
+            <div className="divide-y divide-black/10 border-y border-black/10">
+              {transactions.map((t) => (
+                <div
+                  key={t.public_id}
+                  className="flex flex-wrap items-baseline justify-between gap-2 py-3.5 text-[13px]"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-black">{t.public_id}</p>
+                    <p className={osUi.muted}>
+                      {t.transaction_type}
+                      {t.reference_type ? ` · ${t.reference_type}` : ""}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="tabular-nums">
+                      {typeof t.amount_minor === "number"
+                        ? `${kes(t.amount_minor)} KES`
+                        : "—"}
+                    </p>
+                    <p className={cn("text-[11px]", osUi.muted)}>
+                      {String(t.created_at || "").slice(0, 10)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {!transactions.length ? (
+                <p className={cn("py-8 text-center", osUi.muted)}>
+                  No ledger movements for this store yet
+                </p>
+              ) : null}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void registerRecipient()}
-            className={cn(osUi.btnSecondary, "mt-4")}
-          >
-            Register recipient
-          </button>
-          <div className="mt-4 divide-y divide-black/[0.06]">
-            {recipients.map((r) => (
-              <p key={r.recipient_code} className="py-2 text-[13px]">
-                {r.name} · {r.type} · <code>{r.recipient_code}</code>
-              </p>
+        ) : null}
+
+        {tab === "receipts" ? (
+          <div className="divide-y divide-black/10 border-y border-black/10">
+            {receipts.map((r) => (
+              <div
+                key={r.public_id}
+                className="flex min-h-14 flex-wrap items-center justify-between gap-2 py-3.5 text-[13px]"
+              >
+                <Link href={`/r/${r.public_id}`} className="font-medium underline">
+                  {r.public_id}
+                </Link>
+                <span className="tabular-nums">{kes(r.amount_minor)} KES</span>
+                <span className={osUi.muted}>{r.channel || "—"}</span>
+              </div>
             ))}
+            {!receipts.length ? (
+              <p className={cn("py-8 text-center", osUi.muted)}>No receipts</p>
+            ) : null}
           </div>
-        </div>
+        ) : null}
 
         {msg ? <p className={cn("text-[13px]", osUi.muted)}>{msg}</p> : null}
-
-        <div className="grid gap-8 lg:grid-cols-2">
-          <List
-            title="Settlements"
-            rows={settlements.map(
-              (s) => `${s.public_id} · ${kes(s.net_minor)} · ${s.status}`,
-            )}
-          />
-          <List
-            title="Payouts"
-            rows={payouts.map(
-              (p) => `${p.public_id} · ${kes(p.amount_minor)} · ${p.status}`,
-            )}
-          />
-        </div>
-
-        <div>
-          <p className={cn("border-b border-black/10 pb-3", osUi.sectionLabel)}>
-            Ledger statement
-          </p>
-          {transactions.map((t) => (
-            <div
-              key={t.public_id}
-              className="flex flex-wrap items-baseline justify-between gap-2 border-b border-black/[0.06] py-3 text-[13px]"
-            >
-              <div className="min-w-0">
-                <p className="font-medium text-black">{t.public_id}</p>
-                <p className={osUi.muted}>
-                  {t.transaction_type}
-                  {t.reference_type ? ` · ${t.reference_type}` : ""}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="tabular-nums">
-                  {typeof t.amount_minor === "number"
-                    ? `${kes(t.amount_minor)} KES`
-                    : " - "}
-                </p>
-                <p className={cn("text-[11px]", osUi.muted)}>
-                  {String(t.created_at || "").slice(0, 10)}
-                </p>
-              </div>
-            </div>
-          ))}
-          {!transactions.length ? (
-            <p className={cn("py-6 text-center", osUi.muted)}>
-              No ledger movements for this store yet
-            </p>
-          ) : null}
-        </div>
-
-        <div>
-          <p className={cn("border-b border-black/10 pb-3", osUi.sectionLabel)}>
-            Recent receipts
-          </p>
-          {receipts.map((r) => (
-            <div
-              key={r.public_id}
-              className="flex justify-between border-b border-black/[0.06] py-3 text-[13px]"
-            >
-              <Link href={`/r/${r.public_id}`} className="underline">
-                {r.public_id}
-              </Link>
-              <span>{kes(r.amount_minor)} KES</span>
-              <span className={osUi.muted}>{r.channel || " - "}</span>
-            </div>
-          ))}
-          {!receipts.length ? (
-            <p className={cn("py-6 text-center", osUi.muted)}>Empty</p>
-          ) : null}
-        </div>
       </div>
     </ModuleShell>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className={osUi.sectionLabel}>{label}</p>
-      <p className="mt-2 text-[22px] font-medium tracking-tight text-black">
-        {value}
-      </p>
-    </div>
   );
 }
 
 function List({ title, rows }: { title: string; rows: string[] }) {
   return (
     <div>
-      <p className={cn("border-b border-black/10 pb-3", osUi.sectionLabel)}>
-        {title}
-      </p>
-      {rows.map((r, i) => (
-        <p
-          key={i}
-          className="border-b border-black/[0.06] py-3 text-[13px] text-black"
-        >
-          {r}
-        </p>
-      ))}
-      {!rows.length ? (
-        <p className={cn("py-6 text-center", osUi.muted)}>Empty</p>
-      ) : null}
+      <p className={cn("mb-1", osUi.sectionLabel)}>{title}</p>
+      <div className="divide-y divide-black/10 border-y border-black/10">
+        {rows.map((r, i) => (
+          <p key={i} className="py-3.5 text-[13px] text-black">
+            {r}
+          </p>
+        ))}
+        {!rows.length ? (
+          <p className={cn("py-8 text-center", osUi.muted)}>Empty</p>
+        ) : null}
+      </div>
     </div>
   );
 }

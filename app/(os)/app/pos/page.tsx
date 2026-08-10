@@ -244,8 +244,8 @@ export default function PosPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-3">
+      <div className="grid gap-8 pb-28 lg:grid-cols-[1fr_320px] lg:pb-0">
+        <div className="space-y-4">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -253,185 +253,188 @@ export default function PosPage() {
             }}
             className="flex gap-2"
           >
-            <div className="flex flex-1 items-center gap-2 border-b border-black/15">
-              <ScanBarcode className="h-4 w-4 text-black/35" />
+            <div className="flex min-h-12 flex-1 items-center gap-2 border-b border-black/15">
+              <ScanBarcode className="h-5 w-5 shrink-0 text-black/35" />
               <input
                 id="pos-scan"
                 value={scan}
                 onChange={(e) => setScan(e.target.value)}
-                placeholder="Scan or type GTIN / barcode…"
-                className="h-10 w-full text-[14px] outline-none"
+                placeholder="Scan or type barcode…"
+                className="h-12 w-full text-[16px] outline-none"
                 autoComplete="off"
               />
             </div>
             <button
               type="submit"
               disabled={busy || !scan.trim()}
-              className={osUi.btnPrimary}
+              className={cn(osUi.btnPrimary, "min-h-12")}
             >
               Add
             </button>
           </form>
 
-          <div className="overflow-hidden">
-            <table className="w-full text-left text-[13px]">
-              <thead
-                className={cn(
-                  "border-b border-black/10 text-[12px]",
-                  osUi.muted,
-                )}
+          <div className="divide-y divide-black/10 border-y border-black/10">
+            {cart.map((l) => (
+              <div
+                key={l.productId}
+                className="flex flex-wrap items-center gap-3 py-4"
               >
-                <tr>
-                  <th className="px-1 py-2.5 font-medium">Item</th>
-                  <th className="px-1 py-2.5 font-medium">Qty</th>
-                  <th className="px-1 py-2.5 font-medium">Line</th>
-                  <th className="px-1 py-2.5" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/[0.06]">
-                {cart.map((l) => (
-                  <tr key={l.productId}>
-                    <td className="px-1 py-3">
-                      <p className="font-medium text-black">{l.name}</p>
-                      {l.barcode ? (
-                        <p className={cn("text-[11px]", osUi.muted)}>
-                          {l.barcode}
-                        </p>
-                      ) : null}
-                    </td>
-                    <td className="px-1 py-3">
-                      <div className="inline-flex items-center border border-black/15">
-                        <button
-                          type="button"
-                          className="px-2 py-1"
-                          onClick={() =>
-                            setCart((prev) =>
-                              prev
-                                .map((x) =>
-                                  x.productId === l.productId
-                                    ? { ...x, quantity: x.quantity - 1 }
-                                    : x,
-                                )
-                                .filter((x) => x.quantity > 0),
-                            )
-                          }
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                        <span className="w-8 text-center tabular-nums">
-                          {l.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          className="px-2 py-1"
-                          onClick={() =>
-                            setCart((prev) =>
-                              prev.map((x) =>
-                                x.productId === l.productId &&
-                                x.quantity < x.available
-                                  ? { ...x, quantity: x.quantity + 1 }
-                                  : x,
-                              ),
-                            )
-                          }
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-1 py-3 tabular-nums">
-                      {formatKesMinor(l.moneyMinor * l.quantity)}
-                    </td>
-                    <td className="px-1 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCart((prev) =>
-                            prev.filter((x) => x.productId !== l.productId),
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-medium text-black">{l.name}</p>
+                  {l.barcode ? (
+                    <p className={cn("text-[12px]", osUi.muted)}>{l.barcode}</p>
+                  ) : null}
+                  <p className="mt-1 text-[13px] tabular-nums text-black/50">
+                    {formatKesMinor(l.moneyMinor * l.quantity)}
+                  </p>
+                </div>
+                <div className="inline-flex items-center border border-black/15">
+                  <button
+                    type="button"
+                    className="flex h-11 w-11 items-center justify-center"
+                    onClick={() =>
+                      setCart((prev) =>
+                        prev
+                          .map((x) =>
+                            x.productId === l.productId
+                              ? { ...x, quantity: x.quantity - 1 }
+                              : x,
                           )
-                        }
-                        className="text-black/35 hover:text-[#8e1b0d]"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!cart.length ? (
-              <p
-                className={cn("px-1 py-10 text-center text-[13px]", osUi.muted)}
-              >
-                Scan a barcode to start a sale
-              </p>
-            ) : null}
-          </div>
-        </div>
-
-        <aside className="h-fit border-t border-black/10 pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-          <p className={osUi.sectionLabel}>Sale total</p>
-          <p className="mt-2 text-[28px] font-semibold tabular-nums text-black">
-            {formatKesMinor(totalMinor)}
-          </p>
-
-          <p className={cn("mt-5", osUi.sectionLabel)}>Customer (optional)</p>
-          <div className="mt-2 space-y-2">
-            <input
-              className={osUi.input}
-              placeholder="Name"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-            />
-            <input
-              className={osUi.input}
-              placeholder="Phone"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-            />
-            <input
-              className={osUi.input}
-              placeholder="Email"
-              value={customerEmail}
-              onChange={(e) => setCustomerEmail(e.target.value)}
-            />
-          </div>
-
-          <p className={cn("mt-5", osUi.sectionLabel)}>Tender</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {(["cash", "mpesa", "card"] as Tender[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTender(t)}
-                className={cn(
-                  "min-w-[72px] px-3 py-2 text-[12px] font-medium uppercase tracking-[0.12em]",
-                  tender === t
-                    ? "bg-black text-white"
-                    : "border border-black/20 text-black hover:border-black",
-                )}
-              >
-                {t === "mpesa" ? "M-Pesa" : t}
-              </button>
+                          .filter((x) => x.quantity > 0),
+                      )
+                    }
+                    aria-label="Decrease"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="w-10 text-center text-[15px] tabular-nums">
+                    {l.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    className="flex h-11 w-11 items-center justify-center"
+                    onClick={() =>
+                      setCart((prev) =>
+                        prev.map((x) =>
+                          x.productId === l.productId &&
+                          x.quantity < x.available
+                            ? { ...x, quantity: x.quantity + 1 }
+                            : x,
+                        ),
+                      )
+                    }
+                    aria-label="Increase"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCart((prev) =>
+                      prev.filter((x) => x.productId !== l.productId),
+                    )
+                  }
+                  className="flex h-11 w-11 items-center justify-center text-black/35 hover:text-[#8e1b0d]"
+                  aria-label="Remove"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
+          {!cart.length ? (
+            <p className={cn("py-12 text-center text-[14px]", osUi.muted)}>
+              Scan a barcode to start a sale
+            </p>
+          ) : null}
+        </div>
 
-          <p className={cn("mt-3 text-[12px]", osUi.muted)}>
-            {vendorId ? `Vendor ${vendorId}` : "Loading vendor membership…"}
-          </p>
+        <aside className="space-y-5 border-t border-black/10 pt-6 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+          <div>
+            <p className={osUi.sectionLabel}>Sale total</p>
+            <p className="mt-2 text-[28px] font-medium tabular-nums text-black">
+              {formatKesMinor(totalMinor)}
+            </p>
+          </div>
+
+          <div>
+            <p className={osUi.sectionLabel}>Customer (optional)</p>
+            <div className="mt-2 space-y-2">
+              <input
+                className={osUi.input}
+                placeholder="Name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+              />
+              <input
+                className={osUi.input}
+                placeholder="Phone"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+              />
+              <input
+                className={osUi.input}
+                placeholder="Email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className={osUi.sectionLabel}>Tender</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(["cash", "mpesa", "card"] as Tender[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTender(t)}
+                  className={cn(
+                    "min-h-11 min-w-[72px] px-3 text-[12px] font-medium uppercase tracking-[0.12em]",
+                    tender === t
+                      ? "bg-black text-white"
+                      : "border border-black/20 text-black hover:border-black",
+                  )}
+                >
+                  {t === "mpesa" ? "M-Pesa" : t}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <Show when="signed-in">
             <button
               type="button"
               disabled={busy || !cart.length || !vendorId}
               onClick={() => void completeSale()}
-              className={cn(osUi.btnPrimary, "mt-5 w-full py-3 text-[13px]")}
+              className={cn(
+                osUi.btnPrimary,
+                "hidden min-h-12 w-full lg:inline-flex",
+              )}
             >
               {busy ? "Completing…" : `Complete · ${tender}`}
             </button>
           </Show>
         </aside>
       </div>
+
+      <Show when="signed-in">
+        {!receipt ? (
+          <div className="fixed inset-x-0 bottom-14 z-30 border-t border-black/10 bg-[var(--kc-canvas)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:hidden">
+            <button
+              type="button"
+              disabled={busy || !cart.length || !vendorId}
+              onClick={() => void completeSale()}
+              className={cn(osUi.btnPrimary, "min-h-12 w-full")}
+            >
+              {busy
+                ? "Completing…"
+                : `Complete · ${formatKesMinor(totalMinor)} · ${tender}`}
+            </button>
+          </div>
+        ) : null}
+      </Show>
     </ModuleShell>
   );
 }

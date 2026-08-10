@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { ModuleShell } from "@/components/os/ModuleShell";
-import { OsStat } from "@/components/os/OsPanel";
+import { OsStatStrip } from "@/components/os/OsStatStrip";
 import { InventoryBoard } from "./InventoryBoard";
 import { messages } from "@/messages/en-KE";
 import { listCatalogue } from "@/lib/catalogue-store";
 import { requireVendorActor } from "@/lib/auth/require-vendor";
+import { osUi } from "@/components/os/os-ui";
 
 export default async function OsInventoryPage() {
   const gate = await requireVendorActor();
@@ -22,22 +23,32 @@ export default async function OsInventoryPage() {
   return (
     <ModuleShell
       title={messages.os.inventory}
-      description="Stock for your store - on hand, low stock, and adjustments."
+      description="On-hand stock, movements, and quick adjustments for your store."
       live
       actions={
-        <Link
-          href="/app/products"
-          className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50"
-        >
+        <Link href="/app/products" className={osUi.btnSecondary}>
           Catalogue
         </Link>
       }
     >
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <OsStat label="SKUs" value={catalogue.length} />
-        <OsStat label="Units on hand" value={onHand} />
-        <OsStat label="Low stock" value={lowStock} hint="≤ 5 units" />
-        <OsStat label="Out of stock" value={outOfStock} />
+      <div className="mb-8">
+        <OsStatStrip
+          items={[
+            { label: "SKUs", value: catalogue.length },
+            { label: "On hand", value: onHand },
+            {
+              label: "Low stock",
+              value: lowStock,
+              hint: "≤ 5 units",
+              tone: lowStock > 0 ? "warn" : "default",
+            },
+            {
+              label: "Out",
+              value: outOfStock,
+              tone: outOfStock > 0 ? "warn" : "default",
+            },
+          ]}
+        />
       </div>
 
       <InventoryBoard vendors={vendorMap} />

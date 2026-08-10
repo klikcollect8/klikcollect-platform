@@ -14,7 +14,7 @@ const MORE_HREFS = new Set([
   "/app/pos",
   "/app/orders/packing",
   "/app/store",
-  "/app/store#hours",
+  "/app/store/hours",
   "/app/branches",
   "/app/questions",
   "/app/reviews",

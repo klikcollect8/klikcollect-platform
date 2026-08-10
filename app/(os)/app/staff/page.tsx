@@ -164,48 +164,36 @@ export default function VendorStaffPage() {
         </OsPanel>
 
         <OsPanel padded={false}>
-          <table className="w-full text-left text-[14px]">
-            <thead className="border-b border-black/10 text-[11px] font-medium uppercase tracking-[0.12em] text-black/40">
-              <tr>
-                <th className="px-3 py-3 font-medium sm:px-4">Email</th>
-                <th className="py-3 font-medium">Role</th>
-                <th className="py-3 font-medium">Status</th>
-                <th className="py-3 font-medium" />
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => (
-                <tr key={m.id} className="border-t border-black/[0.06]">
-                  <td className="px-3 py-3.5 font-medium text-black sm:px-4">
+          <div className="divide-y divide-black/10 border-y border-black/10">
+            {members.map((m) => (
+              <div
+                key={m.id}
+                className="flex min-h-14 flex-wrap items-center gap-3 py-3.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-medium text-black">
                     {m.email || m.clerk_user_id}
-                  </td>
-                  <td className="py-3.5 capitalize text-black/55">
-                    {m.role.replace(/_/g, " ")}
-                  </td>
-                  <td className="py-3.5 text-[12px] uppercase tracking-[0.1em] text-black/40">
-                    {m.status}
-                  </td>
-                  <td className="py-3.5 pr-3 text-right sm:pr-4">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void revoke(m.clerk_user_id)}
-                      className="text-[12px] font-medium uppercase tracking-[0.12em] text-black/40 hover:text-black"
-                    >
-                      Revoke
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {!members.length ? (
-                <tr>
-                  <td colSpan={4} className="py-10 text-center text-black/40">
-                    No staff yet
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+                  </p>
+                  <p className="mt-0.5 text-[12px] capitalize text-black/45">
+                    {m.role.replace(/_/g, " ")} · {m.status}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void revoke(m.clerk_user_id)}
+                  className="min-h-11 px-2 text-[12px] font-medium uppercase tracking-[0.12em] text-black/40 hover:text-black"
+                >
+                  Revoke
+                </button>
+              </div>
+            ))}
+            {!members.length ? (
+              <p className="py-10 text-center text-[14px] text-black/40">
+                No staff yet
+              </p>
+            ) : null}
+          </div>
         </OsPanel>
       </div>
     </ModuleShell>

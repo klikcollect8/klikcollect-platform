@@ -107,7 +107,7 @@ export const osNav: OsNavItem[] = [
     permission: "vendor:settings",
   },
   {
-    href: "/app/store#hours",
+    href: "/app/store/hours",
     label: "Hours",
     icon: Clock,
     live: true,

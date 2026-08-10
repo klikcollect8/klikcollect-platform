@@ -7,6 +7,8 @@ import AuthModalTrigger from "@/components/auth/AuthModalTrigger";
 import { Minus, Plus } from "lucide-react";
 import { formatKesMajor } from "@/lib/money";
 import { StatusBadge } from "@/components/os/StatusBadge";
+import { OsFilterRail } from "@/components/os/OsFilterRail";
+import { OsEmptyState } from "@/components/os/OsEmptyState";
 import { osUi } from "@/components/os/os-ui";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +37,7 @@ type Movement = {
 };
 
 const TABS = [
-  { id: "dashboard", label: "Dashboard" },
+  { id: "dashboard", label: "Overview" },
   { id: "movements", label: "Movements" },
   { id: "adjust", label: "Adjust" },
 ] as const;
@@ -49,6 +51,7 @@ export function InventoryBoard({
   const [rows, setRows] = useState<Row[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [q, setQ] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     text: string;
@@ -108,6 +111,17 @@ export function InventoryBoard({
     };
   }, [rows, movements]);
 
+  const adjustRows = useMemo(() => {
+    if (!q.trim()) return rows;
+    const needle = q.toLowerCase();
+    return rows.filter(
+      (r) =>
+        r.name.toLowerCase().includes(needle) ||
+        (r.barcode || "").toLowerCase().includes(needle) ||
+        (r.category || "").toLowerCase().includes(needle),
+    );
+  }, [rows, q]);
+
   function nudge(id: string, delta: number) {
     setDrafts((d) => {
       const next = Math.max(0, (Number(d[id]) || 0) + delta);
@@ -144,7 +158,7 @@ export function InventoryBoard({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Show when="signed-out">
         <div className="flex items-center justify-between gap-3 border-b border-black/10 py-3 text-[13px]">
           <span className={osUi.muted}>Sign in to adjust stock</span>
@@ -157,7 +171,7 @@ export function InventoryBoard({
       {message ? (
         <div
           className={cn(
-            "px-1 py-2 text-[13px] font-medium",
+            "py-2 text-[13px] font-medium",
             message.tone === "ok" ? osUi.success : osUi.danger,
           )}
         >
@@ -165,24 +179,14 @@ export function InventoryBoard({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-1 border-b border-black/10 pb-3">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "px-3 py-2 text-[12px] font-medium uppercase tracking-[0.12em] transition-colors",
-              tab === t.id ? "text-black" : "text-black/40 hover:text-black",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <OsFilterRail
+        options={TABS.map((t) => ({ id: t.id, label: t.label }))}
+        value={tab}
+        onChange={(id) => setTab(id as (typeof TABS)[number]["id"])}
+      />
 
       {tab === "dashboard" ? (
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="space-y-10">
           <HeuristicList
             title="Low stock"
             empty="Nothing low"
@@ -212,13 +216,13 @@ export function InventoryBoard({
       ) : null}
 
       {tab === "movements" ? (
-        <div className="divide-y divide-black/[0.06] border-b border-black/10">
+        <div className="divide-y divide-black/10 border-y border-black/10">
           {movements.map((m) => (
             <div
               key={m.id}
-              className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-[13px]"
+              className="flex flex-wrap items-baseline justify-between gap-2 py-3.5 text-[13px]"
             >
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-black">
                   {m.type} · {m.productId}
                 </p>
@@ -244,132 +248,114 @@ export function InventoryBoard({
             </div>
           ))}
           {!movements.length ? (
-            <p className={cn("py-10 text-center text-[13px]", osUi.muted)}>
-              No movements yet
-            </p>
+            <OsEmptyState
+              title="No movements yet"
+              body="Sales and adjustments will show here."
+            />
           ) : null}
         </div>
       ) : null}
 
       {tab === "adjust" ? (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-[13px]">
-            <thead
-              className={cn("border-b border-black/10 text-[12px]", osUi.muted)}
-            >
-              <tr>
-                <th className="px-1 py-2.5 font-medium">Product</th>
-                <th className="px-1 py-2.5 font-medium">Vendor</th>
-                <th className="px-1 py-2.5 font-medium">On hand</th>
-                <th className="px-1 py-2.5 font-medium">Reserved</th>
-                <th className="px-1 py-2.5 font-medium">Available</th>
-                <th className="px-1 py-2.5 font-medium" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/[0.06]">
-              {rows.map((r) => {
-                const onHand = r.onHand ?? r.stock;
-                const reserved = r.reserved ?? 0;
-                const available = r.available ?? Math.max(0, onHand - reserved);
-                const status =
-                  available <= 0 ? "out" : available <= 5 ? "low" : "ok";
-                const dirty =
-                  drafts[r.id] !== undefined && drafts[r.id] !== String(onHand);
-                return (
-                  <tr key={r.id}>
-                    <td className="px-1 py-3">
+        <div className="space-y-4">
+          <label className="block">
+            <span className="sr-only">Search stock</span>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search name or barcode…"
+              className="w-full border-b border-black/15 bg-transparent py-3 text-[15px] outline-none placeholder:text-black/35 focus:border-black/50"
+            />
+          </label>
+          <div className="divide-y divide-black/10 border-y border-black/10">
+            {adjustRows.map((r) => {
+              const onHand = r.onHand ?? r.stock;
+              const reserved = r.reserved ?? 0;
+              const available = r.available ?? Math.max(0, onHand - reserved);
+              const status =
+                available <= 0 ? "out" : available <= 5 ? "low" : "ok";
+              const dirty =
+                drafts[r.id] !== undefined && drafts[r.id] !== String(onHand);
+              return (
+                <div key={r.id} className="space-y-3 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
                       <Link
                         href={`/app/products/${r.id}`}
-                        className="font-medium text-black hover:underline"
+                        className="text-[15px] font-medium text-black hover:underline"
                       >
                         {r.name}
                       </Link>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <StatusBadge
-                          status={status}
-                          label={
-                            status === "ok"
-                              ? "In stock"
-                              : status === "low"
-                                ? "Low stock"
-                                : "Out"
-                          }
-                        />
-                        {r.barcode ? (
-                          <span
-                            className={cn(
-                              "text-[11px] tabular-nums",
-                              osUi.muted,
-                            )}
-                          >
-                            {r.barcode}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className={cn("px-1 py-3", osUi.muted)}>
-                      {(r.vendorId && vendors?.[r.vendorId]) || " - "}
-                    </td>
-                    <td className="px-1 py-3">
-                      <div className="inline-flex items-center border border-black/15">
-                        <button
-                          type="button"
-                          onClick={() => nudge(r.id, -1)}
-                          className="px-2 py-1.5 text-black/50 hover:text-black"
-                          aria-label="Decrease"
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
-                          value={drafts[r.id] ?? String(onHand)}
-                          onChange={(e) =>
-                            setDrafts((d) => ({ ...d, [r.id]: e.target.value }))
-                          }
-                          className="w-12 border-x border-black/15 px-1 py-1.5 text-center text-[13px] tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => nudge(r.id, 1)}
-                          className="px-2 py-1.5 text-black/50 hover:text-black"
-                          aria-label="Increase"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className={cn("px-1 py-3 tabular-nums", osUi.muted)}>
-                      {reserved}
-                    </td>
-                    <td className="px-1 py-3 tabular-nums font-medium text-black">
-                      {available}
-                    </td>
-                    <td className="px-1 py-3 text-right">
-                      <Show when="signed-in">
-                        <button
-                          type="button"
-                          disabled={busy === r.id || !dirty}
-                          onClick={() => void save(r.id)}
-                          className={cn(
-                            dirty ? osUi.btnPrimary : osUi.btnGhost,
-                            "disabled:opacity-40",
-                          )}
-                        >
-                          {busy === r.id ? "…" : "Save"}
-                        </button>
-                      </Show>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {!rows.length ? (
-            <p className={cn("py-10 text-center text-[13px]", osUi.muted)}>
-              No inventory
-            </p>
+                      <p className="mt-1 text-[12px] text-black/40">
+                        Avail {available} · Reserved {reserved} ·{" "}
+                        {formatKesMajor(r.price)}
+                      </p>
+                    </div>
+                    <StatusBadge
+                      status={status}
+                      label={
+                        status === "ok"
+                          ? "In stock"
+                          : status === "low"
+                            ? "Low"
+                            : "Out"
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="inline-flex items-center border border-black/15">
+                      <button
+                        type="button"
+                        onClick={() => nudge(r.id, -1)}
+                        className="flex h-11 w-11 items-center justify-center text-black/50 hover:text-black"
+                        aria-label="Decrease"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={drafts[r.id] ?? String(onHand)}
+                        onChange={(e) =>
+                          setDrafts((d) => ({ ...d, [r.id]: e.target.value }))
+                        }
+                        className="h-11 w-14 border-x border-black/15 text-center text-[15px] tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => nudge(r.id, 1)}
+                        className="flex h-11 w-11 items-center justify-center text-black/50 hover:text-black"
+                        aria-label="Increase"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <Show when="signed-in">
+                      <button
+                        type="button"
+                        disabled={busy === r.id || !dirty}
+                        onClick={() => void save(r.id)}
+                        className={cn(
+                          dirty ? osUi.btnPrimary : osUi.btnGhost,
+                          "min-h-11 disabled:opacity-40",
+                        )}
+                      >
+                        {busy === r.id ? "…" : "Save"}
+                      </button>
+                    </Show>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {!adjustRows.length ? (
+            <OsEmptyState
+              title="No inventory"
+              body="Assigned products will appear here for stock adjustments."
+              actionLabel="My products"
+              actionHref="/app/products"
+            />
           ) : null}
         </div>
       ) : null}
@@ -393,19 +379,15 @@ function HeuristicList({
   return (
     <div>
       <h3 className={osUi.sectionLabel}>{title}</h3>
-      <div className="mt-3 divide-y divide-black/[0.06]">
+      <div className="mt-3 divide-y divide-black/10 border-y border-black/10">
         {rows.map((r) => (
-          <div
+          <Link
             key={r.id}
-            className="flex items-baseline justify-between gap-3 py-2.5 text-[13px]"
+            href={`/app/products/${r.id}`}
+            className="flex min-h-14 items-baseline justify-between gap-3 py-3.5 text-[13px] transition-opacity hover:opacity-70"
           >
             <div className="min-w-0">
-              <Link
-                href={`/app/products/${r.id}`}
-                className="font-medium text-black hover:underline"
-              >
-                {r.name}
-              </Link>
+              <p className="font-medium text-black">{r.name}</p>
               <p className={cn("truncate text-[12px]", osUi.muted)}>
                 {(r.vendorId && vendors?.[r.vendorId]) || r.category}
                 {showVelocity && r.velocity
@@ -416,7 +398,7 @@ function HeuristicList({
             <span className="shrink-0 tabular-nums font-medium">
               {formatKesMajor(r.price)} · {r.available}
             </span>
-          </div>
+          </Link>
         ))}
         {!rows.length ? (
           <p className={cn("py-6 text-[13px]", osUi.muted)}>{empty}</p>
