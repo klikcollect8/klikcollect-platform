@@ -1,19 +1,11 @@
-/**
- * M1 usage events (local jsonl) + curation applications (Supabase).
- */
 import { promises as fs } from "fs";
 import path from "path";
 import type { CurationApplication } from "./curation-policy";
 import { getServiceSupabase } from "@/lib/supabase/admin";
-
-const DATA_DIR = path.join(process.cwd(), ".data");
+import { DATA_DIR, ensureDataDir } from "@/lib/data-dir";
 
 async function ensureDir() {
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-  } catch {
-    /* serverless may not allow mkdir - ignore */
-  }
+  await ensureDataDir();
 }
 
 export type UsageEvent = {

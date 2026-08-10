@@ -5,13 +5,9 @@
  */
 import { promises as fs } from "fs";
 import path from "path";
+import { DATA_DIR, ensureDataDir } from "@/lib/data-dir";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
 const memory = new Map<string, unknown>();
-
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-}
 
 export async function readJsonStore<T>(file: string, fallback: T): Promise<T> {
   if (memory.has(file)) {
@@ -19,7 +15,7 @@ export async function readJsonStore<T>(file: string, fallback: T): Promise<T> {
   }
 
   try {
-    await ensureDir();
+    await ensureDataDir();
     const raw = await fs.readFile(path.join(DATA_DIR, file), "utf8");
     const data = JSON.parse(raw) as T;
     memory.set(file, data);
@@ -32,7 +28,8 @@ export async function readJsonStore<T>(file: string, fallback: T): Promise<T> {
 export async function writeJsonStore<T>(file: string, data: T): Promise<void> {
   memory.set(file, data);
   try {
-    await ensureDir();
+    const ok = await ensureDataDir();
+    if (!ok) return;
     await fs.writeFile(
       path.join(DATA_DIR, file),
       JSON.stringify(data, null, 2),

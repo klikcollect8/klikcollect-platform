@@ -25,14 +25,14 @@ export type PayMethodMeta = {
 
 export const PAY_METHODS: PayMethodMeta[] = [
   {
-    id: "stripe_checkout",
-    label: "Card & wallets",
-    shortLabel: "Stripe",
-    description: "Visa, Mastercard, Apple Pay, Google Pay, Link",
-    rail: "stripe",
-    apiMethod: "card",
-    hint: "Pay on Stripe Checkout",
-    group: "stripe",
+    id: "mpesa",
+    label: "M-Pesa",
+    shortLabel: "M-Pesa",
+    description: "Safaricom mobile money",
+    rail: "paystack",
+    apiMethod: "mpesa",
+    hint: "STK push to your phone",
+    group: "paystack",
   },
   {
     id: "paystack_card",
@@ -42,16 +42,6 @@ export const PAY_METHODS: PayMethodMeta[] = [
     rail: "paystack",
     apiMethod: "card",
     hint: "Pay with card on Paystack",
-    group: "paystack",
-  },
-  {
-    id: "mpesa",
-    label: "M-Pesa",
-    shortLabel: "M-Pesa",
-    description: "Safaricom mobile money",
-    rail: "paystack",
-    apiMethod: "mpesa",
-    hint: "STK push to your phone",
     group: "paystack",
   },
   {
@@ -73,6 +63,16 @@ export const PAY_METHODS: PayMethodMeta[] = [
     apiMethod: "ussd",
     hint: "Dial USSD to complete payment",
     group: "paystack",
+  },
+  {
+    id: "stripe_checkout",
+    label: "Card & wallets",
+    shortLabel: "Stripe",
+    description: "Visa, Mastercard, Apple Pay, Google Pay, Link",
+    rail: "stripe",
+    apiMethod: "card",
+    hint: "Pay on Stripe Checkout",
+    group: "stripe",
   },
 ];
 

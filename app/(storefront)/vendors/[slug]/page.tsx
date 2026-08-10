@@ -419,15 +419,35 @@ function VendorStoreHomeInner() {
               </div>
             ) : null}
 
-            {showLocations && pins.length > 0 ? (
+            {showLocations ? (
               <div className="mb-5 overflow-hidden sm:mb-10 sm:border sm:border-black/[0.08]">
-                <VendorLocationMap
-                  pins={pins}
-                  activeId={activeLocId}
-                  showAll={mapShowAll}
-                  onPinClick={selectLocation}
-                  heightClassName="h-[180px] sm:h-[380px] lg:h-[440px]"
-                />
+                {pins.length > 0 ? (
+                  <VendorLocationMap
+                    pins={pins}
+                    activeId={activeLocId}
+                    showAll={mapShowAll}
+                    onPinClick={selectLocation}
+                    heightClassName="h-[180px] sm:h-[380px] lg:h-[440px]"
+                  />
+                ) : (
+                  <VendorLocationMap
+                    pins={[
+                      {
+                        id: "nairobi",
+                        name:
+                          activeLoc?.neighbourhood ||
+                          activeLoc?.name ||
+                          vendor.displayName ||
+                          vendor.name ||
+                          "Nairobi",
+                        lat: -1.2921,
+                        lng: 36.8219,
+                      },
+                    ]}
+                    activeId="nairobi"
+                    heightClassName="h-[180px] sm:h-[320px]"
+                  />
+                )}
               </div>
             ) : null}
 

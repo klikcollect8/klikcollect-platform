@@ -454,26 +454,53 @@ export default function DeliveryLocationStep({
         each shop’s best path home. Fee updates when the pin moves.
       </p>
 
-      {markers.length > 0 && hasToken ? (
+      {hasToken ? (
         <div className="mt-8 overflow-hidden border border-black/10">
           <div className="relative h-[220px] sm:h-[280px]">
-            {previewMap}
+            {markers.length > 0 ? (
+              previewMap
+            ) : (
+              <MapCanvas
+                mapStyle={MAPBOX_3D_STYLE}
+                flat={false}
+                freeCamera
+                pitch={48}
+                bearing={-12}
+                interactive={false}
+                showNavControls={false}
+                minimalControls
+                center={
+                  coords
+                    ? [coords.lng, coords.lat]
+                    : undefined
+                }
+                zoom={12}
+                markers={[]}
+                className="h-full w-full"
+              />
+            )}
             <button
               type="button"
               onClick={() => setMapOpen(true)}
               className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 bg-white/95 px-3 py-2 text-[12px] font-medium uppercase tracking-[0.12em] text-black shadow-sm ring-1 ring-black/10 hover:bg-white"
             >
               <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-              Enlarge
+              {markers.length > 0 ? "Enlarge" : "Open map"}
             </button>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-black/[0.06] bg-white/40 px-3 py-2.5 text-[12px] text-black/45">
             <span>
-              {routesLoading
-                ? "Finding best driver route…"
-                : tripRoutes?.driverMeta
-                  ? `Best driver trip · ${formatDistanceKm(tripRoutes.driverMeta.distanceKm)} · ~${tripRoutes.driverMeta.etaMinutes} min`
-                  : "Routes appear when the pin is set"}
+              {resolving || status === "locating"
+                ? "Finding your location…"
+                : routesLoading
+                  ? "Finding best driver route…"
+                  : tripRoutes?.driverMeta
+                    ? `Best driver trip · ${formatDistanceKm(tripRoutes.driverMeta.distanceKm)} · ~${tripRoutes.driverMeta.etaMinutes} min`
+                    : markers.length > 0
+                      ? "Routes appear when the pin is set"
+                      : status === "denied"
+                        ? "Location permission off — search or drop a pin"
+                        : "Search or drop a pin to set delivery"}
             </span>
             {accuracyLabel && !manualOverride ? (
               <span>GPS {accuracyLabel}</span>
@@ -487,11 +514,7 @@ export default function DeliveryLocationStep({
           <div className="text-center">
             <MapPin className="mx-auto h-5 w-5 text-black/35" strokeWidth={1.5} />
             <p className="mt-2 text-[12px] text-black/40">
-              {resolving || status === "locating"
-                ? "Finding your location…"
-                : status === "denied"
-                  ? "Location permission off — search or edit below"
-                  : "Map preview unavailable"}
+              Map preview unavailable — missing Mapbox token
             </p>
           </div>
         </div>

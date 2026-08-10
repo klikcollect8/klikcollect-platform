@@ -15,8 +15,8 @@ import {
   listStaffMembershipsForClerkUser,
   upsertStaffMembership,
 } from "@/lib/authz/memberships";
+import { DATA_DIR, ensureDataDir } from "@/lib/data-dir";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
 const FILE = "vendor-memberships.json";
 
 /** @deprecated Prefer StaffMembershipRole - kept for file-backed rows */
@@ -45,7 +45,7 @@ function shouldUseFileMembershipFallback(): boolean {
 }
 
 async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+  await ensureDataDir();
 }
 
 async function readAll(): Promise<VendorMembership[]> {

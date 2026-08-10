@@ -19,7 +19,11 @@ export function paystackSecretKey(): string {
 }
 
 export function paystackPublicKey(): string | null {
-  return process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || null;
+  return (
+    process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ||
+    process.env.PAYSTACK_PUBLIC_KEY ||
+    null
+  );
 }
 
 async function paystackFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -238,7 +242,10 @@ export function paystackConfigStatus() {
     process.env.PAYSTACK_SECRET_KEY ||
     process.env.PAYSTACK_TEST_SECRET_KEY ||
     "";
-  const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
+  const publicKey =
+    process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ||
+    process.env.PAYSTACK_PUBLIC_KEY ||
+    "";
   const webhookSecret = process.env.PAYSTACK_WEBHOOK_SECRET || "";
 
   const mask = (value: string) =>
@@ -252,13 +259,16 @@ export function paystackConfigStatus() {
     return key ? ("unknown" as const) : ("missing" as const);
   };
 
+  // Secret alone is enough to initialize transactions (hosted redirect).
+  // Public key unlocks inline STK; without it we still offer M-Pesa via hosted.
   return {
-    configured: Boolean(secret && publicKey),
+    configured: Boolean(secret),
     liveEnabled,
     secretMode: keyMode(secret, "sk"),
     publicMode: keyMode(publicKey, "pk"),
     publicKeyMasked: mask(publicKey),
     secretConfigured: Boolean(secret),
+    publicKeyConfigured: Boolean(publicKey),
     webhookSecretConfigured: Boolean(webhookSecret),
     webhookHmacFallback: !webhookSecret && Boolean(secret),
     channels: ["card", "mobile_money"] as const,

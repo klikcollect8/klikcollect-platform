@@ -1,8 +1,8 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { publicId } from "./ids";
+import { DATA_DIR, ensureDataDir } from "@/lib/data-dir";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
 const FILE = "support-tickets.json";
 
 export type TicketStatus = "open" | "in_progress" | "resolved";
@@ -23,13 +23,9 @@ export type SupportTicket = {
   notes: string[];
 };
 
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-}
-
 async function readAll(): Promise<SupportTicket[]> {
-  await ensureDir();
   try {
+    await ensureDataDir();
     const raw = await fs.readFile(path.join(DATA_DIR, FILE), "utf8");
     const data = JSON.parse(raw) as SupportTicket[];
     return Array.isArray(data) ? data : [];
@@ -39,12 +35,23 @@ async function readAll(): Promise<SupportTicket[]> {
 }
 
 async function writeAll(tickets: SupportTicket[]): Promise<void> {
-  await ensureDir();
-  await fs.writeFile(
-    path.join(DATA_DIR, FILE),
-    JSON.stringify(tickets, null, 2),
-    "utf8",
-  );
+  const ok = await ensureDataDir();
+  if (!ok) {
+    console.warn("[support-store] disk unavailable; ticket not persisted");
+    return;
+  }
+  try {
+    await fs.writeFile(
+      path.join(DATA_DIR, FILE),
+      JSON.stringify(tickets, null, 2),
+      "utf8",
+    );
+  } catch (err) {
+    console.warn(
+      "[support-store] write failed",
+      err instanceof Error ? err.message : err,
+    );
+  }
 }
 
 const STATUS_RANK: Record<TicketStatus, number> = {

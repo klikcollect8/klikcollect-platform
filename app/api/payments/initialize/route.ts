@@ -26,7 +26,12 @@ export async function POST(request: NextRequest) {
     }
     const body = await request.json();
     const clientAmount = Number(body?.amountMinor);
-    const deliveryMinorClient = 0;
+    const deliveryMinorClient = Math.max(
+      0,
+      Math.round(Number(body?.deliveryMinor) || 0),
+    );
+    const fulfilment: "pickup" | "delivery" =
+      body?.fulfilment === "delivery" ? "delivery" : "pickup";
     let amountMinor = Number.isFinite(clientAmount) ? clientAmount : 0;
     const email =
       String(body?.email || "").trim() ||
@@ -66,7 +71,12 @@ export async function POST(request: NextRequest) {
     const phoneNormalized = body?.phone
       ? normalizeKenyaPhone(String(body.phone))
       : null;
-    const areaKey = "pickup";
+    const areaKey =
+      fulfilment === "pickup"
+        ? "pickup"
+        : body?.areaKey
+          ? String(body.areaKey)
+          : "other";
     const collectHub = body?.collectHub ? String(body.collectHub) : null;
 
     if (method === "mpesa" && !phoneNormalized) {
@@ -135,8 +145,20 @@ export async function POST(request: NextRequest) {
           lines: feeLines,
           areaKey,
           collectHub,
-          fulfilment: "pickup",
+          fulfilment,
         });
+        // Prefer live checkout road quote when fee tables have no delivery row.
+        if (
+          fulfilment === "delivery" &&
+          deliveryMinorClient > 0 &&
+          feeQuote.deliveryMinor < deliveryMinorClient
+        ) {
+          feeQuote = {
+            ...feeQuote,
+            deliveryMinor: deliveryMinorClient,
+            customerTotalMinor: feeQuote.goodsMinor + deliveryMinorClient,
+          };
+        }
         // Bump to fee-engine total when higher; never drop below client/checkout total.
         if (feeQuote.customerTotalMinor > amountMinor) {
           amountMinor = feeQuote.customerTotalMinor;
@@ -191,7 +213,7 @@ export async function POST(request: NextRequest) {
           origin,
           lineItems: body?.lineItems || [],
           callbackQuery: {
-            fulfilment: "pickup",
+            fulfilment,
             orderPublicId: orderPublicId || orderIds[0] || undefined,
           },
           cancelUrl: undefined,
@@ -228,7 +250,8 @@ export async function POST(request: NextRequest) {
             feeQuote,
             areaKey,
             collectHub,
-            fulfilment: "pickup",
+            fulfilment,
+            deliveryMinor: deliveryMinorClient,
             returnPath: null,
           },
         });
@@ -264,7 +287,7 @@ export async function POST(request: NextRequest) {
     const callbackParams = new URLSearchParams({
       reference,
       provider: "paystack",
-      fulfilment: "pickup",
+      fulfilment,
     });
     const oid = orderPublicId || orderIds[0];
     if (oid) callbackParams.set("orderPublicId", oid);
@@ -277,7 +300,9 @@ export async function POST(request: NextRequest) {
       channel: method,
       paymentMethod: method,
       provider: "paystack",
-      fulfilment: "pickup",
+      fulfilment,
+      deliveryMinor: deliveryMinorClient,
+      areaKey,
       returnPath: null,
     };
     if (phoneNormalized) metadata.phone = phoneNormalized;
@@ -347,7 +372,9 @@ export async function POST(request: NextRequest) {
         orderIds,
         lineItems: body?.lineItems || [],
         feeQuote,
-        fulfilment: "pickup",
+        fulfilment,
+        deliveryMinor: deliveryMinorClient,
+        areaKey,
         returnPath: null,
       },
     });

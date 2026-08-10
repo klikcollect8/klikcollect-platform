@@ -18,8 +18,15 @@ export const DELIVERY_AREAS = [
   { value: "other", label: "Other area", fee: 300, hint: "Type your neighbourhood" },
 ] as const;
 
-/** Pickup wizard — short path: shop → details → pay. */
-export const PICKUP_FLOW = ["collect", "contact", "payment"] as const;
+/** Pickup wizard — vendor collect / hybrid, then same-day time. */
+export const PICKUP_FLOW = [
+  "method",
+  "collect",
+  "when",
+  "contact",
+  "payment",
+  "review",
+] as const;
 
 /** Delivery — confirm live location (road-distance fee + same-day time). */
 export const DELIVERY_FLOW = [

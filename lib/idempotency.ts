@@ -1,8 +1,8 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { publicId } from "./ids";
+import { DATA_DIR, ensureDataDir } from "@/lib/data-dir";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
 const FILE = "idempotency.json";
 
 type Record = {
@@ -15,6 +15,7 @@ type Record = {
 
 async function readAll(): Promise<Record[]> {
   try {
+    await ensureDataDir();
     const raw = await fs.readFile(path.join(DATA_DIR, FILE), "utf8");
     const data = JSON.parse(raw) as Record[];
     return Array.isArray(data) ? data : [];
@@ -24,13 +25,21 @@ async function readAll(): Promise<Record[]> {
 }
 
 async function writeAll(rows: Record[]) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const trimmed = rows.slice(-500);
-  await fs.writeFile(
-    path.join(DATA_DIR, FILE),
-    JSON.stringify(trimmed, null, 2),
-    "utf8",
-  );
+  const ok = await ensureDataDir();
+  if (!ok) return;
+  try {
+    const trimmed = rows.slice(-500);
+    await fs.writeFile(
+      path.join(DATA_DIR, FILE),
+      JSON.stringify(trimmed, null, 2),
+      "utf8",
+    );
+  } catch (err) {
+    console.warn(
+      "[idempotency] write failed",
+      err instanceof Error ? err.message : err,
+    );
+  }
 }
 
 /**

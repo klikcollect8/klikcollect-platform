@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
+  FulfilmentMethod,
   Product,
   ProductOffer,
   ProductVariation,
@@ -31,6 +32,8 @@ import {
   type OfferSortMode,
   type RankedOffer,
 } from "@/lib/offers/rank-offers";
+import { cn } from "@/lib/utils";
+import MapPreview from "@/components/map/MapPreview";
 
 type TabType = "details" | "location" | "reviews" | "questions";
 
@@ -40,7 +43,8 @@ function ProductPageInner() {
   const { showToast } = useToast();
   const { loading: authLoading } = useUserAuth();
   const { addToCart: addToCartHook } = useCart();
-  const { coords } = useUserLocation();
+  const { coords, status: locationStatus, track: trackLocation } =
+    useUserLocation();
   const [product, setProduct] = useState<Product | null>(null);
   const [offers, setOffers] = useState<ProductOffer[]>([]);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
@@ -56,6 +60,14 @@ function ProductPageInner() {
   const [browseQuery, setBrowseQuery] = useState("");
   const [browseSort, setBrowseSort] = useState<OfferSortMode>("best");
   const [sheetMounted, setSheetMounted] = useState(false);
+  const [fulfilment, setFulfilment] = useState<FulfilmentMethod | null>(null);
+  const [deliveryQuoteMajor, setDeliveryQuoteMajor] = useState<number | null>(
+    null,
+  );
+  const [deliveryQuoteLabel, setDeliveryQuoteLabel] = useState<string | null>(
+    null,
+  );
+  const [deliveryQuoting, setDeliveryQuoting] = useState(false);
   const prefillOffer = searchParams.get("offer");
 
   useEffect(() => {
@@ -220,11 +232,124 @@ function ProductPageInner() {
     );
   }, [rankedOffers, browseSort, browseQuery, userPoint]);
 
-  // Pickup-only — no delivery quotes on PDP
+  // Auto road-distance quote once a vendor is selected + live location is ready
+  useEffect(() => {
+    if (!selectedOffer) {
+      setDeliveryQuoteMajor(null);
+      setDeliveryQuoteLabel(null);
+      setDeliveryQuoting(false);
+      return;
+    }
+
+    if (!coords) {
+      setDeliveryQuoteMajor(null);
+      setDeliveryQuoteLabel(null);
+      setDeliveryQuoting(false);
+      return;
+    }
+
+    const shops =
+      selectedOffer.lat != null && selectedOffer.lng != null
+        ? [{ lat: selectedOffer.lat, lng: selectedOffer.lng }]
+        : [];
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setDeliveryQuoting(true);
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/checkout/delivery-quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            fulfilment: "delivery",
+            areaLabel: selectedOffer.neighbourhood || null,
+            drop: { lat: coords.lat, lng: coords.lng },
+            shops,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        const minor = Number(json?.data?.deliveryMinor);
+        if (Number.isFinite(minor)) {
+          setDeliveryQuoteMajor(minor / 100);
+          const km = Number(json?.data?.distanceKm) || 0;
+          const eta = Number(json?.data?.etaMinutes) || 0;
+          const adjs = Array.isArray(json?.data?.adjustments)
+            ? (json.data.adjustments as Array<{
+                label?: string;
+                amountMajor?: number;
+              }>)
+            : [];
+          const parts = [
+            km > 0
+              ? km < 1
+                ? `${Math.round(km * 1000)} m`
+                : `${km.toFixed(1)} km`
+              : null,
+            eta > 0 ? `~${eta} min` : null,
+            ...adjs
+              .filter((a) => a?.label && a?.amountMajor)
+              .map((a) => `${a.label} +${a.amountMajor}`),
+          ].filter(Boolean);
+          setDeliveryQuoteLabel(parts.length ? parts.join(" · ") : null);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setDeliveryQuoteMajor(null);
+        setDeliveryQuoteLabel(null);
+      } finally {
+        if (!cancelled) setDeliveryQuoting(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [selectedOffer, coords?.lat, coords?.lng]);
+
+  const switchVendorHint = useMemo(() => {
+    if (!selectedOfferId || !userPoint || rankedOffers.length < 2) return null;
+    const selected = rankedOffers.find((o) => o.id === selectedOfferId);
+    if (!selected || selected.distanceKm == null) return null;
+    const better = rankedOffers.find(
+      (o) =>
+        o.id !== selected.id &&
+        o.distanceKm != null &&
+        o.distanceKm < selected.distanceKm! - 0.3 &&
+        o.price <= selected.price * 1.05,
+    );
+    if (!better || better.distanceKm == null) return null;
+    const deltaKm = selected.distanceKm - better.distanceKm;
+    const save = Math.round(deltaKm * 40);
+    if (save < 50) return null;
+    return {
+      offerId: better.id,
+      vendorName: better.vendorName,
+      saveMajor: save,
+    };
+  }, [selectedOfferId, rankedOffers, userPoint]);
 
   const addToCart = async (): Promise<boolean> => {
     if (!product || !selectedOffer) {
       showToast("Choose a vendor first", "error");
+      return false;
+    }
+    if (!fulfilment) {
+      showToast("Choose pickup or delivery", "error");
+      return false;
+    }
+    if (fulfilment === "delivery" && !coords) {
+      showToast("Allow location to calculate delivery", "error");
+      trackLocation();
+      return false;
+    }
+    if (fulfilment === "delivery" && deliveryQuoteMajor == null) {
+      showToast("Calculating delivery… try again in a moment", "error");
       return false;
     }
     if (product.variations?.length) {
@@ -261,7 +386,10 @@ function ProductPageInner() {
         vendorName: selectedOffer.vendorName,
         neighbourhood: selectedOffer.neighbourhood,
         stock: selectedOffer.stock,
-        fulfilment: "pickup",
+        fulfilment,
+        deliveryZoneLabel:
+          fulfilment === "delivery" ? "Your location" : undefined,
+        deliveryFee: fulfilment === "delivery" ? deliveryQuoteMajor ?? 0 : 0,
         variantPublicId: selectedOffer.variantPublicId || undefined,
       });
       if (!ok) {
@@ -583,9 +711,115 @@ function ProductPageInner() {
 
             {selectedOffer ? (
               <section className="mt-6" id="product-fulfilment">
-                <p className="text-[13px] leading-relaxed text-black/45">
-                  Click &amp; collect — free pickup. You&apos;ll get a receipt after payment.
-                </p>
+                <div className="flex items-center gap-1 border border-black/10 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFulfilment((prev) =>
+                        prev === "pickup" ? null : "pickup",
+                      )
+                    }
+                    className={cn(
+                      "flex min-h-9 flex-1 items-center justify-center gap-2 px-2 text-[12px] transition-colors",
+                      fulfilment === "pickup"
+                        ? "bg-black text-white"
+                        : "text-black/50 hover:text-black",
+                    )}
+                  >
+                    <span className="font-medium tracking-tight">Pickup</span>
+                    <span
+                      className={
+                        fulfilment === "pickup"
+                          ? "text-white/70"
+                          : "text-black/35"
+                      }
+                    >
+                      Free
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (fulfilment === "delivery") {
+                        setFulfilment(null);
+                        return;
+                      }
+                      if (!coords) trackLocation();
+                      setFulfilment("delivery");
+                    }}
+                    className={cn(
+                      "flex min-h-9 flex-1 items-center justify-center gap-2 px-2 text-[12px] transition-colors",
+                      fulfilment === "delivery"
+                        ? "bg-black text-white"
+                        : "text-black/50 hover:text-black",
+                    )}
+                  >
+                    <span className="font-medium tracking-tight">Delivery</span>
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        fulfilment === "delivery"
+                          ? "text-white/70"
+                          : "text-black/35",
+                      )}
+                    >
+                      {!coords
+                        ? locationStatus === "locating"
+                          ? "…"
+                          : "GPS"
+                        : deliveryQuoting
+                          ? "…"
+                          : deliveryQuoteMajor != null
+                            ? formatPrice(deliveryQuoteMajor)
+                            : "—"}
+                    </span>
+                  </button>
+                </div>
+                {fulfilment === "delivery" ? (
+                  <div className="mt-2 space-y-1.5">
+                    <p className="text-[11px] text-black/35">
+                      {!coords ? (
+                        <>
+                          Using your live location.{" "}
+                          <button
+                            type="button"
+                            onClick={() => trackLocation()}
+                            className="underline underline-offset-2 hover:text-black"
+                          >
+                            Enable GPS
+                          </button>
+                        </>
+                      ) : deliveryQuoteLabel ? (
+                        <>To you · {deliveryQuoteLabel}</>
+                      ) : deliveryQuoting ? (
+                        <>Calculating from your location…</>
+                      ) : (
+                        <>To your live location</>
+                      )}
+                    </p>
+                    {switchVendorHint ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedOfferId(switchVendorHint.offerId)
+                        }
+                        className="block w-full text-left text-[12px] leading-snug text-black/55 underline underline-offset-2 decoration-black/20 hover:text-black hover:decoration-black"
+                      >
+                        Buy from {switchVendorHint.vendorName} instead. Save{" "}
+                        {formatPrice(switchVendorHint.saveMajor)} on delivery.
+                      </button>
+                    ) : null}
+                  </div>
+                ) : fulfilment === "pickup" ? (
+                  <p className="mt-2 text-[11px] text-black/35">
+                    Free click &amp; collect — you&apos;ll get a receipt after
+                    payment.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-[11px] text-black/35">
+                    Choose pickup or delivery before adding to bag.
+                  </p>
+                )}
               </section>
             ) : null}
 
@@ -617,6 +851,9 @@ function ProductPageInner() {
                   </div>
                   <p className="text-[13px] text-black/40">
                     {stock <= 5 ? `Only ${stock} left` : "In stock"}
+                    {fulfilment === "delivery" && deliveryQuoteMajor != null
+                      ? ` · +${formatPrice(deliveryQuoteMajor)} delivery`
+                      : ""}
                   </p>
                 </div>
 
@@ -624,7 +861,12 @@ function ProductPageInner() {
                   <button
                     type="button"
                     onClick={addToCart}
-                    disabled={isAddingToCart}
+                    disabled={
+                      isAddingToCart ||
+                      !fulfilment ||
+                      (fulfilment === "delivery" &&
+                        (deliveryQuoteMajor == null || !coords))
+                    }
                     className="min-h-12 bg-black py-4 text-[12px] font-medium uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-80 disabled:opacity-50 sm:text-[13px] sm:tracking-[0.16em]"
                   >
                     {isAddingToCart ? "Adding…" : "Add to bag"}
@@ -632,7 +874,12 @@ function ProductPageInner() {
                   <button
                     type="button"
                     onClick={handleBuyNow}
-                    disabled={isAddingToCart}
+                    disabled={
+                      isAddingToCart ||
+                      !fulfilment ||
+                      (fulfilment === "delivery" &&
+                        (deliveryQuoteMajor == null || !coords))
+                    }
                     className="min-h-12 border border-black/20 py-4 text-[12px] font-medium uppercase tracking-[0.14em] transition-colors hover:border-black hover:bg-black hover:text-white disabled:opacity-50 sm:text-[13px] sm:tracking-[0.16em]"
                   >
                     Buy now
@@ -818,22 +1065,30 @@ function ProductPageInner() {
                             </Link>
                           </div>
                         </div>
-                        <p className="mt-6 text-[13px] leading-relaxed text-black/40">
-                          Pay on KlikCollect, then collect in person from this
-                          vendor. Reviews and questions below are for this
-                          seller.
-                        </p>
+                    <p className="mt-6 text-[13px] leading-relaxed text-black/40">
+                      Pay on KlikCollect, then collect in person or get it
+                      delivered same day in Nairobi.
+                    </p>
                       </div>
                     </div>
                   </div>
                 ) : null}
 
                 {activeTab === "location" ? (
-                  <div className="space-y-4">
-                    <p className="text-[14px] text-black/45">
-                      Pickup address for the selected seller. Show your receipt
-                      when you collect.
-                    </p>
+                  <div className="space-y-6">
+                    <MapPreview
+                      variant="tab"
+                      selectedOfferId={selectedOfferId}
+                      offers={mapOffers.map((o) => ({
+                        id: o.id,
+                        vendorId: o.vendorId,
+                        vendorName: o.vendorName,
+                        neighbourhood: o.neighbourhood,
+                        address: o.address,
+                        lng: o.lng,
+                        lat: o.lat,
+                      }))}
+                    />
                     <ul className="divide-y divide-black/[0.06] border-y border-black/[0.06]">
                       {mapOffers.map((o) => (
                         <li
@@ -844,12 +1099,20 @@ function ProductPageInner() {
                               : "py-4 text-black/50"
                           }
                         >
-                          <p className="text-[15px] font-medium">{o.vendorName}</p>
-                          <p className="mt-1 text-[13px] text-black/45">
-                            {[o.address, o.neighbourhood]
-                              .filter(Boolean)
-                              .join(", ") || "Address on request"}
-                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOfferId(o.id)}
+                            className="w-full text-left"
+                          >
+                            <p className="text-[15px] font-medium">
+                              {o.vendorName}
+                            </p>
+                            <p className="mt-1 text-[13px] text-black/45">
+                              {[o.address, o.neighbourhood]
+                                .filter(Boolean)
+                                .join(", ") || "Address on request"}
+                            </p>
+                          </button>
                         </li>
                       ))}
                     </ul>

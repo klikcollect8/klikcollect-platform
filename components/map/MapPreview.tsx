@@ -69,8 +69,11 @@ export default function MapPreview({
   }, [offers]);
 
   const focus = useMemo(() => {
-    if (!selectedOfferId) return null;
-    return pins.find((p) => p.id === selectedOfferId) || null;
+    if (selectedOfferId) {
+      const selected = pins.find((p) => p.id === selectedOfferId);
+      if (selected) return selected;
+    }
+    return pins[0] || null;
   }, [pins, selectedOfferId]);
 
   useEffect(() => {
@@ -92,28 +95,38 @@ export default function MapPreview({
   }, [focus]);
 
   const markers: MapMarker[] = useMemo(() => {
-    if (!focus) return [];
-    return [
-      {
-        id: focus.id,
-        lng: focus.lng,
-        lat: focus.lat,
-        label: focus.vendorName,
-        kind: "pickup",
-        active: true,
-      },
-    ];
-  }, [focus]);
+    if (!pins.length) return [];
+    if (focus) {
+      return pins.map((p) => ({
+        id: p.id,
+        lng: p.lng,
+        lat: p.lat,
+        label: p.vendorName,
+        kind: "pickup" as const,
+        active: p.id === focus.id,
+      }));
+    }
+    return pins.map((p) => ({
+      id: p.id,
+      lng: p.lng,
+      lat: p.lat,
+      label: p.vendorName,
+      kind: "pickup" as const,
+      active: true,
+    }));
+  }, [pins, focus]);
 
   const mapsDirections = focus
     ? `https://www.google.com/maps/dir/?api=1&destination=${focus.lat},${focus.lng}`
     : null;
 
-  if (!selectedOfferId || !focus) {
+  if (!pins.length) {
     return (
       <section className={className}>
         <p className="text-[14px] text-black/45">
-          Select a vendor above to see their exact pickup location.
+          {selectedOfferId
+            ? "This seller doesn’t have map coordinates yet — address is listed below."
+            : "Select a vendor above to see their pickup location on the map."}
         </p>
       </section>
     );

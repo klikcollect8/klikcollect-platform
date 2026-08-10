@@ -1,8 +1,24 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { MapPin, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CheckoutVendor, CollectMode } from "@/lib/checkout/types";
+import {
+  getMapboxToken,
+  MAPBOX_FLAT_STYLE,
+  NAIROBI_CENTER,
+} from "@/lib/mapbox";
+import type { MapMarker } from "@/components/map/MapCanvas";
+
+const MapCanvas = dynamic(() => import("@/components/map/MapCanvas"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[200px] items-center justify-center bg-black/[0.03] text-[11px] uppercase tracking-[0.2em] text-black/35">
+      Loading map
+    </div>
+  ),
+});
 
 type Props = {
   vendors: CheckoutVendor[];
@@ -25,6 +41,17 @@ export default function PickupCollectStep({
   onHubVendorChange,
 }: Props) {
   const multi = vendors.length > 1;
+  const hasToken = !!getMapboxToken();
+  const markers: MapMarker[] = vendors
+    .filter((v) => v.lat != null && v.lng != null)
+    .map((v) => ({
+      id: v.vendorId,
+      lat: v.lat as number,
+      lng: v.lng as number,
+      label: v.name,
+      kind: "pickup" as const,
+      active: !hubVendorId || v.vendorId === hubVendorId,
+    }));
 
   if (loading) {
     return (
@@ -60,6 +87,33 @@ export default function PickupCollectStep({
           ? "Pick up from each shop, or consolidate to one. You’ll get a receipt after pay."
           : "Collect here during today’s hours — you’ll get a receipt after pay."}
       </p>
+
+      {hasToken && markers.length > 0 ? (
+        <div className="mt-8 overflow-hidden border border-black/10">
+          <div className="h-[220px] sm:h-[280px]">
+            <MapCanvas
+              className="h-full w-full"
+              mapStyle={MAPBOX_FLAT_STYLE}
+              center={
+                markers.length === 1
+                  ? [markers[0]!.lng, markers[0]!.lat]
+                  : NAIROBI_CENTER
+              }
+              zoom={markers.length === 1 ? 14 : 11}
+              pitch={0}
+              bearing={0}
+              flat
+              markers={markers}
+              fitMarkers={markers.length > 1}
+              interactive
+              alwaysShowLabels
+              showNavControls
+              minimalControls
+              onMarkerClick={(id) => onHubVendorChange(id)}
+            />
+          </div>
+        </div>
+      ) : null}
 
       <ul className="mt-8 divide-y divide-black/[0.06] border-y border-black/[0.06]">
         {vendors.map((v) => (
