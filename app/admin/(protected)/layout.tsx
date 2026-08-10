@@ -15,12 +15,13 @@ export default async function ProtectedAdminLayout({
 }) {
   const user = await currentUser();
   if (!user) {
-    redirect("/admin/login");
+    redirect("/admin/login?redirect=%2Fadmin");
   }
 
   const role = await resolveAdminRole(user);
   if (!role) {
-    redirect("/?error=admin_access_denied");
+    // Stay in the admin auth surface so staff can switch accounts.
+    redirect("/admin/login?redirect=%2Fadmin&denied=1");
   }
 
   return <AdminLayoutClient>{children}</AdminLayoutClient>;

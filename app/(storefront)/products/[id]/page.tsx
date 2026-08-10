@@ -136,10 +136,50 @@ function ProductPageInner() {
     [coords],
   );
 
-  const rankedOffers = useMemo(
-    () => rankOffers(offers, userPoint),
-    [offers, userPoint],
-  );
+  const selectedVariantId = useMemo(() => {
+    const variants = product?.catalogueVariants || [];
+    if (!variants.length) return null;
+    if (variants.length === 1 && !(product?.variations?.length)) {
+      return variants[0].id;
+    }
+    const axes = product?.variations || [];
+    if (!axes.length) return variants[0]?.id ?? null;
+    if (!axes.every((v) => selectedVariations[v.name])) return null;
+    if (axes.length === 1 && axes[0].name === "Option") {
+      const title = selectedVariations.Option;
+      return variants.find((v) => v.title === title)?.id ?? null;
+    }
+    return (
+      variants.find((v) =>
+        Object.entries(selectedVariations).every(
+          ([key, val]) => (v.options || {})[key] === val,
+        ),
+      )?.id ?? null
+    );
+  }, [product, selectedVariations]);
+
+  const rankedOffers = useMemo(() => {
+    const multiVariant = (product?.catalogueVariants?.length || 0) > 1;
+    const filtered =
+      multiVariant && selectedVariantId
+        ? offers.filter(
+            (o) =>
+              o.variantPublicId === selectedVariantId ||
+              (!o.variantPublicId &&
+                product?.catalogueVariants?.[0]?.id === selectedVariantId),
+          )
+        : multiVariant && !selectedVariantId
+          ? []
+          : offers;
+    return rankOffers(filtered, userPoint);
+  }, [offers, userPoint, product, selectedVariantId]);
+
+  useEffect(() => {
+    if (!selectedOfferId) return;
+    if (!rankedOffers.some((o) => o.id === selectedOfferId)) {
+      setSelectedOfferId(rankedOffers[0]?.id ?? null);
+    }
+  }, [rankedOffers, selectedOfferId]);
 
   const topOffers = useMemo(
     () => rankedOffers.slice(0, TOP_OFFER_COUNT),
@@ -187,6 +227,23 @@ function ProductPageInner() {
       showToast("Choose a vendor first", "error");
       return false;
     }
+    if (product.variations?.length) {
+      const missing = product.variations.some(
+        (v) => !selectedVariations[v.name],
+      );
+      if (missing) {
+        showToast("Choose all product options first", "error");
+        return false;
+      }
+    }
+    if (selectedOffer.stock <= 0) {
+      showToast("This option is out of stock", "error");
+      return false;
+    }
+    if (product.status === "archived") {
+      showToast("This product is no longer available", "error");
+      return false;
+    }
     if (authLoading) await new Promise((r) => setTimeout(r, 300));
     setIsAddingToCart(true);
     try {
@@ -205,6 +262,7 @@ function ProductPageInner() {
         neighbourhood: selectedOffer.neighbourhood,
         stock: selectedOffer.stock,
         fulfilment: "pickup",
+        variantPublicId: selectedOffer.variantPublicId || undefined,
       });
       if (!ok) {
         showToast("Failed to add", "error");

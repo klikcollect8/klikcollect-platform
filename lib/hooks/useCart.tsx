@@ -23,6 +23,8 @@ export type AddToCartOffer = {
   deliveryFee?: number;
   /** Optional stock cap for this offer */
   stock?: number;
+  /** Canonical variant for multi-variant products */
+  variantPublicId?: string;
 };
 
 /** Module-level guard - many components call useCart(); one fetch per user. */
@@ -254,6 +256,7 @@ export function useCartState(): CartApi {
           },
           quantity: nextQty,
           offerId: offer.offerId,
+          variantPublicId: offer.variantPublicId,
           offerPrice: offer.offerPrice,
           vendorId: offer.vendorId,
           vendorName: offer.vendorName,

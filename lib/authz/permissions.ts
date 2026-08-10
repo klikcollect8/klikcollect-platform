@@ -44,11 +44,17 @@ export const PERMISSIONS = [
   "products:approve",
   "products:reject",
   "products:feature",
+  "products:publish",
+  "products:manage_variants",
+  "products:manage_media",
+  "products:manage_seo",
+  "products:manage_categories",
 
   // Vendor offers (price / availability on platform-owned products)
   "offers:view",
   "offers:price",
   "offers:availability",
+  "offers:manage",
   "catalogue:request_correction",
 
   // Categories / attributes / brands

@@ -437,7 +437,7 @@ export default function AdminNav({
   useEffect(() => {
     document.documentElement.style.setProperty(
       "--admin-aside",
-      collapsed ? "72px" : "240px",
+      collapsed ? "72px" : "260px",
     );
   }, [collapsed]);
 
@@ -507,44 +507,66 @@ export default function AdminNav({
     normalizedRole ||
     "Staff";
 
-  if (isLogin) return null;
-
   const pageMatch = useMemo(
     () => resolveAdminNavMatch(pathname),
     [pathname],
   );
 
+  // Must stay after all hooks — early return previously broke Rules of Hooks
+  // when pathname flipped between /admin/login and the console.
+  if (isLogin) return null;
+
   const renderSidebar = (onNavigate?: () => void, mobileDrawer = false) => (
     <div className="flex h-full min-h-0 flex-col bg-[var(--kc-canvas)]">
       <div
         className={cn(
-          "shrink-0 pb-6",
-          mobileDrawer ? "px-7 pr-14 pt-6" : collapsed ? "px-3 pt-9" : "px-7 pt-9",
+          "shrink-0",
+          mobileDrawer
+            ? "px-7 pr-14 pt-7 pb-5"
+            : collapsed
+              ? "px-3 pt-8 pb-4"
+              : "px-5 pt-8 pb-5",
         )}
       >
         <div className="flex items-start justify-between gap-2">
-          <Link href="/admin" onClick={onNavigate} className="block min-w-0">
-            <p className={adminUi.pageEyebrow}>
-              {mobileDrawer ? "Menu" : collapsed ? "KC" : "Admin"}
-            </p>
-            {mobileDrawer || !collapsed ? (
+          <Link
+            href="/admin"
+            onClick={onNavigate}
+            className={cn(
+              "group min-w-0",
+              collapsed && !mobileDrawer
+                ? "mx-auto flex h-11 w-11 items-center justify-center border border-black/12 bg-black text-[11px] font-medium tracking-[0.08em] text-white"
+                : "block",
+            )}
+            title="Admin dashboard"
+          >
+            {collapsed && !mobileDrawer ? (
+              "KC"
+            ) : (
               <>
-                <p
-                  className="mt-2 truncate text-[17px] font-medium tracking-tight text-black"
-                  style={{ fontFamily: "var(--font-display), sans-serif" }}
-                >
-                  {mobileDrawer ? "KlikCollect Admin" : "Platform"}
-                </p>
-                <p className="mt-1 truncate text-[12px] text-black/35">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-black/12 bg-black text-[10px] font-medium tracking-[0.12em] text-white">
+                    KC
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-black/35">
+                      {mobileDrawer ? "Menu" : "Admin"}
+                    </p>
+                    <p className="mt-0.5 truncate text-[15px] font-medium tracking-tight text-black">
+                      {mobileDrawer ? "KlikCollect Admin" : "Platform"}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 truncate text-[12px] text-black/40">
                   {roleLabel}
                 </p>
               </>
-            ) : null}
+            )}
           </Link>
           {!mobileDrawer ? (
             <button
               type="button"
-              className="hidden h-11 w-11 items-center justify-center p-1 text-black/40 hover:text-black lg:inline-flex"
+              className="hidden h-9 w-9 items-center justify-center text-black/35 transition-colors hover:text-black lg:inline-flex"
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               onClick={() => setCollapsed((v) => !v)}
             >
@@ -560,20 +582,22 @@ export default function AdminNav({
 
       <nav
         className={cn(
-          "scrollbar-hide min-h-0 flex-1 overflow-y-auto pb-4",
-          collapsed && !mobileDrawer ? "px-2" : "px-3",
+          "scrollbar-hide min-h-0 flex-1 overflow-y-auto",
+          collapsed && !mobileDrawer ? "px-2 pb-4" : "px-3 pb-5",
         )}
       >
         {GROUPS.map((group) => {
           const items = navItems.filter((i) => i.group === group.id);
           if (!items.length) return null;
           return (
-            <div key={group.id} className="mb-7">
+            <div key={group.id} className="mb-6">
               {mobileDrawer || !collapsed ? (
-                <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-black/30">
+                <p className="mb-1.5 px-3 text-[10px] font-medium uppercase tracking-[0.18em] text-black/28">
                   {group.label}
                 </p>
-              ) : null}
+              ) : (
+                <div className="mx-auto mb-2 h-px w-6 bg-black/10" aria-hidden />
+              )}
               <div className="space-y-0.5">
                 {items.map((item) => {
                   const Icon = item.icon;
@@ -585,19 +609,21 @@ export default function AdminNav({
                       onClick={onNavigate}
                       title={item.label}
                       className={cn(
-                        "flex min-h-11 items-center gap-2.5 py-3 text-[14px]",
+                        "flex min-h-10 items-center gap-2.5 rounded-none py-2.5 text-[13.5px] tracking-tight",
                         collapsed && !mobileDrawer
                           ? "justify-center px-2"
-                          : "px-2",
-                        active ? adminUi.navActive : adminUi.navIdle,
+                          : "px-3",
+                        active
+                          ? "bg-black/[0.045] font-medium text-black"
+                          : "font-medium text-black/42 transition-colors hover:bg-black/[0.03] hover:text-black",
                       )}
                     >
                       <Icon
                         className={cn(
-                          "h-4 w-4 shrink-0",
-                          active ? "text-black" : "text-black/30",
+                          "h-[15px] w-[15px] shrink-0",
+                          active ? "text-black" : "text-black/32",
                         )}
-                        strokeWidth={1.5}
+                        strokeWidth={active ? 1.75 : 1.5}
                       />
                       {mobileDrawer || !collapsed ? (
                         <span className="truncate">{item.label}</span>
@@ -613,47 +639,64 @@ export default function AdminNav({
 
       <div
         className={cn(
-          "shrink-0 space-y-3 border-t border-black/10 py-4",
-          collapsed && !mobileDrawer ? "px-2" : "px-5",
+          "shrink-0 space-y-1 border-t border-black/10 pt-3",
+          collapsed && !mobileDrawer ? "px-2 pb-4" : "px-3 pb-5",
         )}
       >
+        <Link
+          href="/app"
+          onClick={onNavigate}
+          title="Open vendor workspace"
+          className={cn(
+            "flex min-h-10 items-center gap-2.5 py-2.5 text-[13px] font-medium text-black/45 transition-colors hover:text-black",
+            collapsed && !mobileDrawer ? "justify-center px-2" : "px-3",
+          )}
+        >
+          <Store className="h-[15px] w-[15px] shrink-0" strokeWidth={1.5} />
+          {mobileDrawer || !collapsed ? (
+            <span className="truncate">Vendor workspace</span>
+          ) : null}
+        </Link>
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            setControlOpen(true);
+          }}
+          title="Control panel"
+          className={cn(
+            "flex min-h-10 w-full items-center gap-2.5 py-2.5 text-left text-[13px] font-medium text-black/45 transition-colors hover:text-black",
+            collapsed && !mobileDrawer ? "justify-center px-2" : "px-3",
+          )}
+        >
+          <SlidersHorizontal
+            className="h-[15px] w-[15px] shrink-0"
+            strokeWidth={1.5}
+          />
+          {mobileDrawer || !collapsed ? (
+            <span className="truncate">Control panel</span>
+          ) : null}
+        </button>
+
         {mobileDrawer || !collapsed ? (
-          <button
-            type="button"
-            onClick={() => {
-              onNavigate?.();
-              setControlOpen(true);
-            }}
-            className="flex min-h-11 w-full items-center gap-2.5 px-2 py-3 text-left text-[13px] font-medium text-black/50 transition-colors hover:text-black"
-          >
-            <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-            <span>Control panel</span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setControlOpen(true)}
-            className="mx-auto flex h-11 w-11 items-center justify-center text-black/40 hover:text-black"
-            title="Control panel"
-          >
-            <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
-          </button>
-        )}
-        {mobileDrawer || !collapsed ? (
-          <div>
-            <p className="truncate text-[13px] font-medium text-black">
-              {user?.fullName ||
-                user?.primaryEmailAddress?.emailAddress ||
-                "Staff"}
-            </p>
-            <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-black/35">
-              {roleLabel}
-            </p>
-            <div className="mt-3">
-              <UserButton />
+          <div className="mt-2 flex items-center gap-3 border-t border-black/[0.06] px-3 pt-4">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium text-black">
+                {user?.fullName ||
+                  user?.primaryEmailAddress?.emailAddress ||
+                  "Staff"}
+              </p>
+              <p className="mt-0.5 truncate text-[11px] uppercase tracking-[0.12em] text-black/35">
+                {roleLabel}
+              </p>
             </div>
+            <UserButton />
           </div>
-        ) : null}
+        ) : (
+          <div className="flex justify-center pt-2">
+            <UserButton />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -696,7 +739,7 @@ export default function AdminNav({
           "sticky top-0 z-30 flex h-14 items-center gap-2 bg-[var(--kc-canvas)]/90 px-3 backdrop-blur-sm sm:gap-3 sm:px-6 lg:px-10",
           collapsed
             ? "lg:pl-[calc(72px+2.5rem)] xl:pl-[calc(72px+4rem)]"
-            : "lg:pl-[calc(240px+3rem)] xl:pl-[calc(240px+4rem)]",
+            : "lg:pl-[calc(260px+2.5rem)] xl:pl-[calc(260px+4rem)]",
         )}
       >
         <button

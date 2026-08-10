@@ -18,6 +18,10 @@ export type ProductRow = {
   status?: string;
   vendorId?: string;
   barcode?: string;
+  guidePriceMin?: number | null;
+  guidePriceAvg?: number | null;
+  guidePriceMax?: number | null;
+  saleUnit?: string | null;
 };
 
 const TABS = [
@@ -295,7 +299,14 @@ export function ProductsTable({
                         inputMode="numeric"
                       />
                     ) : (
-                      formatKesMajor(p.price)
+                      <div className="text-right">
+                        <p>{formatKesMajor(p.price)}</p>
+                        {p.guidePriceAvg != null ? (
+                          <p className="text-[11px] font-normal text-[var(--kc-faint)]">
+                            Guide {formatKesMajor(p.guidePriceAvg)}
+                          </p>
+                        ) : null}
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">

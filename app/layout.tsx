@@ -6,6 +6,7 @@ import MaintenanceCheck from "@/components/MaintenanceCheck";
 import { ToastProvider } from "@/components/ToastProvider";
 import { SignInModalProvider } from "@/components/SignInModalProvider";
 import CapacitorInit from "@/components/CapacitorInit";
+import ClerkSessionRecovery from "@/components/ClerkSessionRecovery";
 import InstallAppPrompt from "@/components/InstallAppPrompt";
 import AccountRestrictionCheck from "@/components/AccountRestrictionCheck";
 import AppChrome from "@/components/AppChrome";
@@ -68,12 +69,18 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className={cn("antialiased", jakarta.className)}>
-        <ClerkProvider appearance={clerkAppearance}>
+        <ClerkProvider
+          appearance={clerkAppearance}
+          signInFallbackRedirectUrl="/"
+          signUpFallbackRedirectUrl="/"
+          afterSignOutUrl="/"
+        >
           <PostHogProvider>
             <QueryProvider>
               <LocationProvider>
                 <CartProvider>
                   <CapacitorInit />
+                  <ClerkSessionRecovery />
                   <InstallAppPrompt />
                   <MaintenanceCheck>
                     <ToastProvider>

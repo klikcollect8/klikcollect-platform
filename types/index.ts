@@ -62,11 +62,22 @@ export interface ProductOffer {
   reserved: number;
   /** Available = onHand − reserved */
   stock: number;
-  status: "published" | "archived";
+  status: "published" | "archived" | "draft";
   barcode?: string;
   gtin?: string;
+  /** Canonical variant this offer sells (null = default/simple product) */
+  variantPublicId?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CatalogueVariant {
+  id: string;
+  title: string;
+  options: Record<string, string>;
+  sku?: string;
+  barcode?: string;
+  status?: string;
 }
 
 export interface Product {
@@ -84,6 +95,7 @@ export interface Product {
   status: "draft" | "pending_review" | "published" | "archived";
   badges?: string[];
   variations?: ProductVariation[];
+  catalogueVariants?: CatalogueVariant[];
   rating?: number;
   reviewCount?: number;
   /** @deprecated Prefer offers - kept for cart snapshots / legacy */
@@ -104,6 +116,8 @@ export interface CartItem {
   quantity: number;
   /** Selected vendor offer - required for multi-vendor products */
   offerId?: string;
+  /** Canonical variant sold by this line (when product has variants) */
+  variantPublicId?: string;
   /** Snapshots from the chosen offer */
   offerPrice?: number;
   vendorId?: string;

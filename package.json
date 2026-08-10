@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "verify:rbac": "tsx scripts/verify-rbac.ts",
+    "verify:catalogue": "tsx scripts/verify-catalogue-lifecycle.ts",
     "verify:marketplace": "tsx scripts/verify-marketplace-isolation.ts",
     "stripe:webhook": "node scripts/stripe-webhook-local.mjs",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",

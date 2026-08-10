@@ -260,6 +260,8 @@ export default function ProductCard({
   const qtyChip =
     "rounded-none border border-black/10 bg-white/35 text-black shadow-none backdrop-blur-[1px]";
 
+  const needsOptions = (product.variations?.length || 0) > 0;
+
   return (
     <article className="group flex h-full flex-col">
       <div className="relative mb-5">
@@ -286,7 +288,15 @@ export default function ProductCard({
         </Link>
 
         <div className="absolute bottom-2 right-2 z-10">
-          {cartQty > 0 && activeOfferId ? (
+          {needsOptions ? (
+            <Link
+              href={href}
+              onClick={(e) => e.stopPropagation()}
+              className={`inline-flex h-7 items-center justify-center px-2 text-[10px] font-medium uppercase tracking-[0.12em] ${qtyChip}`}
+            >
+              Options
+            </Link>
+          ) : cartQty > 0 && activeOfferId ? (
             <div
               className={`flex items-center ${qtyChip}`}
               onClick={(e) => e.stopPropagation()}

@@ -42,7 +42,25 @@ async function validateAndCapQuantity(
   if (!offerId) return { ok: true, quantity };
   const offer = await getOfferById(offerId);
   if (!offer) {
-    return { ok: false, error: "Offer not found" };
+    return { ok: false, error: "Offer not found or unavailable" };
+  }
+  if (offer.status === "archived" || offer.status === "draft") {
+    return { ok: false, error: "This offer is no longer available" };
+  }
+  const { getServiceSupabase } = await import("@/lib/supabase/admin");
+  const sb = getServiceSupabase();
+  const { data: product } = await sb
+    .from("products")
+    .select("status, archived_at, deleted_at")
+    .eq("public_id", offer.productId)
+    .maybeSingle();
+  if (
+    !product ||
+    product.deleted_at ||
+    product.status === "archived" ||
+    product.archived_at
+  ) {
+    return { ok: false, error: "This product is no longer available" };
   }
   const stock = Number(offer.stock);
   if (Number.isFinite(stock)) {

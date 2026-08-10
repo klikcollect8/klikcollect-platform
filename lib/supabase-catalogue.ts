@@ -78,6 +78,9 @@ function mapOffer(
     status: (row.status as ProductOffer["status"]) || "published",
     barcode: row.barcode ? String(row.barcode) : undefined,
     gtin: row.gtin ? String(row.gtin) : undefined,
+    variantPublicId: row.variant_public_id
+      ? String(row.variant_public_id)
+      : null,
     createdAt: String(row.created_at || new Date().toISOString()),
     updatedAt: String(row.updated_at || new Date().toISOString()),
   };
@@ -206,6 +209,14 @@ export async function sbGetProductDetail(
     .order("price_minor", { ascending: true });
   if (oErr) throw oErr;
 
+  const { data: variantRows } = await sb
+    .from("product_variants")
+    .select("public_id, title, options, sku, barcode, status")
+    .eq("product_public_id", product.public_id)
+    .is("deleted_at", null)
+    .neq("status", "archived")
+    .order("sort_order", { ascending: true });
+
   const offers: ProductOffer[] = (offerRows || []).map((row) => {
     const vendor = (
       row as {
@@ -233,8 +244,35 @@ export async function sbGetProductDetail(
     );
   });
 
+  const catalogueVariants = (variantRows || []).map((v) => ({
+    id: String(v.public_id),
+    title: String(v.title || "Default"),
+    options: (v.options || {}) as Record<string, string>,
+    sku: v.sku ? String(v.sku) : undefined,
+    barcode: v.barcode ? String(v.barcode) : undefined,
+    status: v.status ? String(v.status) : undefined,
+  }));
+
+  const optionAxes = (product.option_axes || []) as Array<{
+    name: string;
+    values: string[];
+  }>;
+  const variations =
+    optionAxes.length > 0
+      ? optionAxes.map((a) => ({ name: a.name, options: a.values || [] }))
+      : catalogueVariants.length > 1
+        ? [
+            {
+              name: "Option",
+              options: catalogueVariants.map((v) => v.title),
+            },
+          ]
+        : undefined;
+
   return {
     ...mapProduct(product as Record<string, unknown>, catName),
+    variations,
+    catalogueVariants,
     offers,
   };
 }

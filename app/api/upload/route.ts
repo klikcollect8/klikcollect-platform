@@ -1,17 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import {
+  handleRequireAdminError,
+  requireAdminPermission,
+} from "@/lib/auth/require-admin";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
+    await requireAdminPermission("products:manage_media");
 
-    if (!file) {
+    const supabase = createAdminClient();
+    if (!supabase) {
+      return NextResponse.json(
+        {
+          error:
+            "Storage is not configured. Set SUPABASE_SERVICE_ROLE_KEY on the server.",
+        },
+        { status: 500 },
+      );
+    }
+
+    const formData = await request.formData();
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
@@ -23,8 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: "File size exceeds 5MB limit" },
@@ -32,23 +48,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
-    const fileExt = file.name.split(".").pop();
+    const rawExt = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const fileExt = ["jpg", "jpeg", "png", "webp", "gif"].includes(rawExt)
+      ? rawExt === "jpeg"
+        ? "jpg"
+        : rawExt
+      : "jpg";
     const fileName = `${timestamp}-${randomString}.${fileExt}`;
     const filePath = `products/${fileName}`;
 
-    // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    // Service role bypasses storage RLS (bucket only has public SELECT today).
+    const { error } = await supabase.storage
       .from("product-images")
       .upload(filePath, buffer, {
         contentType: file.type,
         upsert: false,
+        cacheControl: "3600",
       });
 
     if (error) {
@@ -59,7 +79,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get public URL
     const { data: urlData } = supabase.storage
       .from("product-images")
       .getPublicUrl(filePath);
@@ -70,6 +89,9 @@ export async function POST(request: NextRequest) {
       path: filePath,
     });
   } catch (error) {
+    if (error instanceof Error && "status" in error) {
+      return handleRequireAdminError(error);
+    }
     console.error("Upload error:", error);
     return NextResponse.json(
       { error: "Failed to upload file" },

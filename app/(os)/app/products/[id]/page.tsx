@@ -19,6 +19,10 @@ type OfferRow = {
   barcode?: string;
   vendorId?: string;
   status?: string;
+  guidePriceMin?: number | null;
+  guidePriceAvg?: number | null;
+  guidePriceMax?: number | null;
+  saleUnit?: string | null;
 };
 
 type CorrectionRow = {
@@ -266,6 +270,15 @@ export default function VendorOfferDetailPage() {
             <span className="text-[var(--kc-faint)]">Barcode</span> ·{" "}
             {product.barcode || "—"}
           </p>
+          {product.guidePriceAvg != null ? (
+            <p className="mt-1">
+              <span className="text-[var(--kc-faint)]">Platform guide</span> ·{" "}
+              {formatKesMajor(product.guidePriceMin ?? 0)} –{" "}
+              {formatKesMajor(product.guidePriceAvg)} –{" "}
+              {formatKesMajor(product.guidePriceMax ?? 0)}
+              {product.saleUnit ? ` / ${product.saleUnit}` : ""}
+            </p>
+          ) : null}
           <p className="mt-2 line-clamp-3">
             {product.description || "No description"}
           </p>

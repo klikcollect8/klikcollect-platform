@@ -16,6 +16,12 @@ export type CatalogueProduct = Product & {
   stock?: number;
   barcode?: string;
   gtin?: string;
+  /** Advisory guide band from platform catalogue (KES major) */
+  guidePriceMin?: number | null;
+  guidePriceAvg?: number | null;
+  guidePriceMax?: number | null;
+  saleUnit?: string | null;
+  productKind?: string | null;
 };
 
 export async function listCatalogue(
@@ -89,6 +95,22 @@ export async function listCatalogue(
       stock: Math.max(0, onHand - reserved),
       barcode: row.barcode ? String(row.barcode) : undefined,
       gtin: row.gtin ? String(row.gtin) : undefined,
+      guidePriceMin:
+        product.guide_price_min_minor != null
+          ? minorToMajor(Number(product.guide_price_min_minor))
+          : null,
+      guidePriceAvg:
+        product.guide_price_avg_minor != null
+          ? minorToMajor(Number(product.guide_price_avg_minor))
+          : null,
+      guidePriceMax:
+        product.guide_price_max_minor != null
+          ? minorToMajor(Number(product.guide_price_max_minor))
+          : null,
+      saleUnit: product.sale_unit ? String(product.sale_unit) : null,
+      productKind: product.product_kind
+        ? String(product.product_kind)
+        : null,
       badges: onHand - reserved <= 5 ? ["Low stock"] : [],
       createdAt: String(row.created_at),
       updatedAt: String(row.updated_at),
@@ -173,6 +195,9 @@ export async function addCatalogueProduct(input: {
   image?: string;
   vendorId: string;
   status?: Product["status"];
+  sku?: string;
+  barcode?: string;
+  gtin?: string;
 }): Promise<CatalogueProduct> {
   const created = await addCatalogueProducts([input]);
   return created[0];
@@ -188,6 +213,9 @@ export async function addCatalogueProducts(
     image?: string;
     vendorId: string;
     status?: Product["status"];
+    sku?: string;
+    barcode?: string;
+    gtin?: string;
   }>,
 ): Promise<CatalogueProduct[]> {
   const sb = getServiceSupabase();
@@ -214,6 +242,7 @@ export async function addCatalogueProducts(
       .eq("is_primary", true)
       .maybeSingle();
 
+    const productStatus = input.status || "published";
     const productPublicId = `prd_${slugify(input.name)}_${Date.now().toString(36)}`;
     const { data: product, error: pErr } = await sb
       .from("products")
@@ -225,9 +254,12 @@ export async function addCatalogueProducts(
         slug: slugify(input.name),
         description: input.description || "",
         long_description: input.description || "",
-        status: input.status || "published",
+        status: productStatus,
         image_url: input.image || null,
         images: input.image ? [input.image] : [],
+        sku: input.sku || null,
+        barcode: input.barcode || input.gtin || null,
+        gtin: input.gtin || input.barcode || null,
       })
       .select("id, public_id, created_at, updated_at")
       .single();
@@ -235,6 +267,7 @@ export async function addCatalogueProducts(
 
     const offerPublicId = `off_${productPublicId}_${input.vendorId}`;
     const moneyMinor = Math.round(input.priceMajor * 100);
+    const offerStatus = productStatus === "published" ? "published" : "draft";
     const { data: offer, error: oErr } = await sb
       .from("product_offers")
       .insert({
@@ -246,7 +279,9 @@ export async function addCatalogueProducts(
         currency_code: "KES",
         on_hand: input.stock,
         reserved: 0,
-        status: "published",
+        status: offerStatus,
+        barcode: input.barcode || input.gtin || null,
+        gtin: input.gtin || input.barcode || null,
       })
       .select("*")
       .single();
@@ -260,7 +295,7 @@ export async function addCatalogueProducts(
       image: input.image || "",
       images: input.image ? [input.image] : [],
       category: category?.name || input.category,
-      status: "published",
+      status: productStatus,
       vendorId: vendor.public_id,
       vendorName: vendor.name,
       neighbourhood: vendor.neighbourhood || undefined,
@@ -269,6 +304,8 @@ export async function addCatalogueProducts(
       onHand: input.stock,
       reserved: 0,
       stock: input.stock,
+      barcode: input.barcode || input.gtin,
+      gtin: input.gtin || input.barcode,
       createdAt: product.created_at,
       updatedAt: product.updated_at,
     });
