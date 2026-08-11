@@ -11,14 +11,25 @@ export const AREA_MAP_ZOOM = 14.6;
 
 export const MAPBOX_OWNER = "klikcollect";
 
-/** Default marketplace street style */
+/**
+ * Default marketplace basemap — Mapbox Standard (global, reliable).
+ * Override with NEXT_PUBLIC_MAPBOX_STYLE.
+ */
 export const MAPBOX_STYLE =
   process.env.NEXT_PUBLIC_MAPBOX_STYLE?.trim() ||
-  "mapbox://styles/klikcollect/cms9a6q5q000501p7f9yu4a08";
+  "mapbox://styles/mapbox/standard";
+
+/** Optional Studio overlay layers (only present on some classic styles) */
+export const KC_STYLE_WIND_LAYER = "data-driven-lines";
+export const KC_STYLE_DEPTH_LAYER = "water-depth";
+export const KC_STYLE_OVERLAY_LAYERS = [
+  KC_STYLE_WIND_LAYER,
+  KC_STYLE_DEPTH_LAYER,
+] as const;
 
 export const MAPBOX_SATELLITE_STYLE =
   process.env.NEXT_PUBLIC_MAPBOX_SATELLITE_STYLE?.trim() ||
-  "mapbox://styles/klikcollect/cms98upt2008601sf165y4ked";
+  "mapbox://styles/klikcollect/cmso06cmn01b201qo6unt7nio";
 
 export const MAPBOX_3D_STYLE =
   process.env.NEXT_PUBLIC_MAPBOX_3D_STYLE?.trim() ||
@@ -29,7 +40,8 @@ export const MAPBOX_STATIC_STYLE = "mapbox/streets-v12";
 export const MAPBOX_FLAT_STYLE = "mapbox://styles/mapbox/streets-v12";
 /** Alias: Perfect Street basemap */
 export const MAPBOX_PERFECT_STREET_STYLE = MAPBOX_FLAT_STYLE;
-export const MAPBOX_STYLE_FALLBACK = "mapbox://styles/mapbox/standard";
+/** Last-resort public style if a Studio style fails to load */
+export const MAPBOX_STYLE_FALLBACK = MAPBOX_FLAT_STYLE;
 
 export const MAP_PITCH = 42;
 export const MAP_SATELLITE_PITCH = 60;
@@ -57,7 +69,7 @@ export const MAPBOX_STYLE_PRESETS: MapStylePreset[] = [
   {
     id: "street",
     name: "Street",
-    description: "Branded marketplace streets",
+    description: "Mapbox Standard · default",
     url: MAPBOX_STYLE,
     defaultPitch: 0,
     defaultBearing: 0,

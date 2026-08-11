@@ -205,7 +205,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     );
   }, [applyError, applyPosition, stop]);
 
-  /** Do not auto-start GPS — only load cached coords. Call track() from checkout/maps. */
+  /** Do not auto-start GPS — only load cached coords. Call track() from checkout maps. */
   // (intentionally no mount-time track())
 
   const value = useMemo<LocationContextValue>(

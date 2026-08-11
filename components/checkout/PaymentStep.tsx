@@ -46,7 +46,7 @@ const GROUPS: { id: "paystack" | "stripe"; label: string; hint: string }[] = [
   {
     id: "paystack",
     label: "Pay in Kenya",
-    hint: "M-Pesa, local cards, bank & USSD",
+    hint: "M-Pesa, local cards & bank transfer",
   },
   {
     id: "stripe",

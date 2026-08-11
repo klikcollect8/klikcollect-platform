@@ -46,7 +46,7 @@ import {
   defaultPayMethod,
   getPayMethodMeta,
   isMpesaPayMethod,
-  isPaystackHostedMethod,
+  isPaystackInlineMethod,
   type PayMethod,
 } from "@/components/checkout/payment-methods";
 import PaymentStep from "@/components/checkout/PaymentStep";
@@ -643,12 +643,23 @@ export default function CheckoutWizard() {
         body: JSON.stringify({ reference, provider }),
       });
       const j = await res.json();
-      if (j.data?.status === "success" || j.data?.paid) {
+      if (
+        j.data?.status === "success" ||
+        j.data?.paid ||
+        j.data?.receiptPublicId
+      ) {
         setPayState("success");
         setPayMessage("Payment confirmed");
         await clearCart();
         showToast("Order placed", "success");
-        router.push("/account/orders");
+        const receiptId = j.data?.receiptPublicId
+          ? String(j.data.receiptPublicId)
+          : "";
+        router.push(
+          receiptId
+            ? `/r/${encodeURIComponent(receiptId)}`
+            : "/account/orders",
+        );
         return true;
       }
       if (
@@ -834,17 +845,14 @@ export default function CheckoutWizard() {
 
       const { accessCode, authorizationUrl, reference } = payJson.data;
 
-      // Hosted Paystack for card / bank / USSD (full-page redirect)
-      if (isPaystackHostedMethod(payMethod) && authorizationUrl) {
+      // Paystack Inline for card + M-Pesa (hosted redirect as fallback)
+      if (accessCode && isPaystackInlineMethod(payMethod)) {
         setPayState("awaiting_auth");
-        window.location.href = authorizationUrl;
-        return;
-      }
-
-      // M-Pesa: Inline STK, then verify; fall back to hosted URL
-      if (accessCode && isMpesaPayMethod(payMethod)) {
-        setPayState("awaiting_auth");
-        setPayMessage("Complete M-Pesa on your phone…");
+        setPayMessage(
+          isMpesaPayMethod(payMethod)
+            ? "Complete M-Pesa on your phone…"
+            : "Complete card payment…",
+        );
         try {
           const inline = await openPaystackAccessCode(accessCode);
           if (!inline.ok) {
@@ -860,7 +868,10 @@ export default function CheckoutWizard() {
             );
             return;
           }
-          const ok = await pollVerify(reference, "paystack");
+          const ok = await pollVerify(
+            inline.reference || reference,
+            "paystack",
+          );
           if (!ok) {
             setPayState("failed");
             setPayMessage(
@@ -878,7 +889,9 @@ export default function CheckoutWizard() {
         return;
       }
 
+      // Hosted Paystack for bank transfer / multi-channel checkout
       if (authorizationUrl) {
+        setPayState("awaiting_auth");
         window.location.href = authorizationUrl;
         return;
       }

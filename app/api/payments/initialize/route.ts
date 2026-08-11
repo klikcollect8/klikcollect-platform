@@ -275,14 +275,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ─── Paystack (card / M-Pesa / bank / USSD) ─────────────────────
+    // ─── Paystack (card / M-Pesa / bank transfer / multi) ────────────
+    // Kenya: bank_transfer (not Nigeria "bank"). "ussd" opens all Kenya channels.
     const channels: PaymentChannel[] =
       method === "mpesa"
         ? ["mobile_money"]
         : method === "bank"
-          ? ["bank"]
+          ? ["bank_transfer"]
           : method === "ussd"
-            ? ["ussd"]
+            ? ["card", "mobile_money", "bank_transfer"]
             : ["card"];
     const callbackParams = new URLSearchParams({
       reference,
@@ -297,7 +298,7 @@ export async function POST(request: NextRequest) {
       orderPublicId: orderPublicId || orderIds[0] || null,
       orderIds,
       intentPublic,
-      channel: method,
+      channel: method === "bank" ? "bank_transfer" : method,
       paymentMethod: method,
       provider: "paystack",
       fulfilment,
@@ -350,6 +351,15 @@ export async function POST(request: NextRequest) {
               "Paystack keys not configured. Set PAYSTACK_SECRET_KEY and NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY in .env.local",
           },
         });
+      }
+      if (/Invalid Email|email/i.test(message)) {
+        return NextResponse.json(
+          {
+            error:
+              "Paystack rejected this email. Use a real address like name@gmail.com",
+          },
+          { status: 400 },
+        );
       }
       return NextResponse.json({ error: message }, { status: 502 });
     }

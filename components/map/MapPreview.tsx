@@ -7,7 +7,7 @@ import { MapPin, Navigation } from "lucide-react";
 import {
   buildStaticMapUrl,
   getMapboxToken,
-  MAPBOX_FLAT_STYLE,
+  MAPBOX_STYLE,
   MAP_FLAT_ZOOM,
 } from "@/lib/mapbox";
 import { resolveVendorSlug } from "@/lib/vendor-slug";
@@ -104,6 +104,7 @@ export default function MapPreview({
         label: p.vendorName,
         kind: "pickup" as const,
         active: p.id === focus.id,
+        pulse: p.id === focus.id,
       }));
     }
     return pins.map((p) => ({
@@ -176,13 +177,15 @@ export default function MapPreview({
                 <MapCanvas
                   key={`flat-${focus.id}-${focus.lng}-${focus.lat}`}
                   className="h-full w-full"
-                  mapStyle={MAPBOX_FLAT_STYLE}
+                  mapStyle={MAPBOX_STYLE}
                   center={[focus.lng, focus.lat]}
                   zoom={MAP_FLAT_ZOOM}
                   pitch={0}
                   bearing={0}
                   flat
                   markers={markers}
+                  cameraKey={focus.id}
+                  fitMarkers={markers.length > 1}
                   interactive
                   alwaysShowLabels
                   followUser={false}

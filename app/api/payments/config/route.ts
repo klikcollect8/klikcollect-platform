@@ -31,7 +31,7 @@ export async function GET() {
       },
       testHints: [
         "Stripe → card, Apple Pay, Google Pay, Link (Checkout Session)",
-        "Paystack → card, M-Pesa, bank, USSD",
+        "Paystack → card, M-Pesa, bank transfer (Kenya)",
         "Vendor payouts release when order status → collected",
       ],
     },

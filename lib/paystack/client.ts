@@ -52,7 +52,19 @@ export type InitializeResult = {
   reference: string;
 };
 
-export type PaymentChannel = "card" | "mobile_money" | "bank" | "ussd";
+export type PaymentChannel =
+  | "card"
+  | "mobile_money"
+  | "bank"
+  | "bank_transfer"
+  | "ussd";
+
+/** Kenya-ready channels when a specific channel is unavailable on the merchant */
+export const PAYSTACK_KENYA_CHANNELS: PaymentChannel[] = [
+  "card",
+  "mobile_money",
+  "bank_transfer",
+];
 
 export async function initializeTransaction(input: {
   email: string;
@@ -67,11 +79,11 @@ export async function initializeTransaction(input: {
 }): Promise<InitializeResult> {
   const channels = input.channels?.length
     ? input.channels
-    : (["card", "mobile_money"] as PaymentChannel[]);
+    : PAYSTACK_KENYA_CHANNELS;
 
   const payload: Record<string, unknown> = {
     email: input.email,
-    amount: input.amountMinor,
+    amount: Math.round(input.amountMinor),
     currency: "KES",
     reference: input.reference,
     callback_url: input.callbackUrl,
@@ -87,10 +99,48 @@ export async function initializeTransaction(input: {
     };
   }
 
-  return paystackFetch<InitializeResult>("/transaction/initialize", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  try {
+    return await paystackFetch<InitializeResult>("/transaction/initialize", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const channelDead =
+      /No active channel|invalid_params|channel/i.test(message) &&
+      channels.length > 0 &&
+      !(
+        channels.length === PAYSTACK_KENYA_CHANNELS.length &&
+        PAYSTACK_KENYA_CHANNELS.every((c) => channels.includes(c))
+      );
+    if (!channelDead) throw err;
+
+    // Kenya merchants often lack Nigeria-only channels (bank, ussd).
+    // Retry with card + M-Pesa + bank_transfer so checkout still completes.
+    const fallbackPayload: Record<string, unknown> = {
+      email: input.email,
+      amount: Math.round(input.amountMinor),
+      currency: "KES",
+      reference: input.reference,
+      callback_url: input.callbackUrl,
+      metadata: {
+        ...(input.metadata || {}),
+        requestedChannels: channels,
+        fallbackChannels: PAYSTACK_KENYA_CHANNELS,
+      },
+      channels: PAYSTACK_KENYA_CHANNELS,
+    };
+    if (input.phone) {
+      fallbackPayload.mobile_money = {
+        phone: input.phone,
+        provider: "mpesa",
+      };
+    }
+    return paystackFetch<InitializeResult>("/transaction/initialize", {
+      method: "POST",
+      body: JSON.stringify(fallbackPayload),
+    });
+  }
 }
 
 export type VerifyResult = {
@@ -271,7 +321,7 @@ export function paystackConfigStatus() {
     publicKeyConfigured: Boolean(publicKey),
     webhookSecretConfigured: Boolean(webhookSecret),
     webhookHmacFallback: !webhookSecret && Boolean(secret),
-    channels: ["card", "mobile_money"] as const,
+    channels: ["card", "mobile_money", "bank_transfer"] as const,
   };
 }
 

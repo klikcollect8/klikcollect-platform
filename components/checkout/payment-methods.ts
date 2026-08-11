@@ -48,7 +48,7 @@ export const PAY_METHODS: PayMethodMeta[] = [
     id: "paystack_bank",
     label: "Bank transfer",
     shortLabel: "Bank",
-    description: "Pay from your bank account",
+    description: "Pay from your Kenyan bank account",
     rail: "paystack",
     apiMethod: "bank",
     hint: "Bank transfer via Paystack",
@@ -56,12 +56,12 @@ export const PAY_METHODS: PayMethodMeta[] = [
   },
   {
     id: "paystack_ussd",
-    label: "USSD",
-    shortLabel: "USSD",
-    description: "Pay with a USSD code",
+    label: "Paystack Checkout",
+    shortLabel: "More",
+    description: "Card, M-Pesa, or bank on Paystack",
     rail: "paystack",
     apiMethod: "ussd",
-    hint: "Dial USSD to complete payment",
+    hint: "All available Paystack methods",
     group: "paystack",
   },
   {
@@ -101,7 +101,13 @@ export function isMpesaPayMethod(id: PayMethod | null): boolean {
 
 export function isPaystackHostedMethod(id: PayMethod | null): boolean {
   const n = normalizePayMethod(id);
-  return n === "paystack_card" || n === "paystack_bank" || n === "paystack_ussd";
+  return n === "paystack_bank" || n === "paystack_ussd";
+}
+
+/** Card + M-Pesa prefer Paystack Inline popup when access_code is present. */
+export function isPaystackInlineMethod(id: PayMethod | null): boolean {
+  const n = normalizePayMethod(id);
+  return n === "paystack_card" || n === "mpesa";
 }
 
 export function defaultPayMethod(

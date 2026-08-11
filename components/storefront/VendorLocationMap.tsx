@@ -6,7 +6,7 @@ import { MapPin } from "lucide-react";
 import {
   buildStaticMapUrl,
   getMapboxToken,
-  MAPBOX_FLAT_STYLE,
+  MAPBOX_STYLE,
   MAP_FLAT_ZOOM,
   NAIROBI_CENTER,
 } from "@/lib/mapbox";
@@ -69,6 +69,7 @@ export default function VendorLocationMap({
         label: p.name,
         kind: "pickup" as const,
         active: !activeId || p.id === activeId,
+        pulse: Boolean(activeId && p.id === activeId),
       })),
     [pins, activeId],
   );
@@ -118,14 +119,15 @@ export default function VendorLocationMap({
           <MapCanvas
             key={`vendor-map-${fitAll ? "all" : activeId || "one"}-${pins.map((p) => p.id).join("-")}`}
             className="h-full w-full"
-            mapStyle={MAPBOX_FLAT_STYLE}
+            mapStyle={MAPBOX_STYLE}
             center={center}
-            zoom={fitAll ? 11.5 : MAP_FLAT_ZOOM}
+            zoom={fitAll ? 12 : MAP_FLAT_ZOOM}
             pitch={0}
             bearing={0}
             flat
             markers={markers}
             fitMarkers={fitAll}
+            cameraKey={fitAll ? "all" : activeId || "one"}
             interactive
             alwaysShowLabels
             followUser={false}

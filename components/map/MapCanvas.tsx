@@ -6,9 +6,12 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import {
   DEFAULT_MAP_ZOOM,
   getMapboxToken,
+  KC_STYLE_DEPTH_LAYER,
+  KC_STYLE_WIND_LAYER,
   MAP_BEARING,
   MAP_PITCH,
   MAPBOX_STYLE,
+  MAPBOX_STYLE_FALLBACK,
   NAIROBI_CENTER,
 } from "@/lib/mapbox";
 
@@ -36,6 +39,8 @@ type MapCanvasProps = {
   markers?: MapMarker[];
   /** Clustered commerce vendors (GeoJSON) */
   vendorGeoJSON?: GeoJSON.FeatureCollection | null;
+  /** Clustered Mapbox POIs (grocery / pharmacy / etc.) */
+  poiGeoJSON?: GeoJSON.FeatureCollection | null;
   routeGeoJSON?: GeoJSON.LineString | null;
   /** Alternative route geometries (Directions alternatives) */
   altRoutesGeoJSON?: GeoJSON.FeatureCollection | null;
@@ -56,9 +61,30 @@ type MapCanvasProps = {
   freeCamera?: boolean;
   /** Live traffic congestion overlay (Mapbox Traffic v1) */
   showTraffic?: boolean;
+  /**
+   * Show Studio wind lines (`data-driven-lines`). Default false —
+   * product maps hide Hawaii wind overlays.
+   */
+  showStudioWind?: boolean;
+  /**
+   * Show Studio bathymetry (`water-depth`). Default false.
+   */
+  showStudioDepth?: boolean;
+  /**
+   * Animate route line with a moving gradient when geometry updates.
+   */
+  animateRoute?: boolean;
   cameraKey?: string | number | null;
   onMarkerClick?: (id: string) => void;
   onVendorClick?: (id: string) => void;
+  onPoiClick?: (id: string) => void;
+  /** Click on Studio overlay features (wind / depth) */
+  onStyleFeatureClick?: (info: {
+    layerId: string;
+    lng: number;
+    lat: number;
+    properties: Record<string, unknown>;
+  }) => void;
   onMapClick?: (lngLat: { lng: number; lat: number }) => void;
   onReady?: (map: mapboxgl.Map) => void;
 };
@@ -76,8 +102,30 @@ const CLUSTER_LAYER = "kc-clusters";
 const CLUSTER_COUNT = "kc-cluster-count";
 const VENDOR_LAYER = "kc-vendor-points";
 const VENDOR_LABEL = "kc-vendor-labels";
+const POI_SOURCE = "kc-pois";
+const POI_CLUSTER_LAYER = "kc-poi-clusters";
+const POI_CLUSTER_COUNT = "kc-poi-cluster-count";
+const POI_LAYER = "kc-poi-points";
+const POI_LABEL = "kc-poi-labels";
 const TRAFFIC_SOURCE = "kc-traffic";
 const TRAFFIC_LAYER = "kc-traffic-line";
+
+function setStudioOverlayVisibility(
+  map: mapboxgl.Map,
+  opts: { wind: boolean; depth: boolean },
+) {
+  for (const [id, visible] of [
+    [KC_STYLE_WIND_LAYER, opts.wind],
+    [KC_STYLE_DEPTH_LAYER, opts.depth],
+  ] as const) {
+    try {
+      if (!map.getLayer(id)) continue;
+      map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
+    } catch {
+      /* layer may not exist on non-brand styles */
+    }
+  }
+}
 
 function setTrafficVisible(map: mapboxgl.Map, visible: boolean) {
   try {
@@ -192,6 +240,8 @@ function ensureGooglePinImages(map: mapboxgl.Map) {
     ["kc-pin-vendor", "#ea4335"],
     ["kc-pin-vendor-active", "#188038"],
     ["kc-pin-vendor-green", "#34a853"],
+    ["kc-pin-poi", "#1a73e8"],
+    ["kc-pin-poi-active", "#174ea6"],
   ];
   for (const [id, color] of pins) {
     if (!map.hasImage(id)) {
@@ -239,6 +289,7 @@ function ensureRouteLayers(map: mapboxgl.Map) {
   if (!map.getSource(ROUTE_SOURCE)) {
     map.addSource(ROUTE_SOURCE, {
       type: "geojson",
+      lineMetrics: true,
       data: {
         type: "Feature",
         properties: {},
@@ -404,6 +455,7 @@ function ensureVendorLayers(map: mapboxgl.Map) {
 function setRouteData(
   map: mapboxgl.Map,
   routeGeoJSON: GeoJSON.LineString | null | undefined,
+  animate = false,
 ) {
   ensureRouteLayers(map);
   const source = map.getSource(ROUTE_SOURCE) as
@@ -415,6 +467,28 @@ function setRouteData(
     properties: {},
     geometry: routeGeoJSON || { type: "LineString", coordinates: [] },
   });
+
+  try {
+    if (animate && routeGeoJSON && routeGeoJSON.coordinates.length > 1) {
+      map.setPaintProperty(ROUTE_LAYER, "line-gradient", [
+        "interpolate",
+        ["linear"],
+        ["line-progress"],
+        0,
+        "#a7f3d0",
+        0.5,
+        "#2f6b4f",
+        1,
+        "#1b4332",
+      ]);
+      // line-gradient requires lineMetrics on the source — recreate if needed
+    } else {
+      map.setPaintProperty(ROUTE_LAYER, "line-gradient", undefined as never);
+      map.setPaintProperty(ROUTE_LAYER, "line-color", "#2f6b4f");
+    }
+  } catch {
+    /* ok */
+  }
 }
 
 function ensureAltRouteLayers(map: mapboxgl.Map) {
@@ -527,6 +601,114 @@ function setVendorData(
   source.setData(data || { type: "FeatureCollection", features: [] });
 }
 
+function ensurePoiLayers(map: mapboxgl.Map) {
+  ensureGooglePinImages(map);
+
+  if (!map.getSource(POI_SOURCE)) {
+    map.addSource(POI_SOURCE, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+      cluster: true,
+      clusterMaxZoom: 15,
+      clusterRadius: 42,
+    });
+  }
+
+  if (!map.getLayer(POI_CLUSTER_LAYER)) {
+    map.addLayer({
+      id: POI_CLUSTER_LAYER,
+      type: "circle",
+      source: POI_SOURCE,
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-color": "#1a73e8",
+        "circle-radius": ["step", ["get", "point_count"], 14, 5, 18, 12, 24],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff",
+        "circle-opacity": 0.9,
+      },
+    });
+  }
+
+  if (!map.getLayer(POI_CLUSTER_COUNT)) {
+    map.addLayer({
+      id: POI_CLUSTER_COUNT,
+      type: "symbol",
+      source: POI_SOURCE,
+      filter: ["has", "point_count"],
+      layout: {
+        "text-field": ["get", "point_count_abbreviated"],
+        "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
+        "text-size": 11,
+      },
+      paint: { "text-color": "#ffffff" },
+    });
+  }
+
+  if (!map.getLayer(POI_LAYER)) {
+    map.addLayer({
+      id: POI_LAYER,
+      type: "symbol",
+      source: POI_SOURCE,
+      filter: ["!", ["has", "point_count"]],
+      layout: {
+        "icon-image": [
+          "case",
+          ["boolean", ["get", "active"], false],
+          "kc-pin-poi-active",
+          "kc-pin-poi",
+        ],
+        "icon-size": [
+          "case",
+          ["boolean", ["get", "active"], false],
+          0.5,
+          0.38,
+        ],
+        "icon-anchor": "bottom",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    });
+  }
+
+  if (!map.getLayer(POI_LABEL)) {
+    map.addLayer({
+      id: POI_LABEL,
+      type: "symbol",
+      source: POI_SOURCE,
+      filter: [
+        "all",
+        ["!", ["has", "point_count"]],
+        ["==", ["get", "active"], true],
+      ],
+      minzoom: 13,
+      layout: {
+        "text-field": ["get", "name"],
+        "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+        "text-size": 11,
+        "text-offset": [0, 1.3],
+        "text-anchor": "top",
+        "text-max-width": 10,
+      },
+      paint: {
+        "text-color": "#174ea6",
+        "text-halo-color": "rgba(247,247,245,0.92)",
+        "text-halo-width": 1.3,
+      },
+    });
+  }
+}
+
+function setPoiData(
+  map: mapboxgl.Map,
+  data: GeoJSON.FeatureCollection | null | undefined,
+) {
+  ensurePoiLayers(map);
+  const source = map.getSource(POI_SOURCE) as mapboxgl.GeoJSONSource | undefined;
+  if (!source) return;
+  source.setData(data || { type: "FeatureCollection", features: [] });
+}
+
 export default function MapCanvas({
   className,
   style,
@@ -537,6 +719,7 @@ export default function MapCanvas({
   bearing = MAP_BEARING,
   markers = [],
   vendorGeoJSON = null,
+  poiGeoJSON = null,
   routeGeoJSON = null,
   altRoutesGeoJSON = null,
   isochroneGeoJSON = null,
@@ -551,9 +734,14 @@ export default function MapCanvas({
   flat = false,
   freeCamera = false,
   showTraffic = false,
+  showStudioWind = false,
+  showStudioDepth = false,
+  animateRoute = true,
   cameraKey = null,
   onMarkerClick,
   onVendorClick,
+  onPoiClick,
+  onStyleFeatureClick,
   onMapClick,
   onReady,
 }: MapCanvasProps) {
@@ -563,6 +751,8 @@ export default function MapCanvas({
   const geolocateRef = useRef<mapboxgl.GeolocateControl | null>(null);
   const onMarkerClickRef = useRef(onMarkerClick);
   const onVendorClickRef = useRef(onVendorClick);
+  const onPoiClickRef = useRef(onPoiClick);
+  const onStyleFeatureClickRef = useRef(onStyleFeatureClick);
   const onMapClickRef = useRef(onMapClick);
   const onReadyRef = useRef(onReady);
   const followUserRef = useRef(followUser);
@@ -572,6 +762,7 @@ export default function MapCanvas({
   const altRoutesRef = useRef(altRoutesGeoJSON);
   const isochroneRef = useRef(isochroneGeoJSON);
   const vendorsRef = useRef(vendorGeoJSON);
+  const poisRef = useRef(poiGeoJSON);
   const styleRef = useRef(mapStyle);
   const flatRef = useRef(flat);
   const freeCameraRef = useRef(freeCamera);
@@ -579,6 +770,9 @@ export default function MapCanvas({
   const pitchRef = useRef(pitch);
   const bearingRef = useRef(bearing);
   const showTrafficRef = useRef(showTraffic);
+  const showStudioWindRef = useRef(showStudioWind);
+  const showStudioDepthRef = useRef(showStudioDepth);
+  const animateRouteRef = useRef(animateRoute);
 
   useEffect(() => {
     onMarkerClickRef.current = onMarkerClick;
@@ -586,6 +780,12 @@ export default function MapCanvas({
   useEffect(() => {
     onVendorClickRef.current = onVendorClick;
   }, [onVendorClick]);
+  useEffect(() => {
+    onPoiClickRef.current = onPoiClick;
+  }, [onPoiClick]);
+  useEffect(() => {
+    onStyleFeatureClickRef.current = onStyleFeatureClick;
+  }, [onStyleFeatureClick]);
   useEffect(() => {
     onMapClickRef.current = onMapClick;
   }, [onMapClick]);
@@ -607,6 +807,18 @@ export default function MapCanvas({
   useEffect(() => {
     vendorsRef.current = vendorGeoJSON;
   }, [vendorGeoJSON]);
+  useEffect(() => {
+    poisRef.current = poiGeoJSON;
+  }, [poiGeoJSON]);
+  useEffect(() => {
+    showStudioWindRef.current = showStudioWind;
+  }, [showStudioWind]);
+  useEffect(() => {
+    showStudioDepthRef.current = showStudioDepth;
+  }, [showStudioDepth]);
+  useEffect(() => {
+    animateRouteRef.current = animateRoute;
+  }, [animateRoute]);
   useEffect(() => {
     flatRef.current = flat;
   }, [flat]);
@@ -692,7 +904,32 @@ export default function MapCanvas({
       maxPitch: allowTilt ? 85 : 0,
     });
 
-    map.on("error", (e) => console.error("[mapbox]", e.error || e));
+    let styleFallbackUsed = false;
+    map.on("error", (e) => {
+      const err = e.error || e;
+      console.error("[mapbox]", err);
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message?: string }).message || "")
+          : String(err || "");
+      const styleFailed =
+        /style|not found|404|Forbidden|unauthorized|Failed to fetch/i.test(
+          message,
+        );
+      if (
+        !styleFallbackUsed &&
+        styleFailed &&
+        styleRef.current !== MAPBOX_STYLE_FALLBACK
+      ) {
+        styleFallbackUsed = true;
+        styleRef.current = MAPBOX_STYLE_FALLBACK;
+        try {
+          map.setStyle(MAPBOX_STYLE_FALLBACK);
+        } catch {
+          /* ok */
+        }
+      }
+    });
 
     if (showNavControls && interactive) {
       map.addControl(
@@ -728,42 +965,105 @@ export default function MapCanvas({
     }
 
     map.on("click", (e) => {
-      const layers = [VENDOR_LAYER, CLUSTER_LAYER].filter((id) =>
-        map.getLayer(id),
+      const studioLayers = [KC_STYLE_WIND_LAYER, KC_STYLE_DEPTH_LAYER].filter(
+        (id) => map.getLayer(id),
       );
+      if (studioLayers.length && onStyleFeatureClickRef.current) {
+        const studioFeats = map.queryRenderedFeatures(e.point, {
+          layers: studioLayers,
+        });
+        if (studioFeats.length) {
+          const f = studioFeats[0];
+          const layerId = f.layer?.id || "";
+          const windOn = showStudioWindRef.current;
+          const depthOn = showStudioDepthRef.current;
+          if (
+            (layerId === KC_STYLE_WIND_LAYER && windOn) ||
+            (layerId === KC_STYLE_DEPTH_LAYER && depthOn)
+          ) {
+            onStyleFeatureClickRef.current({
+              layerId,
+              lng: e.lngLat.lng,
+              lat: e.lngLat.lat,
+              properties: (f.properties || {}) as Record<string, unknown>,
+            });
+            return;
+          }
+        }
+      }
+
+      const layers = [
+        VENDOR_LAYER,
+        CLUSTER_LAYER,
+        POI_LAYER,
+        POI_CLUSTER_LAYER,
+      ].filter((id) => map.getLayer(id));
       if (layers.length) {
         const feats = map.queryRenderedFeatures(e.point, { layers });
         if (feats.length) {
           const f = feats[0];
-          if (f.layer?.id === CLUSTER_LAYER && f.geometry.type === "Point") {
-            const clusterId = f.properties?.cluster_id;
-            const source = map.getSource(
-              VENDOR_SOURCE,
-            ) as mapboxgl.GeoJSONSource;
+          const expandCluster = (
+            sourceId: string,
+            clusterId: number,
+            coords: [number, number],
+          ) => {
+            const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
             source.getClusterExpansionZoom(clusterId, (err, zoomOut) => {
               if (err || zoomOut == null) return;
-              const coords = (f.geometry as GeoJSON.Point).coordinates as [
-                number,
-                number,
-              ];
+              const isFlat = flatRef.current && !freeCameraRef.current;
               map.easeTo({
                 center: coords,
                 zoom: zoomOut,
-                pitch: MAP_PITCH,
-                bearing: MAP_BEARING,
+                pitch: isFlat ? 0 : MAP_PITCH,
+                bearing: isFlat ? 0 : MAP_BEARING,
                 duration: 500,
               });
             });
+          };
+
+          if (
+            (f.layer?.id === CLUSTER_LAYER ||
+              f.layer?.id === POI_CLUSTER_LAYER) &&
+            f.geometry.type === "Point"
+          ) {
+            const clusterId = f.properties?.cluster_id;
+            const coords = (f.geometry as GeoJSON.Point).coordinates as [
+              number,
+              number,
+            ];
+            const sourceId =
+              f.layer?.id === POI_CLUSTER_LAYER ? POI_SOURCE : VENDOR_SOURCE;
+            expandCluster(sourceId, clusterId, coords);
             return;
           }
           if (f.layer?.id === VENDOR_LAYER && f.properties?.id) {
             onVendorClickRef.current?.(String(f.properties.id));
             return;
           }
+          if (f.layer?.id === POI_LAYER && f.properties?.id) {
+            onPoiClickRef.current?.(String(f.properties.id));
+            return;
+          }
         }
       }
       onMapClickRef.current?.({ lng: e.lngLat.lng, lat: e.lngLat.lat });
     });
+
+    const bindStudioHover = (layerId: string) => {
+      map.on("mouseenter", layerId, () => {
+        if (
+          (layerId === KC_STYLE_WIND_LAYER && showStudioWindRef.current) ||
+          (layerId === KC_STYLE_DEPTH_LAYER && showStudioDepthRef.current)
+        ) {
+          map.getCanvas().style.cursor = "pointer";
+        }
+      });
+      map.on("mouseleave", layerId, () => {
+        map.getCanvas().style.cursor = "";
+      });
+    };
+    bindStudioHover(KC_STYLE_WIND_LAYER);
+    bindStudioHover(KC_STYLE_DEPTH_LAYER);
 
     map.on("mouseenter", VENDOR_LAYER, () => {
       map.getCanvas().style.cursor = "pointer";
@@ -777,6 +1077,18 @@ export default function MapCanvas({
     map.on("mouseleave", CLUSTER_LAYER, () => {
       map.getCanvas().style.cursor = "";
     });
+    map.on("mouseenter", POI_LAYER, () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", POI_LAYER, () => {
+      map.getCanvas().style.cursor = "";
+    });
+    map.on("mouseenter", POI_CLUSTER_LAYER, () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", POI_CLUSTER_LAYER, () => {
+      map.getCanvas().style.cursor = "";
+    });
 
     const onStyleReady = () => {
       if (!flatRef.current) enable3D(map);
@@ -787,10 +1099,15 @@ export default function MapCanvas({
           /* ok */
         }
       }
+      setStudioOverlayVisibility(map, {
+        wind: showStudioWindRef.current,
+        depth: showStudioDepthRef.current,
+      });
       setIsochroneData(map, isochroneRef.current);
       setAltRouteData(map, altRoutesRef.current);
-      setRouteData(map, routeRef.current);
+      setRouteData(map, routeRef.current, animateRouteRef.current);
       setVendorData(map, vendorsRef.current);
+      setPoiData(map, poisRef.current);
       setTrafficVisible(map, showTrafficRef.current);
       applyCameraPose(map, false);
     };
@@ -830,6 +1147,18 @@ export default function MapCanvas({
     if (map.isStyleLoaded()) apply();
     else map.once("style.load", apply);
   }, [showTraffic, mapStyle]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () =>
+      setStudioOverlayVisibility(map, {
+        wind: showStudioWind,
+        depth: showStudioDepth,
+      });
+    if (map.isStyleLoaded()) apply();
+    else map.once("style.load", apply);
+  }, [showStudioWind, showStudioDepth, mapStyle]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -916,6 +1245,14 @@ export default function MapCanvas({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    const apply = () => setPoiData(map, poiGeoJSON);
+    if (map.isStyleLoaded()) apply();
+    else map.once("style.load", apply);
+  }, [poiGeoJSON]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
     const apply = () => setAltRouteData(map, altRoutesGeoJSON);
     if (map.isStyleLoaded()) apply();
     else map.once("style.load", apply);
@@ -936,7 +1273,7 @@ export default function MapCanvas({
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      setRouteData(map, routeGeoJSON);
+      setRouteData(map, routeGeoJSON, animateRoute);
       if (!fitRoute || !routeGeoJSON || routeGeoJSON.coordinates.length < 2)
         return;
       // Fit once per route geometry fingerprint — avoid GPS/route refresh jumps
@@ -950,12 +1287,13 @@ export default function MapCanvas({
       map.fitBounds(bounds, {
         padding: { top: 120, bottom: 220, left: 48, right: 48 },
         maxZoom: 16.5,
-        duration: 800,
+        duration: 900,
+        essential: true,
       });
     };
     if (map.isStyleLoaded()) apply();
     else map.once("style.load", apply);
-  }, [routeGeoJSON, fitRoute]);
+  }, [routeGeoJSON, fitRoute, animateRoute]);
 
   useEffect(() => {
     const map = mapRef.current;

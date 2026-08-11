@@ -18,7 +18,7 @@ import {
   getMapboxToken,
   MAPBOX_FLAT_STYLE,
   MAPBOX_SATELLITE_STYLE,
-  MAPBOX_STYLE_FALLBACK,
+  MAPBOX_STYLE,
   NAIROBI_CENTER,
   buildStaticMapUrl,
 } from "@/lib/mapbox";
@@ -44,6 +44,7 @@ const MapSearchBox = dynamic(() => import("@/components/map/MapSearchBox"), {
 export type NavStyleId =
   | "streets"
   | "standard"
+  | "classic"
   | "dark"
   | "satellite"
   | "outdoors";
@@ -56,6 +57,13 @@ const NAV_STYLES: {
   flat?: boolean;
 }[] = [
   {
+    id: "standard",
+    name: "Standard",
+    url: MAPBOX_STYLE,
+    pitch: 0,
+    flat: true,
+  },
+  {
     id: "streets",
     name: "Streets",
     url: MAPBOX_FLAT_STYLE,
@@ -63,10 +71,11 @@ const NAV_STYLES: {
     flat: true,
   },
   {
-    id: "standard",
-    name: "Standard",
-    url: MAPBOX_STYLE_FALLBACK,
-    pitch: 45,
+    id: "classic",
+    name: "Classic",
+    url: "mapbox://styles/klikcollect/cmso06clp01b101qodl8g7ndb",
+    pitch: 0,
+    flat: true,
   },
   {
     id: "dark",
@@ -141,7 +150,7 @@ export default function AdvancedNavMap({
 }: AdvancedNavMapProps) {
   const token = getMapboxToken();
   const { coords, track } = useUserLocation();
-  const [styleId, setStyleId] = useState<NavStyleId>("streets");
+  const [styleId, setStyleId] = useState<NavStyleId>("standard");
   const [followUser, setFollowUser] = useState(followUserDefault);
   const [streetMode, setStreetMode] = useState(false);
   const [mutedChrome, setMutedChrome] = useState(false);
@@ -329,6 +338,7 @@ export default function AdvancedNavMap({
           (routeGeoJSON ? false : allMarkers.length > 1 ? true : false)
         }
         fitRoute={Boolean(routeGeoJSON)}
+        animateRoute
         onMapClick={onMapClick}
         onReady={handleReady}
         className="h-full w-full"

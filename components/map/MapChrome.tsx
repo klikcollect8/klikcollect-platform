@@ -15,6 +15,7 @@ import {
   Route,
   Satellite,
   Scan,
+  SlidersHorizontal,
   View,
   Map as MapIcon,
 } from "lucide-react";
@@ -42,6 +43,9 @@ type MapChromeProps = {
   onFullscreen?: () => void;
   onListToggle?: () => void;
   listOpen?: boolean;
+  /** Layers / filters panel (traffic, isochrone, shop filters) */
+  onLayersToggle?: () => void;
+  layersOpen?: boolean;
   showStyleToggle?: boolean;
   showPovToggle?: boolean;
   /** Start with map-type / POV panels collapsed */
@@ -109,6 +113,8 @@ export default function MapChrome({
   onFullscreen,
   onListToggle,
   listOpen = false,
+  onLayersToggle,
+  layersOpen = false,
   showStyleToggle = true,
   showPovToggle = true,
   collapsible = true,
@@ -236,6 +242,16 @@ export default function MapChrome({
             className="border-t border-black/[0.06]"
           >
             <List className="h-4 w-4" />
+          </IconBtn>
+        ) : null}
+        {onLayersToggle ? (
+          <IconBtn
+            title="Layers"
+            active={layersOpen}
+            onClick={onLayersToggle}
+            className="border-t border-black/[0.06]"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
           </IconBtn>
         ) : null}
         {onFullscreen ? (

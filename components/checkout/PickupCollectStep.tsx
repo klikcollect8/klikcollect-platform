@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import type { CheckoutVendor, CollectMode } from "@/lib/checkout/types";
 import {
   getMapboxToken,
-  MAPBOX_FLAT_STYLE,
+  MAPBOX_STYLE,
   NAIROBI_CENTER,
 } from "@/lib/mapbox";
 import type { MapMarker } from "@/components/map/MapCanvas";
@@ -51,7 +51,12 @@ export default function PickupCollectStep({
       label: v.name,
       kind: "pickup" as const,
       active: !hubVendorId || v.vendorId === hubVendorId,
+      pulse: hubVendorId === v.vendorId,
     }));
+
+  const focus = hubVendorId
+    ? markers.find((m) => m.id === hubVendorId)
+    : markers[0];
 
   if (loading) {
     return (
@@ -93,18 +98,21 @@ export default function PickupCollectStep({
           <div className="h-[220px] sm:h-[280px]">
             <MapCanvas
               className="h-full w-full"
-              mapStyle={MAPBOX_FLAT_STYLE}
+              mapStyle={MAPBOX_STYLE}
               center={
-                markers.length === 1
-                  ? [markers[0]!.lng, markers[0]!.lat]
-                  : NAIROBI_CENTER
+                focus
+                  ? [focus.lng, focus.lat]
+                  : markers.length === 1
+                    ? [markers[0]!.lng, markers[0]!.lat]
+                    : NAIROBI_CENTER
               }
-              zoom={markers.length === 1 ? 14 : 11}
+              zoom={focus || markers.length === 1 ? 15.2 : 12}
               pitch={0}
               bearing={0}
               flat
               markers={markers}
-              fitMarkers={markers.length > 1}
+              fitMarkers={!hubVendorId && markers.length > 1}
+              cameraKey={hubVendorId || "all"}
               interactive
               alwaysShowLabels
               showNavControls

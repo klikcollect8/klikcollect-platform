@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSignIn, useSignUp } from "@clerk/nextjs";
+import { useClerk, useSignIn, useSignUp } from "@clerk/nextjs";
+import ClerkCaptcha from "@/components/auth/ClerkCaptcha";
 
 export type AuthModalMode = "sign-in" | "sign-up";
 type Channel = "phone" | "email";
@@ -18,6 +19,9 @@ const labelClass =
   "text-[11px] font-medium uppercase tracking-[0.18em] text-black/35";
 const btnClass =
   "mt-2 flex h-12 w-full items-center justify-center bg-black text-[12px] font-medium uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-80 disabled:opacity-40";
+
+const CAPTCHA_HELP =
+  "Security check failed. Turn off ad blockers for this site, refresh, then try again.";
 
 function AppleLogo({ className }: { className?: string }) {
   return (
@@ -93,14 +97,35 @@ function toE164(raw: string): string {
   return `+254${trimmed}`;
 }
 
+type ClerkishError = {
+  code?: string;
+  message?: string;
+  longMessage?: string;
+  errors?: Array<{ code?: string; message?: string; longMessage?: string }>;
+  fields?: Record<string, { message?: string; code?: string } | undefined>;
+  global?: Array<{ message?: string; code?: string }>;
+};
+
+function firstError(err: unknown): ClerkishError | null {
+  if (!err || typeof err !== "object") return null;
+  return err as ClerkishError;
+}
+
+function errorCode(err: unknown): string {
+  const e = firstError(err);
+  return (
+    e?.errors?.[0]?.code ||
+    e?.fields?.identifier?.code ||
+    e?.fields?.phone_number?.code ||
+    e?.global?.[0]?.code ||
+    e?.code ||
+    ""
+  );
+}
+
 function errorMessage(err: unknown): string {
-  if (!err || typeof err !== "object") return "";
-  const e = err as {
-    message?: string;
-    errors?: Array<{ message?: string; longMessage?: string }>;
-    fields?: Record<string, { message?: string } | undefined>;
-    global?: Array<{ message?: string }>;
-  };
+  const e = firstError(err);
+  if (!e) return "";
   return (
     e.fields?.identifier?.message ||
     e.fields?.phone_number?.message ||
@@ -109,9 +134,34 @@ function errorMessage(err: unknown): string {
     e.global?.[0]?.message ||
     e.errors?.[0]?.longMessage ||
     e.errors?.[0]?.message ||
+    e.longMessage ||
     e.message ||
     ""
   );
+}
+
+function isCaptchaError(err: unknown): boolean {
+  const code = errorCode(err).toLowerCase();
+  const msg = errorMessage(err).toLowerCase();
+  return (
+    code === "captcha_invalid" ||
+    msg.includes("security validation") ||
+    msg.includes("failed security")
+  );
+}
+
+function isIdentifierExists(err: unknown): boolean {
+  const code = errorCode(err).toLowerCase();
+  return (
+    code === "form_identifier_exists" ||
+    code.includes("identifier_exists") ||
+    errorMessage(err).toLowerCase().includes("already exists")
+  );
+}
+
+function friendlyError(err: unknown): string {
+  if (isCaptchaError(err)) return CAPTCHA_HELP;
+  return errorMessage(err);
 }
 
 export default function PhoneAuthForm({
@@ -119,6 +169,7 @@ export default function PhoneAuthForm({
   redirectUrl = "/",
 }: PhoneAuthFormProps) {
   const router = useRouter();
+  const clerk = useClerk();
   const {
     signIn,
     errors: signInErrors,
@@ -138,17 +189,16 @@ export default function PhoneAuthForm({
   const [activeFlow, setActiveFlow] = useState<"sign-in" | "sign-up">(mode);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  const loaded = clerk.loaded && !!signIn && !!signUp;
   const busy = signInStatus === "fetching" || signUpStatus === "fetching";
   const afterAuth = redirectUrl.startsWith("/") ? redirectUrl : "/";
 
-  const fieldError = useMemo(
-    () =>
-      localError ||
-      errorMessage(signInErrors) ||
-      errorMessage(signUpErrors) ||
-      null,
-    [localError, signInErrors, signUpErrors],
-  );
+  const fieldError = useMemo(() => {
+    if (localError) return localError;
+    const fromClerk = signInErrors || signUpErrors;
+    if (fromClerk && isCaptchaError(fromClerk)) return CAPTCHA_HELP;
+    return errorMessage(signInErrors) || errorMessage(signUpErrors) || null;
+  }, [localError, signInErrors, signUpErrors]);
 
   const navigateAfter = (decorateUrl: (path: string) => string) => {
     const url = decorateUrl(afterAuth);
@@ -156,15 +206,67 @@ export default function PhoneAuthForm({
     else router.push(url);
   };
 
+  const startPhoneSignIn = async (phoneNumber: string) => {
+    const created = await signIn.create({
+      identifier: phoneNumber,
+      signUpIfMissing: true,
+    });
+    if (created.error) {
+      if (isCaptchaError(created.error)) return created.error;
+      // Fall through — sendCode may still work if a sign-in already exists
+    }
+
+    const transferred =
+      signUp.status === "missing_requirements" ||
+      (Array.isArray(signUp.unverifiedFields) &&
+        signUp.unverifiedFields.includes("phone_number"));
+
+    if (transferred) {
+      const sent = await signUp.verifications.sendPhoneCode();
+      if (sent.error) return sent.error;
+      setActiveFlow("sign-up");
+      return null;
+    }
+
+    const sent = await signIn.phoneCode.sendCode({ phoneNumber });
+    if (sent.error) {
+      const up = await signUp.verifications.sendPhoneCode();
+      if (up.error) return sent.error || up.error;
+      setActiveFlow("sign-up");
+      return null;
+    }
+    setActiveFlow("sign-in");
+    return null;
+  };
+
+  const startPhoneSignUp = async (phoneNumber: string) => {
+    const created = await signUp.create({
+      phoneNumber,
+      ...(email.trim() ? { emailAddress: email.trim() } : {}),
+    });
+    if (created.error) {
+      if (isCaptchaError(created.error)) return created.error;
+      if (isIdentifierExists(created.error)) {
+        return startPhoneSignIn(phoneNumber);
+      }
+      return created.error;
+    }
+    const sent = await signUp.verifications.sendPhoneCode();
+    if (sent.error) return sent.error;
+    setActiveFlow("sign-up");
+    return null;
+  };
+
   const sendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
 
-    try {
-      if (mode === "sign-up" || channel === "phone") {
-        // Sign-up always collects phone; sign-in phone channel uses phone OTP
-      }
+    if (!loaded) {
+      setLocalError("Auth is still loading. Try again in a moment.");
+      return;
+    }
 
+    try {
       if (channel === "phone") {
         const phoneNumber = toE164(phone);
         if (phoneNumber.replace(/\D/g, "").length < 10) {
@@ -172,55 +274,13 @@ export default function PhoneAuthForm({
           return;
         }
 
-        if (mode === "sign-in") {
-          const { error } = await signIn.create({
-            identifier: phoneNumber,
-            signUpIfMissing: true,
-          });
-          if (error) {
-            setLocalError(errorMessage(error));
-            return;
-          }
-
-          // If Clerk transferred to sign-up, finish via signUp
-          if (signUp.status && signUp.status !== "complete") {
-            const sent = await signUp.verifications.sendPhoneCode();
-            if (sent.error) {
-              setLocalError(errorMessage(sent.error));
-              return;
-            }
-            setActiveFlow("sign-up");
-          } else {
-            const sent = await signIn.phoneCode.sendCode({ phoneNumber });
-            if (sent.error) {
-              // Try sign-up path if identifier was transferred
-              const up = await signUp.verifications.sendPhoneCode();
-              if (up.error) {
-                setLocalError(
-                  errorMessage(sent.error) || errorMessage(up.error),
-                );
-                return;
-              }
-              setActiveFlow("sign-up");
-            } else {
-              setActiveFlow("sign-in");
-            }
-          }
-        } else {
-          const { error } = await signUp.create({
-            phoneNumber,
-            ...(email.trim() ? { emailAddress: email.trim() } : {}),
-          });
-          if (error) {
-            setLocalError(errorMessage(error));
-            return;
-          }
-          const sent = await signUp.verifications.sendPhoneCode();
-          if (sent.error) {
-            setLocalError(errorMessage(sent.error));
-            return;
-          }
-          setActiveFlow("sign-up");
+        const err =
+          mode === "sign-in"
+            ? await startPhoneSignIn(phoneNumber)
+            : await startPhoneSignUp(phoneNumber);
+        if (err) {
+          setLocalError(friendlyError(err) || "Could not send code");
+          return;
         }
       } else {
         const emailAddress = email.trim();
@@ -234,12 +294,12 @@ export default function PhoneAuthForm({
           signUpIfMissing: true,
         });
         if (error) {
-          setLocalError(errorMessage(error));
+          setLocalError(friendlyError(error) || "Could not send code");
           return;
         }
         const sent = await signIn.emailCode.sendCode({ emailAddress });
         if (sent.error) {
-          setLocalError(errorMessage(sent.error));
+          setLocalError(friendlyError(sent.error) || "Could not send code");
           return;
         }
         setActiveFlow("sign-in");
@@ -247,7 +307,7 @@ export default function PhoneAuthForm({
 
       setPendingCode(true);
     } catch (err) {
-      setLocalError(errorMessage(err) || "Could not send code");
+      setLocalError(friendlyError(err) || "Could not send code");
     }
   };
 
@@ -289,7 +349,6 @@ export default function PhoneAuthForm({
       } else {
         const { error } = await signIn.phoneCode.verifyCode({ code: otp });
         if (error) {
-          // Might be a sign-up verification
           const up = await signUp.verifications.verifyPhoneCode({ code: otp });
           if (up.error) {
             setLocalError(errorMessage(error) || errorMessage(up.error));
@@ -324,24 +383,21 @@ export default function PhoneAuthForm({
     strategy: "oauth_google" | "oauth_apple" | "oauth_microsoft",
   ) => {
     setLocalError(null);
-    if (!signIn) {
+    if (!signIn || !clerk.loaded) {
       setLocalError("Auth is still loading. Try again in a moment.");
       return;
     }
     try {
-      // Persist intent so /sso-callback can restore destination after transfer flows.
       const { persistAuthRedirect } = await import("@/lib/auth/return-path");
       persistAuthRedirect(afterAuth);
-      // redirectUrl = destination when session is created
-      // redirectCallbackUrl = /sso-callback when Clerk needs transfer / finalize
       const { error } = await signIn.sso({
         strategy,
         redirectUrl: afterAuth,
         redirectCallbackUrl: "/sso-callback",
       });
-      if (error) setLocalError(errorMessage(error) || "Social sign-in failed");
+      if (error) setLocalError(friendlyError(error) || "Social sign-in failed");
     } catch (err) {
-      setLocalError(errorMessage(err) || "Social sign-in failed");
+      setLocalError(friendlyError(err) || "Social sign-in failed");
     }
   };
 
@@ -365,6 +421,7 @@ export default function PhoneAuthForm({
   if (pendingCode) {
     return (
       <form onSubmit={verifyCode} className="w-full space-y-5 text-left">
+        <ClerkCaptcha />
         <div>
           <label className={`${labelClass} mb-2 block`} htmlFor="kc-otp">
             Code
@@ -381,8 +438,12 @@ export default function PhoneAuthForm({
         </div>
         {fieldError ? (
           <p className="text-[13px] text-black/55">{fieldError}</p>
-        ) : null}
-        <button type="submit" className={btnClass} disabled={busy}>
+        ) : (
+          <p className="text-[13px] text-black/40">
+            Sent to {channel === "email" ? email.trim() : toE164(phone)}
+          </p>
+        )}
+        <button type="submit" className={btnClass} disabled={busy || !loaded}>
           {busy ? "…" : "Verify"}
         </button>
         <div className="flex items-center justify-between text-[13px]">
@@ -413,34 +474,8 @@ export default function PhoneAuthForm({
 
   return (
     <div className="w-full text-left">
-      {/* Required for Clerk bot protection on custom sign-up / OAuth transfer */}
-      <div id="clerk-captcha" className="empty:hidden" />
-
-      <div className="mb-6 flex gap-3">
-        {SOCIAL.map(({ strategy, label, Icon }) => (
-          <button
-            key={strategy}
-            type="button"
-            onClick={() => void oauth(strategy)}
-            disabled={busy || !signIn}
-            className="flex h-12 flex-1 items-center justify-center border border-black/12 text-black transition-colors hover:border-black/40 disabled:opacity-40"
-            aria-label={`Continue with ${label}`}
-          >
-            <Icon className="h-[18px] w-[18px]" />
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-6 flex items-center gap-3">
-        <div className="h-px flex-1 bg-black/[0.08]" />
-        <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-black/30">
-          Or
-        </span>
-        <div className="h-px flex-1 bg-black/[0.08]" />
-      </div>
-
       <form onSubmit={(e) => void sendCode(e)} className="space-y-5">
-        {(channel === "phone" || mode === "sign-up") && (
+        {channel === "phone" ? (
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className={labelClass} htmlFor="kc-phone">
@@ -471,26 +506,22 @@ export default function PhoneAuthForm({
               required
             />
           </div>
-        )}
-
-        {(channel === "email" || mode === "sign-up") && (
+        ) : (
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className={labelClass} htmlFor="kc-email">
-                Email{mode === "sign-up" ? " · optional" : ""}
+                Email
               </label>
-              {mode === "sign-in" && channel === "email" ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setChannel("phone");
-                    setLocalError(null);
-                  }}
-                  className="text-[12px] text-black/40 hover:text-black"
-                >
-                  Use phone
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setChannel("phone");
+                  setLocalError(null);
+                }}
+                className="text-[12px] text-black/40 hover:text-black"
+              >
+                Use phone
+              </button>
             </div>
             <input
               id="kc-email"
@@ -500,19 +531,45 @@ export default function PhoneAuthForm({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               className={fieldClass}
-              required={channel === "email" && mode === "sign-in"}
+              required
             />
           </div>
         )}
+
+        {/* Must be visible before signUp.create — do not hide with empty:hidden */}
+        <ClerkCaptcha />
 
         {fieldError ? (
           <p className="text-[13px] text-black/55">{fieldError}</p>
         ) : null}
 
-        <button type="submit" className={btnClass} disabled={busy}>
+        <button type="submit" className={btnClass} disabled={busy || !loaded}>
           {busy ? "…" : "Continue"}
         </button>
       </form>
+
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-black/[0.08]" />
+        <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-black/30">
+          Or
+        </span>
+        <div className="h-px flex-1 bg-black/[0.08]" />
+      </div>
+
+      <div className="flex gap-3">
+        {SOCIAL.map(({ strategy, label, Icon }) => (
+          <button
+            key={strategy}
+            type="button"
+            onClick={() => void oauth(strategy)}
+            disabled={busy || !loaded}
+            className="flex h-12 flex-1 items-center justify-center border border-black/12 text-black transition-colors hover:border-black/40 disabled:opacity-40"
+            aria-label={`Continue with ${label}`}
+          >
+            <Icon className="h-[18px] w-[18px]" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

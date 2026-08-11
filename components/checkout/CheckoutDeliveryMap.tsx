@@ -150,7 +150,7 @@ export default function CheckoutDeliveryMap({
   const hasToken = Boolean(getMapboxToken());
   const pinChangeLock = useRef(false);
 
-  const [styleId, setStyleId] = useState<MapStyleId>("map-3d");
+  const [styleId, setStyleId] = useState<MapStyleId>("street");
   const [povId, setPovId] = useState<MapPovId>("bird");
   const [povCameraKey, setPovCameraKey] = useState(0);
   const [showTraffic, setShowTraffic] = useState(false);
@@ -623,6 +623,7 @@ export default function CheckoutDeliveryMap({
               minimalControls
               fitMarkers={!routeGeoJSON ? fitKey : false}
               fitRoute={Boolean(routeGeoJSON)}
+              animateRoute
               cameraKey={`${styleId}-${povId}-${povCameraKey}`}
               onReady={(map) => {
                 mapRef.current = map;

@@ -21,11 +21,11 @@ interface SignInModalProps {
 
 const COPY = {
   "sign-in": {
-    title: "Sign in",
+    title: "Sign in with your phone",
     alternateCta: "Create an account",
   },
   "sign-up": {
-    title: "Create account",
+    title: "Create account with your phone",
     alternateCta: "Sign in",
   },
 } as const;

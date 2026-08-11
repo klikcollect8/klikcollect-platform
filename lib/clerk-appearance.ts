@@ -119,8 +119,12 @@ export const clerkAppearance = {
     userButtonPopoverCustomItemButton:
       "!rounded-none !border-0 !border-b !border-black/[0.08] !px-4 !py-3.5 !text-[12px] !font-medium !uppercase !tracking-[0.14em]",
   },
+  captcha: {
+    theme: "light" as const,
+    size: "flexible" as const,
+  },
   options: {
-    socialButtonsPlacement: "top" as const,
+    socialButtonsPlacement: "bottom" as const,
     socialButtonsVariant: "iconButton" as const,
     showOptionalFields: false,
     animations: true,

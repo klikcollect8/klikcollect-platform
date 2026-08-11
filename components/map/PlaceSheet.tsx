@@ -64,6 +64,8 @@ type PlaceSheetProps = {
   streetViewSrc?: string | null;
   tripCount?: number;
   whatsHere?: Array<{ id: string; name: string; featureType: string }>;
+  /** portal = floating card; embedded = inline (bottom sheet) */
+  variant?: "portal" | "embedded";
   onClose: () => void;
   onStreetView: () => void;
   onOpenMaps: () => void;
@@ -71,6 +73,8 @@ type PlaceSheetProps = {
   onShare: () => void;
   onPickRelated?: (id: string) => void;
   onFlyHere?: () => void;
+  /** Start Mapbox in-map directions */
+  onDirections?: () => void;
 };
 
 /** Transparent place details — top right */
@@ -81,6 +85,7 @@ export default function PlaceSheet({
   streetViewSrc,
   tripCount = 0,
   whatsHere = [],
+  variant = "portal",
   onClose,
   onStreetView,
   onOpenMaps,
@@ -88,6 +93,7 @@ export default function PlaceSheet({
   onShare,
   onPickRelated,
   onFlyHere,
+  onDirections,
 }: PlaceSheetProps) {
   const [mounted, setMounted] = useState(false);
   const [showStreetView, setShowStreetView] = useState(false);
@@ -108,23 +114,15 @@ export default function PlaceSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  if (!mounted) return null;
+  if (!mounted && variant === "portal") return null;
 
   const eyebrow = place.isVendor
     ? place.primaryCategory || "KlikCollect shop"
     : featureTypeLabel(place.featureType || "place");
   const coords = `${place.lat.toFixed(5)}, ${place.lng.toFixed(5)}`;
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-label={place.name}
-      className={cn(
-        "pointer-events-auto fixed right-3 top-[5.5rem] z-[80] w-[min(100%-1.5rem,20.5rem)] sm:right-5 sm:top-24 sm:w-[22rem]",
-        "scrollbar-hide max-h-[min(62vh,480px)] overflow-y-auto",
-        sheetGlass,
-      )}
-    >
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-3 px-4 pb-1 pt-4">
         <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-black/40">
           {eyebrow}
@@ -189,6 +187,17 @@ export default function PlaceSheet({
             <Store className="h-4 w-4" />
             Visit shop
           </Link>
+        ) : null}
+
+        {onDirections ? (
+          <button
+            type="button"
+            onClick={onDirections}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 bg-black/90 text-[12px] font-medium uppercase tracking-[0.12em] text-white hover:bg-black"
+          >
+            <Navigation2 className="h-4 w-4" />
+            Directions
+          </button>
         ) : null}
 
         {showStreetView && streetViewSrc ? (
@@ -259,6 +268,29 @@ export default function PlaceSheet({
 
         <p className="text-[10px] tabular-nums text-black/35">{coords}</p>
       </div>
+    </>
+  );
+
+  if (variant === "embedded") {
+    return (
+      <div role="dialog" aria-label={place.name} className="w-full">
+        {body}
+      </div>
+    );
+  }
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-label={place.name}
+      className={cn(
+        "pointer-events-auto fixed right-3 top-[5.5rem] z-[80] w-[min(100%-1.5rem,20.5rem)] sm:right-5 sm:top-24 sm:w-[22rem]",
+        "scrollbar-hide max-h-[min(62vh,480px)] overflow-y-auto",
+        "hidden md:block",
+        sheetGlass,
+      )}
+    >
+      {body}
     </div>,
     document.body,
   );
@@ -298,8 +330,13 @@ type RoutePanelProps = {
   totalMeta?: { durationS: number; distanceM: number } | null;
   optimizing?: boolean;
   hasDestination?: boolean;
+  /** portal = floating; embedded = inline in bottom sheet */
+  variant?: "portal" | "embedded";
   onTravelChange: (id: TravelProfile) => void;
+  /** Primary: start / focus Mapbox in-map route */
   onNavigate: () => void;
+  /** Secondary: open Google Maps directions */
+  onOpenExternal?: () => void;
   onToggleSteps: () => void;
   onAddStop: () => void;
   onRemoveStop?: () => void;
@@ -324,8 +361,10 @@ export function RoutePanel({
   totalMeta,
   optimizing,
   hasDestination,
+  variant = "portal",
   onTravelChange,
   onNavigate,
+  onOpenExternal,
   onToggleSteps,
   onAddStop,
   onRemoveStop,
@@ -338,7 +377,7 @@ export function RoutePanel({
 }: RoutePanelProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
+  if (!mounted && variant === "portal") return null;
 
   const order =
     orderedIds && orderedIds.length === tripStops.length
@@ -346,9 +385,14 @@ export function RoutePanel({
       : tripStops.map((s) => s.id);
   const byId = new Map(tripStops.map((s) => [s.id, s]));
 
-  return createPortal(
-    <div className="pointer-events-none fixed bottom-4 left-3 z-[80] flex w-[min(100%-6.5rem,20.5rem)] flex-col gap-2.5 sm:bottom-6 sm:left-5 sm:w-[22rem]">
-      {/* Multi-stop list — only when stops exist */}
+  const panel = (
+    <div
+      className={cn(
+        "flex w-full flex-col gap-2.5",
+        variant === "portal" &&
+          "pointer-events-none hidden md:flex md:w-[min(100%-6.5rem,20.5rem)]",
+      )}
+    >
       {tripStops.length > 0 && tripOpen ? (
         <div
           className={cn(
@@ -423,11 +467,10 @@ export function RoutePanel({
         </div>
       ) : null}
 
-      {/* Compact directions card */}
       <div
         className={cn(
           "pointer-events-auto scrollbar-hide max-h-[min(46vh,380px)] overflow-y-auto",
-          sheetGlass,
+          variant === "embedded" ? "" : sheetGlass,
         )}
       >
         <div className="space-y-3 px-3.5 py-3.5">
@@ -473,6 +516,17 @@ export function RoutePanel({
               Steps
             </button>
           </div>
+
+          {onOpenExternal ? (
+            <button
+              type="button"
+              onClick={onOpenExternal}
+              className="inline-flex w-full items-center justify-center gap-1.5 text-[11px] text-black/45 hover:text-black"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Open in Google Maps
+            </button>
+          ) : null}
 
           {tripStops.length > 0 ? (
             <button
@@ -551,6 +605,14 @@ export function RoutePanel({
           ) : null}
         </div>
       </div>
+    </div>
+  );
+
+  if (variant === "embedded") return panel;
+
+  return createPortal(
+    <div className="pointer-events-none fixed bottom-4 left-3 z-[80] sm:bottom-6 sm:left-5">
+      {panel}
     </div>,
     document.body,
   );

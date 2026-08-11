@@ -1,6 +1,7 @@
 # Paystack (KlikCollect)
 
 Kenya / KES. Card and **M-Pesa via Paystack `mobile_money` channel** (not Daraja).
+Bank uses Paystack **`bank_transfer`** (Kenya). Nigeria-only `bank` / `ussd` channels are not enabled on this merchant — checkout falls back to Kenya channels when needed.
 
 ## Env (local only - never commit)
 
@@ -20,8 +21,9 @@ MCP (`@paystack/mcp-server` in `.cursor/mcp.json`) accepts **test secrets only**
 3. Sign in → add items → `/checkout`
 4. **Card (recommended):** choose Card → Pay → Paystack Inline → test card `4084084084084081`, any future expiry, any CVV, PIN `0000` if asked
 5. **M-Pesa:** choose M-Pesa → enter `07…` / `+2547…` → Pay → complete STK/hosted mobile_money in Paystack sandbox
-6. Success → `/account/receipts/{id}`; order shows as paid on `/account/orders`
-7. Cart clears **only after** success
+6. **Bank transfer:** choose Bank transfer → Paystack hosted page (Kenya `bank_transfer`)
+7. Success → `/account/receipts/{id}`; order shows as paid on `/account/orders`
+8. Cart clears **only after** success
 
 ### Webhook on localhost (optional)
 
@@ -34,7 +36,9 @@ Callback/verify is enough for local testing. For webhook:
 ## Checkout flow
 
 1. Create order (`POST /api/orders`)
-2. `POST /api/payments/initialize` with `method: card|mpesa`, optional `phone` (2547…)
+2. `POST /api/payments/initialize` with `method: card|mpesa|bank|ussd`, optional `phone` (2547…)
+   - `bank` → Paystack channel `bank_transfer`
+   - `ussd` → multi-channel Kenya checkout (card + M-Pesa + bank_transfer)
 3. Client opens **Paystack Inline** via `accessCode` (`lib/paystack/inline.ts`); redirect fallback uses `authorizationUrl`
 4. Poll `GET /api/payments/verify?reference=` until success
 5. `captureSuccessfulPayment` → ledger + receipt + `orders.payment_status=paid`

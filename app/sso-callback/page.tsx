@@ -131,8 +131,13 @@ export default function SSOCallbackPage() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center bg-[#f6f4ef] text-[13px] text-black/45">
       Completing sign-in…
-      {/* Captcha required when OAuth transfers into a sign-up */}
-      <div id="clerk-captcha" />
+      {/* Captcha required when OAuth transfers into a sign-up — must stay visible */}
+      <div
+        id="clerk-captcha"
+        data-cl-theme="light"
+        data-cl-size="flexible"
+        className="mt-4 flex min-h-[4px] justify-center"
+      />
     </div>
   );
 }
