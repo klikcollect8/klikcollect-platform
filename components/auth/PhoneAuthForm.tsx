@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useClerk, useSignIn, useSignUp } from "@clerk/nextjs";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth, useClerk, useSignIn, useSignUp } from "@clerk/nextjs";
 import ClerkCaptcha from "@/components/auth/ClerkCaptcha";
 
 export type AuthModalMode = "sign-in" | "sign-up";
@@ -88,6 +87,9 @@ const SOCIAL = [
   },
 ];
 
+/** Kenya mobiles: +254 7XXXXXXXX or +254 1XXXXXXXX */
+const KENYA_MOBILE = /^\+254[17]\d{8}$/;
+
 function toE164(raw: string): string {
   const trimmed = raw.trim().replace(/[\s()-]/g, "");
   if (!trimmed) return "";
@@ -159,8 +161,38 @@ function isIdentifierExists(err: unknown): boolean {
   );
 }
 
+function isIdentifierNotFound(err: unknown): boolean {
+  const code = errorCode(err).toLowerCase();
+  const msg = errorMessage(err).toLowerCase();
+  return (
+    code.includes("identifier_not_found") ||
+    code.includes("not_found") ||
+    msg.includes("couldn't find") ||
+    msg.includes("could not find") ||
+    msg.includes("doesn't exist") ||
+    msg.includes("does not exist")
+  );
+}
+
+function isSmsCountryError(err: unknown): boolean {
+  const code = errorCode(err).toLowerCase();
+  const msg = errorMessage(err).toLowerCase();
+  return (
+    code.includes("sms") ||
+    code.includes("unsupported_country") ||
+    code.includes("country_blocked") ||
+    msg.includes("country") ||
+    msg.includes("sms is not") ||
+    msg.includes("cannot send") ||
+    msg.includes("not enabled")
+  );
+}
+
 function friendlyError(err: unknown): string {
   if (isCaptchaError(err)) return CAPTCHA_HELP;
+  if (isSmsCountryError(err)) {
+    return "Could not text that number. Use a Kenya mobile in +254 7… or +254 1… format.";
+  }
   return errorMessage(err);
 }
 
@@ -168,8 +200,8 @@ export default function PhoneAuthForm({
   mode,
   redirectUrl = "/",
 }: PhoneAuthFormProps) {
-  const router = useRouter();
   const clerk = useClerk();
+  const { isSignedIn } = useAuth();
   const {
     signIn,
     errors: signInErrors,
@@ -186,11 +218,16 @@ export default function PhoneAuthForm({
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [pendingCode, setPendingCode] = useState(false);
+  const [needEmail, setNeedEmail] = useState(false);
   const [activeFlow, setActiveFlow] = useState<"sign-in" | "sign-up">(mode);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const loaded = clerk.loaded && !!signIn && !!signUp;
-  const busy = signInStatus === "fetching" || signUpStatus === "fetching";
+  const busy =
+    submitting ||
+    signInStatus === "fetching" ||
+    signUpStatus === "fetching";
   const afterAuth = redirectUrl.startsWith("/") ? redirectUrl : "/";
 
   const fieldError = useMemo(() => {
@@ -200,42 +237,143 @@ export default function PhoneAuthForm({
     return errorMessage(signInErrors) || errorMessage(signUpErrors) || null;
   }, [localError, signInErrors, signUpErrors]);
 
-  const navigateAfter = (decorateUrl: (path: string) => string) => {
-    const url = decorateUrl(afterAuth);
-    if (url.startsWith("http")) window.location.href = url;
-    else router.push(url);
+  const leaveToApp = (path: string) => {
+    window.location.assign(path);
+  };
+
+  useEffect(() => {
+    if (!isSignedIn || !pendingCode) return;
+    leaveToApp(afterAuth);
+  }, [isSignedIn, pendingCode, afterAuth]);
+
+  const activateSession = async (sessionId: string) => {
+    await clerk.setActive({ session: sessionId });
+    leaveToApp(afterAuth);
+  };
+
+  const finishAuth = async (flow: "sign-in" | "sign-up"): Promise<boolean> => {
+    const resource = flow === "sign-in" ? signIn : signUp;
+    const sessionId =
+      resource.createdSessionId || resource.existingSession?.sessionId || null;
+
+    if (sessionId) {
+      await activateSession(sessionId);
+      return true;
+    }
+
+    if (resource.status !== "complete") return false;
+
+    const { error } = await resource.finalize({
+      navigate: ({ decorateUrl, session }) => {
+        const id = session?.id || resource.createdSessionId;
+        if (id) {
+          void clerk.setActive({ session: id }).then(() => {
+            leaveToApp(decorateUrl(afterAuth));
+          });
+          return;
+        }
+        leaveToApp(decorateUrl(afterAuth));
+      },
+    });
+
+    if (error) {
+      if (resource.createdSessionId) {
+        await activateSession(resource.createdSessionId);
+        return true;
+      }
+      setLocalError(friendlyError(error) || "Could not finish signing in");
+      return false;
+    }
+
+    // Finalize reported success but navigate may have been a no-op.
+    if (resource.createdSessionId) {
+      await activateSession(resource.createdSessionId);
+      return true;
+    }
+    leaveToApp(afterAuth);
+    return true;
+  };
+
+  const continueIncompleteSignUp = async (): Promise<boolean> => {
+    if (signUp.status === "complete") return finishAuth("sign-up");
+
+    const missing = signUp.missingFields ?? [];
+    const unverified = signUp.unverifiedFields ?? [];
+
+    if (missing.includes("email_address") || unverified.includes("email_address")) {
+      setNeedEmail(true);
+      setLocalError("Add your email to finish creating the account.");
+      return true;
+    }
+
+    if (missing.length === 0 && unverified.length === 0) {
+      const { error } = await signUp.update({});
+      if (error) {
+        setLocalError(friendlyError(error) || "Could not finish sign-up");
+        return false;
+      }
+      if (signUp.createdSessionId) return finishAuth("sign-up");
+      if (await finishAuth("sign-up")) return true;
+    }
+
+    if (missing.length > 0) {
+      setLocalError(`Additional info needed: ${missing.join(", ")}`);
+      return false;
+    }
+
+    setLocalError("Could not finish sign-up. Try signing in instead.");
+    return false;
+  };
+
+  const continueIncompleteSignIn = async (): Promise<boolean> => {
+    if (signIn.status === "complete" || signIn.createdSessionId) {
+      return finishAuth("sign-in");
+    }
+
+    if (
+      signIn.status === "needs_second_factor" ||
+      signIn.status === "needs_client_trust"
+    ) {
+      const phoneFactor = signIn.supportedSecondFactors?.find(
+        (factor) => factor.strategy === "phone_code",
+      );
+      if (phoneFactor) {
+        const sent = await signIn.mfa.sendPhoneCode();
+        if (sent.error) {
+          setLocalError(friendlyError(sent.error) || "Could not send second code");
+          return false;
+        }
+        setCode("");
+        setLocalError("Enter the second code we just sent to your phone.");
+        return true;
+      }
+      setLocalError("Additional verification is required. Try again.");
+      return false;
+    }
+
+    setLocalError("Could not finish sign-in. Check the code and try again.");
+    return false;
   };
 
   const startPhoneSignIn = async (phoneNumber: string) => {
-    const created = await signIn.create({
-      identifier: phoneNumber,
-      signUpIfMissing: true,
+    const sent = await signIn.phoneCode.sendCode({
+      phoneNumber,
+      channel: "sms",
     });
+    if (!sent.error) {
+      setActiveFlow("sign-in");
+      return null;
+    }
+    if (isCaptchaError(sent.error)) return sent.error;
+
+    const created = await signUp.create({ phoneNumber });
     if (created.error) {
-      if (isCaptchaError(created.error)) return created.error;
-      // Fall through — sendCode may still work if a sign-in already exists
+      if (isIdentifierExists(created.error)) return sent.error;
+      return created.error;
     }
-
-    const transferred =
-      signUp.status === "missing_requirements" ||
-      (Array.isArray(signUp.unverifiedFields) &&
-        signUp.unverifiedFields.includes("phone_number"));
-
-    if (transferred) {
-      const sent = await signUp.verifications.sendPhoneCode();
-      if (sent.error) return sent.error;
-      setActiveFlow("sign-up");
-      return null;
-    }
-
-    const sent = await signIn.phoneCode.sendCode({ phoneNumber });
-    if (sent.error) {
-      const up = await signUp.verifications.sendPhoneCode();
-      if (up.error) return sent.error || up.error;
-      setActiveFlow("sign-up");
-      return null;
-    }
-    setActiveFlow("sign-in");
+    const up = await signUp.verifications.sendPhoneCode({ channel: "sms" });
+    if (up.error) return up.error || sent.error;
+    setActiveFlow("sign-up");
     return null;
   };
 
@@ -251,7 +389,7 @@ export default function PhoneAuthForm({
       }
       return created.error;
     }
-    const sent = await signUp.verifications.sendPhoneCode();
+    const sent = await signUp.verifications.sendPhoneCode({ channel: "sms" });
     if (sent.error) return sent.error;
     setActiveFlow("sign-up");
     return null;
@@ -266,9 +404,14 @@ export default function PhoneAuthForm({
       return;
     }
 
+    setSubmitting(true);
     try {
       if (channel === "phone") {
         const phoneNumber = toE164(phone);
+        if (phoneNumber.startsWith("+254") && !KENYA_MOBILE.test(phoneNumber)) {
+          setLocalError("Enter a valid Kenya mobile, e.g. 07XX XXX XXX");
+          return;
+        }
         if (phoneNumber.replace(/\D/g, "").length < 10) {
           setLocalError("Enter a valid phone number");
           return;
@@ -289,25 +432,74 @@ export default function PhoneAuthForm({
           return;
         }
 
-        const { error } = await signIn.create({
-          identifier: emailAddress,
-          signUpIfMissing: true,
-        });
-        if (error) {
-          setLocalError(friendlyError(error) || "Could not send code");
-          return;
-        }
         const sent = await signIn.emailCode.sendCode({ emailAddress });
         if (sent.error) {
-          setLocalError(friendlyError(sent.error) || "Could not send code");
-          return;
+          if (isIdentifierNotFound(sent.error)) {
+            const created = await signUp.create({ emailAddress });
+            if (created.error) {
+              setLocalError(friendlyError(created.error) || "Could not send code");
+              return;
+            }
+            const up = await signUp.verifications.sendEmailCode();
+            if (up.error) {
+              setLocalError(friendlyError(up.error) || "Could not send code");
+              return;
+            }
+            setActiveFlow("sign-up");
+          } else {
+            setLocalError(friendlyError(sent.error) || "Could not send code");
+            return;
+          }
+        } else {
+          setActiveFlow("sign-in");
         }
-        setActiveFlow("sign-in");
       }
 
       setPendingCode(true);
     } catch (err) {
       setLocalError(friendlyError(err) || "Could not send code");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+    const emailAddress = email.trim();
+    if (!emailAddress.includes("@")) {
+      setLocalError("Enter a valid email");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await signUp.update({ emailAddress });
+      if (error) {
+        setLocalError(friendlyError(error) || "Could not save email");
+        return;
+      }
+      if (signUp.status === "complete" || signUp.createdSessionId) {
+        await finishAuth("sign-up");
+        return;
+      }
+      if (signUp.unverifiedFields?.includes("email_address")) {
+        const sent = await signUp.verifications.sendEmailCode();
+        if (sent.error) {
+          setLocalError(friendlyError(sent.error) || "Could not send email code");
+          return;
+        }
+        setChannel("email");
+        setNeedEmail(false);
+        setCode("");
+        setPendingCode(true);
+        setLocalError("Enter the code we emailed you.");
+        return;
+      }
+      await continueIncompleteSignUp();
+    } catch (err) {
+      setLocalError(friendlyError(err) || "Could not save email");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -320,62 +512,64 @@ export default function PhoneAuthForm({
       return;
     }
 
+    setSubmitting(true);
     try {
       if (activeFlow === "sign-up") {
-        const { error } = await signUp.verifications.verifyPhoneCode({
-          code: otp,
-        });
-        if (error) {
-          setLocalError(errorMessage(error));
+        const verify =
+          channel === "email"
+            ? await signUp.verifications.verifyEmailCode({ code: otp })
+            : await signUp.verifications.verifyPhoneCode({ code: otp });
+        if (verify.error) {
+          setLocalError(errorMessage(verify.error) || "Invalid code");
           return;
         }
-        if (signUp.status === "complete") {
-          await signUp.finalize({
-            navigate: ({ session, decorateUrl }) => {
-              if (session?.currentTask) return;
-              navigateAfter(decorateUrl);
-            },
-          });
+        if (signUp.status === "complete" || signUp.createdSessionId) {
+          await finishAuth("sign-up");
+          return;
         }
+        await continueIncompleteSignUp();
+        return;
+      }
+
+      if (signIn.status === "needs_second_factor" || signIn.status === "needs_client_trust") {
+        const mfa = await signIn.mfa.verifyPhoneCode({ code: otp });
+        if (mfa.error) {
+          setLocalError(errorMessage(mfa.error) || "Invalid code");
+          return;
+        }
+        await continueIncompleteSignIn();
         return;
       }
 
       if (channel === "email") {
         const { error } = await signIn.emailCode.verifyCode({ code: otp });
         if (error) {
-          setLocalError(errorMessage(error));
+          setLocalError(errorMessage(error) || "Invalid code");
           return;
         }
       } else {
         const { error } = await signIn.phoneCode.verifyCode({ code: otp });
         if (error) {
           const up = await signUp.verifications.verifyPhoneCode({ code: otp });
-          if (up.error) {
-            setLocalError(errorMessage(error) || errorMessage(up.error));
+          if (!up.error) {
+            setActiveFlow("sign-up");
+            if (signUp.status === "complete" || signUp.createdSessionId) {
+              await finishAuth("sign-up");
+              return;
+            }
+            await continueIncompleteSignUp();
             return;
           }
-          if (signUp.status === "complete") {
-            await signUp.finalize({
-              navigate: ({ session, decorateUrl }) => {
-                if (session?.currentTask) return;
-                navigateAfter(decorateUrl);
-              },
-            });
-            return;
-          }
+          setLocalError(errorMessage(error) || errorMessage(up.error) || "Invalid code");
+          return;
         }
       }
 
-      if (signIn.status === "complete") {
-        await signIn.finalize({
-          navigate: ({ session, decorateUrl }) => {
-            if (session?.currentTask) return;
-            navigateAfter(decorateUrl);
-          },
-        });
-      }
+      await continueIncompleteSignIn();
     } catch (err) {
       setLocalError(errorMessage(err) || "Invalid code");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -403,24 +597,84 @@ export default function PhoneAuthForm({
 
   const resend = async () => {
     setLocalError(null);
+    setSubmitting(true);
     try {
       if (activeFlow === "sign-up") {
-        await signUp.verifications.sendPhoneCode();
+        const sent =
+          channel === "email"
+            ? await signUp.verifications.sendEmailCode()
+            : await signUp.verifications.sendPhoneCode({ channel: "sms" });
+        if (sent.error) {
+          setLocalError(friendlyError(sent.error) || "Could not resend code");
+        }
         return;
       }
       if (channel === "email") {
-        await signIn.emailCode.sendCode({ emailAddress: email.trim() });
-      } else {
-        await signIn.phoneCode.sendCode({ phoneNumber: toE164(phone) });
+        const sent = await signIn.emailCode.sendCode({
+          emailAddress: email.trim(),
+        });
+        if (sent.error) {
+          setLocalError(friendlyError(sent.error) || "Could not resend code");
+        }
+        return;
+      }
+      if (signIn.status === "needs_second_factor" || signIn.status === "needs_client_trust") {
+        const sent = await signIn.mfa.sendPhoneCode();
+        if (sent.error) {
+          setLocalError(friendlyError(sent.error) || "Could not resend code");
+        }
+        return;
+      }
+      const sent = await signIn.phoneCode.sendCode({
+        phoneNumber: toE164(phone),
+        channel: "sms",
+      });
+      if (sent.error) {
+        setLocalError(friendlyError(sent.error) || "Could not resend code");
       }
     } catch (err) {
       setLocalError(errorMessage(err) || "Could not resend code");
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  if (needEmail) {
+    return (
+      <form onSubmit={(e) => void submitEmail(e)} className="w-full space-y-5 text-left">
+        <ClerkCaptcha />
+        <div>
+          <label className={`${labelClass} mb-2 block`} htmlFor="kc-email-finish">
+            Email
+          </label>
+          <input
+            id="kc-email-finish"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className={fieldClass}
+            required
+          />
+        </div>
+        {fieldError ? (
+          <p className="text-[13px] text-black/55">{fieldError}</p>
+        ) : (
+          <p className="text-[13px] text-black/40">
+            Phone verified. Add an email to finish.
+          </p>
+        )}
+        <button type="submit" className={btnClass} disabled={busy || !loaded}>
+          {busy ? "…" : "Continue"}
+        </button>
+      </form>
+    );
+  }
+
   if (pendingCode) {
     return (
-      <form onSubmit={verifyCode} className="w-full space-y-5 text-left">
+      <form onSubmit={(e) => void verifyCode(e)} className="w-full space-y-5 text-left">
         <ClerkCaptcha />
         <div>
           <label className={`${labelClass} mb-2 block`} htmlFor="kc-otp">
@@ -444,7 +698,7 @@ export default function PhoneAuthForm({
           </p>
         )}
         <button type="submit" className={btnClass} disabled={busy || !loaded}>
-          {busy ? "…" : "Verify"}
+          {busy ? "Verifying…" : "Verify"}
         </button>
         <div className="flex items-center justify-between text-[13px]">
           <button
@@ -458,6 +712,7 @@ export default function PhoneAuthForm({
             type="button"
             onClick={() => {
               setPendingCode(false);
+              setNeedEmail(false);
               setCode("");
               setLocalError(null);
               void signIn.reset();
@@ -505,6 +760,9 @@ export default function PhoneAuthForm({
               className={fieldClass}
               required
             />
+            <p className="mt-2 text-[12px] text-black/35">
+              Kenya mobiles (+254). We’ll text a 6-digit code.
+            </p>
           </div>
         ) : (
           <div>
