@@ -15,7 +15,6 @@ import PageContainer, {
   AdminPageHeader,
 } from "@/components/admin/PageContainer";
 import ProductCreateWizard from "@/components/admin/catalogue/ProductCreateWizard";
-import CatalogueBarcodeScanner from "@/components/admin/catalogue/CatalogueBarcodeScanner";
 import CatalogueSearchBar from "@/components/admin/catalogue/CatalogueSearchBar";
 import { adminUi } from "@/components/admin/admin-ui";
 import { useToast } from "@/components/ToastProvider";
@@ -113,8 +112,6 @@ function ProductsCatalogue() {
   const [editId, setEditId] = useState<string | null>(
     searchParams.get("edit"),
   );
-  const [scanOpen, setScanOpen] = useState(false);
-  const [scanCode, setScanCode] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -367,14 +364,13 @@ function ProductsCatalogue() {
         description="Every platform product. Vendors set their own price and stock on offers."
         actions={
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={adminUi.btnSecondary}
-              onClick={() => setScanOpen(true)}
+            <Link
+              href="/admin/products/scanner"
+              className={cn(adminUi.btnSecondary, "inline-flex items-center gap-2")}
             >
               <ScanBarcode className="h-4 w-4" />
-              Scan barcode
-            </button>
+              Product scanner
+            </Link>
             <button
               type="button"
               className={adminUi.btnPrimary}
@@ -698,35 +694,12 @@ function ProductsCatalogue() {
         </div>
       ) : null}
 
-      <CatalogueBarcodeScanner
-        open={scanOpen}
-        onClose={() => setScanOpen(false)}
-        onDetected={(code) => {
-          setScanCode(code);
-          void (async () => {
-            const res = await fetch(
-              `/api/admin/catalogue/barcode/${encodeURIComponent(code)}`,
-            );
-            const data = await res.json();
-            if (data.found && data.product) {
-              router.push(`/admin/products/${data.product.id}`);
-              return;
-            }
-            setEditId(null);
-            setWizardOpen(true);
-            showToast("No existing product — create from barcode", "info");
-          })();
-        }}
-      />
-
       <ProductCreateWizard
         open={wizardOpen}
         initialProductId={editId}
-        initialBarcode={scanCode || null}
         onClose={() => {
           setWizardOpen(false);
           setEditId(null);
-          setScanCode("");
           setPage(1);
           void load();
         }}

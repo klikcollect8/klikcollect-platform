@@ -464,7 +464,8 @@ export async function upsertDraftProduct(
     .insert({
       public_id: publicIdValue,
       ...payload,
-      status: "draft",
+      // Allow resolver imports to land as pending_review; wizard defaults to draft.
+      status: payload.status || "draft",
       version: 1,
     })
     .select("*")

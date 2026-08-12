@@ -20,6 +20,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Scale,
+  ScanBarcode,
   Search,
   Settings,
   Shield,
@@ -118,6 +119,19 @@ const allNavItems: NavItem[] = [
     href: "/admin/products",
     label: "Catalogue",
     icon: Package,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "products:view",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/products/scanner",
+    label: "Product scanner",
+    icon: ScanBarcode,
     roles: [
       "super_admin",
       "platform_admin",

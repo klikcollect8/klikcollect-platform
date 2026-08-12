@@ -5,7 +5,12 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ScanBarcode, X } from "lucide-react";
 import { adminUi } from "@/components/admin/admin-ui";
-import CatalogueBarcodeScanner from "@/components/admin/catalogue/CatalogueBarcodeScanner";
+import dynamic from "next/dynamic";
+
+const CatalogueBarcodeScanner = dynamic(
+  () => import("@/components/admin/catalogue/CatalogueBarcodeScanner"),
+  { ssr: false },
+);
 import { useIsClient } from "@/lib/hooks/useIsClient";
 import {
   emptyDraft,
@@ -116,6 +121,8 @@ export default function ProductCreateWizard({
   const [guideAvgMajor, setGuideAvgMajor] = useState("");
   const [guideMaxMajor, setGuideMaxMajor] = useState("");
   const [scanOpen, setScanOpen] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [resolveNote, setResolveNote] = useState<string | null>(null);
 
   const flow = useMemo(
     () => flowForKind(draft.productKind),
@@ -127,6 +134,75 @@ export default function ProductCreateWizard({
   const patch = useCallback((partial: Partial<CatalogueDraft>) => {
     setDraft((d) => ({ ...d, ...partial }));
   }, []);
+
+  const enrichFromBarcode = useCallback(
+    async (code: string, formatHint?: string) => {
+      const v = validateGtin(code);
+      const digits = v.ok ? v.digits : code.replace(/\D/g, "") || code;
+      setResolving(true);
+      setResolveNote(null);
+      setError(null);
+      try {
+        const res = await fetch("/api/admin/catalogue/resolve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ barcode: digits, formatHint }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || "Barcode lookup failed");
+          patch({ barcode: digits, gtin: v.ok ? v.digits : digits });
+          return;
+        }
+        if (data.localProduct?.id) {
+          setResolveNote(
+            `Already in catalogue: ${data.localProduct.name}. Open that product instead of creating a duplicate.`,
+          );
+          patch({
+            barcode: data.barcode || digits,
+            gtin: data.barcode || digits,
+          });
+          return;
+        }
+        const c = data.candidate;
+        const attrs: Record<string, string> = {};
+        if (c?.ingredients?.value) attrs.ingredients = String(c.ingredients.value);
+        if (c?.allergens?.value) attrs.allergens = String(c.allergens.value);
+        if (c?.quantity?.value) attrs.quantity = String(c.quantity.value);
+        if (c?.nutriscore?.value) attrs.nutriscore = String(c.nutriscore.value);
+        const imageUrl = c?.images?.[0]?.url || null;
+        patch({
+          barcode: data.barcode || digits,
+          gtin: data.barcode || digits,
+          productKind: draft.productKind || "packaged_grocery",
+          name: c?.name?.value || draft.name || "",
+          brandName: c?.brand?.value || draft.brandName || null,
+          description:
+            c?.description?.value ||
+            c?.genericName?.value ||
+            draft.description ||
+            "",
+          attributes: { ...(draft.attributes || {}), ...attrs },
+          imageUrl: imageUrl || draft.imageUrl,
+          images: imageUrl
+            ? [imageUrl, ...(draft.images || []).filter((u) => u !== imageUrl)]
+            : draft.images,
+          status: "pending_review",
+        });
+        setResolveNote(
+          c?.name?.value
+            ? "Enriched from product databases — review every field before saving."
+            : "No external product data. Fill in details manually.",
+        );
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Barcode lookup failed");
+        patch({ barcode: digits, gtin: v.ok ? v.digits : digits });
+      } finally {
+        setResolving(false);
+      }
+    },
+    [draft.attributes, draft.description, draft.imageUrl, draft.images, draft.name, draft.brandName, draft.productKind, patch],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -145,6 +221,13 @@ export default function ProductCreateWizard({
       setCategories(data.categories || []);
     })();
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !initialBarcode || initialProductId) return;
+    void enrichFromBarcode(initialBarcode);
+    // Only on open with an initial barcode
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialBarcode, initialProductId]);
 
   useEffect(() => {
     if (!open || !initialProductId) return;
@@ -777,12 +860,34 @@ export default function ProductCreateWizard({
                         adminUi.btnSecondary,
                         "mb-1 inline-flex shrink-0 items-center gap-2",
                       )}
+                      disabled={resolving || !draft.barcode?.trim()}
+                      onClick={() =>
+                        draft.barcode && void enrichFromBarcode(draft.barcode)
+                      }
+                    >
+                      Look up
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        adminUi.btnSecondary,
+                        "mb-1 inline-flex shrink-0 items-center gap-2",
+                      )}
                       onClick={() => setScanOpen(true)}
+                      disabled={resolving}
                     >
                       <ScanBarcode className="h-4 w-4" />
                       Scan
                     </button>
                   </div>
+                  {resolving ? (
+                    <p className="mt-2 text-[12px] text-black/45">
+                      Searching product databases…
+                    </p>
+                  ) : null}
+                  {resolveNote ? (
+                    <p className="mt-2 text-[12px] text-black/55">{resolveNote}</p>
+                  ) : null}
                 </Field>
               </>
             ) : null}
@@ -1346,16 +1451,9 @@ export default function ProductCreateWizard({
       <CatalogueBarcodeScanner
         open={scanOpen}
         onClose={() => setScanOpen(false)}
-        onDetected={(code) => {
-          const v = validateGtin(code);
-          const digits = v.ok ? v.digits : code.replace(/\D/g, "") || code;
-          setDraft((d) => ({
-            ...d,
-            barcode: digits,
-            gtin: v.ok ? v.digits : d.gtin || digits,
-          }));
-          setError(null);
+        onDetected={(code, meta) => {
           setScanOpen(false);
+          void enrichFromBarcode(code, meta?.format);
         }}
       />
     </div>

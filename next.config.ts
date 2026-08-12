@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
-  transpilePackages: ["mapbox-gl"],
+  transpilePackages: ["mapbox-gl", "@zxing/browser", "@zxing/library"],
   experimental: {
     optimizePackageImports: ["lucide-react", "@clerk/nextjs", "sonner"],
   },
