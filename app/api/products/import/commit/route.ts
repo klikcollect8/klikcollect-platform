@@ -4,6 +4,7 @@ import { DEMO_VENDOR_ID } from "@/lib/tenancy";
 import { publicId } from "@/lib/ids";
 import { appendUsageEvent } from "@/lib/m1-store";
 import { validateCatalogueCsvRows } from "@/lib/catalogue/bulk-import";
+import { writeProductAudit } from "@/lib/catalogue/audit";
 import {
   handleRequireAdminError,
   requireAdminPermission,
@@ -78,6 +79,22 @@ export async function POST(request: NextRequest) {
         gtin: r.gtin,
       })),
     );
+
+    for (const p of created) {
+      await writeProductAudit({
+        productPublicId: p.id,
+        actorClerkUserId: admin.user.id,
+        actorEmail: admin.user.email || null,
+        action: "import.csv_created",
+        after: {
+          name: p.name,
+          category: p.category,
+          status: p.status,
+          vendorId,
+        },
+        reason: "CSV bulk import",
+      });
+    }
 
     await appendUsageEvent({
       id: publicId("evt"),

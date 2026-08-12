@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Camera,
   Flashlight,
+  ImageIcon,
   Keyboard,
   Loader2,
   RefreshCw,
@@ -17,7 +18,7 @@ import {
 
 export type ScannerDetectMeta = {
   format?: string;
-  source: "camera" | "hardware" | "manual";
+  source: "camera" | "hardware" | "manual" | "gallery";
 };
 
 type Props = {
@@ -30,6 +31,14 @@ type Props = {
   hideHeader?: boolean;
   /** Auto-emit on first valid decode (warehouse flow). */
   autoSubmit?: boolean;
+  /** Continuous mode: parent resumes via resumeKey after handling a scan. */
+  continuousMode?: boolean;
+  /** Increment to resume camera after a pause (continuous flow). */
+  resumeKey?: number;
+  /** Keep manual entry in the owning workspace when false. */
+  showManualEntry?: boolean;
+  /** Hide the camera / hardware mode pill (owner provides its own entry screens). */
+  showModeToggle?: boolean;
   onDetected: (code: string, meta?: ScannerDetectMeta) => void;
 };
 
@@ -46,6 +55,10 @@ export default function BarcodeScannerPanel({
   fullscreen = false,
   hideHeader = false,
   autoSubmit = true,
+  continuousMode = false,
+  resumeKey = 0,
+  showManualEntry = true,
+  showModeToggle = true,
   onDetected,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -79,6 +92,8 @@ export default function BarcodeScannerPanel({
   const [engine, setEngine] = useState<"zxing" | "loading" | "unavailable">(
     "loading",
   );
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const lastResumeKey = useRef(resumeKey);
 
   const stopCamera = useCallback(() => {
     try {
@@ -358,6 +373,48 @@ export default function BarcodeScannerPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, mode, deviceId]);
 
+  useEffect(() => {
+    if (resumeKey === lastResumeKey.current) return;
+    lastResumeKey.current = resumeKey;
+    if (!active || mode !== "camera") return;
+    void startCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeKey]);
+
+  const decodeGallery = async (file: File) => {
+    try {
+      setError(null);
+      const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] =
+        await Promise.all([
+          import("@zxing/browser") as Promise<ZXingModule>,
+          import("@zxing/library") as Promise<ZXingLib>,
+        ]);
+      const hints = new Map();
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+        BarcodeFormat.EAN_13,
+        BarcodeFormat.EAN_8,
+        BarcodeFormat.UPC_A,
+        BarcodeFormat.UPC_E,
+        BarcodeFormat.CODE_128,
+      ]);
+      const reader = new BrowserMultiFormatReader(hints);
+      const url = URL.createObjectURL(file);
+      try {
+        const result = await reader.decodeFromImageUrl(url);
+        const text = result.getText();
+        const fmtNum = result.getBarcodeFormat();
+        const fmtName =
+          (BarcodeFormat as unknown as Record<number, string>)[fmtNum] ||
+          String(fmtNum);
+        emit(text, formatFromScannerLibrary(fmtName), "gallery");
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      setError("Could not read a barcode from that image");
+    }
+  };
+
   const toggleTorch = async () => {
     const stream = videoRef.current?.srcObject as MediaStream | null;
     const track = stream?.getVideoTracks()?.[0];
@@ -399,132 +456,187 @@ export default function BarcodeScannerPanel({
   return (
     <div
       className={cn(
-        "overflow-hidden bg-white",
-        fullscreen ? "flex h-full flex-col border-0" : "border border-slate-200",
+        "relative overflow-hidden bg-black text-white",
+        fullscreen ? "flex h-full flex-col border-0" : "border border-white/10",
         className,
       )}
     >
       {!hideHeader ? (
-        <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
+        <div className="flex min-h-14 items-center justify-between gap-3 border-b border-white/10 px-4 py-2">
           <div className="flex items-center gap-2">
-            <ScanBarcode className="h-4 w-4 text-black/50" />
-            <p className="text-[11px] uppercase tracking-[0.16em] text-black/45">
-              Live barcode scanner
+            <ScanBarcode className="h-4 w-4 text-white/60" />
+            <p className="text-[11px] uppercase tracking-[0.16em] text-white/65">
+              Barcode scanner
             </p>
           </div>
-          <p className="text-[11px] text-black/40">
+          <p className="text-[10px] uppercase tracking-[0.12em] text-white/40">
             {engine === "zxing"
-              ? "ZXing engine"
+              ? "Camera ready"
               : engine === "loading"
-                ? "Loading engine…"
+                ? "Starting…"
                 : "Camera offline"}
           </p>
         </div>
       ) : null}
 
-      <div className="flex gap-2 border-b border-black/10 px-4 py-2">
-        <button
-          type="button"
-          className={cn(
-            "flex-1 py-2 text-[11px] font-medium uppercase tracking-[0.12em]",
-            mode === "camera" ? "bg-black text-white" : "border border-black/15",
-          )}
-          onClick={() => setMode("camera")}
-        >
-          Camera
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "flex-1 py-2 text-[11px] font-medium uppercase tracking-[0.12em]",
-            mode === "hardware"
-              ? "bg-black text-white"
-              : "border border-black/15",
-          )}
-          onClick={() => setMode("hardware")}
-        >
-          Hardware wedge
-        </button>
-      </div>
+      {showModeToggle ? (
+        <div className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 rounded-full border border-white/15 bg-black/55 p-1 backdrop-blur-md">
+          <button
+            type="button"
+            className={cn(
+              "inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-3 text-[10px] font-medium uppercase tracking-[0.12em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
+              mode === "camera"
+                ? "bg-white text-black"
+                : "text-white/65 hover:text-white",
+            )}
+            onClick={() => setMode("camera")}
+            aria-pressed={mode === "camera"}
+          >
+            <Camera className="h-4 w-4" />
+            <span className="hidden sm:inline">Camera</span>
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-3 text-[10px] font-medium uppercase tracking-[0.12em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
+              mode === "hardware"
+                ? "bg-white text-black"
+                : "text-white/65 hover:text-white",
+            )}
+            onClick={() => setMode("hardware")}
+            aria-pressed={mode === "hardware"}
+          >
+            <Keyboard className="h-4 w-4" />
+            <span className="hidden sm:inline">Hardware</span>
+          </button>
+        </div>
+      ) : null}
 
       {mode === "camera" ? (
-        <>
-          <div
-            className={cn(
-              "relative bg-black",
-              fullscreen ? "min-h-0 flex-1" : "aspect-[4/3] sm:aspect-[16/10]",
-            )}
-          >
-            <video
-              ref={videoRef}
-              className="h-full w-full object-cover"
-              playsInline
-              muted
-              autoPlay
-            />
-            <div className="pointer-events-none absolute inset-[16%] rounded-sm border-2 border-white/75 shadow-[0_0_0_9999px_rgba(0,0,0,0.38)]" />
-            {(starting || engine === "loading") && !error ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <p className="text-[13px]">Starting ZXing camera…</p>
-              </div>
-            ) : null}
-            {paused && lastDetected ? (
-              <div className="absolute inset-x-4 bottom-4 space-y-2 bg-black/80 px-3 py-3 text-center text-white">
-                <p className="text-[12px] uppercase tracking-[0.14em] text-white/70">
-                  Detected · {lastDetected.format.replace(/_/g, "-")}
-                </p>
-                <p className="font-mono text-[18px] tracking-wide">
-                  {lastDetected.value}
-                </p>
-                {!autoSubmit ? (
-                  <button
-                    type="button"
-                    className="mt-1 bg-white px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-black"
-                    onClick={() =>
-                      onDetectedRef.current(lastDetected.value, {
-                        format: lastDetected.format,
-                        source: "camera",
-                      })
-                    }
-                  >
-                    Use this code
-                  </button>
-                ) : null}
-              </div>
+        <div
+          className={cn(
+            "relative bg-black",
+            fullscreen ? "min-h-0 flex-1" : "aspect-[4/3] sm:aspect-[16/10]",
+          )}
+        >
+          <video
+            ref={videoRef}
+            className="h-full w-full object-cover"
+            playsInline
+            muted
+            autoPlay
+          />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 aspect-[2.35/1] w-[78%] max-w-xl -translate-x-1/2 -translate-y-1/2 shadow-[0_0_0_9999px_rgba(0,0,0,0.44)]">
+            <span className="absolute left-0 top-0 h-8 w-8 border-l-[3px] border-t-[3px] border-white" />
+            <span className="absolute right-0 top-0 h-8 w-8 border-r-[3px] border-t-[3px] border-white" />
+            <span className="absolute bottom-0 left-0 h-8 w-8 border-b-[3px] border-l-[3px] border-white" />
+            <span className="absolute bottom-0 right-0 h-8 w-8 border-b-[3px] border-r-[3px] border-white" />
+            {!paused ? (
+              <div
+                className="absolute inset-x-5 h-px bg-white/90 shadow-[0_0_12px_rgba(255,255,255,0.85)]"
+                style={{ animation: "kc-scan-line 2.2s ease-in-out infinite" }}
+              />
             ) : null}
           </div>
+          <style>{`
+            @keyframes kc-scan-line {
+              0% { top: 8%; opacity: 0.35; }
+              50% { top: 88%; opacity: 1; }
+              100% { top: 8%; opacity: 0.35; }
+            }
+          `}</style>
+          {!paused && ready && !error ? (
+            <p className="pointer-events-none absolute left-1/2 top-[68%] w-full -translate-x-1/2 px-6 text-center text-[12px] font-medium tracking-wide text-white/80">
+              Hold the barcode inside the frame
+            </p>
+          ) : null}
+          {(starting || engine === "loading") && !error ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <p className="text-[13px]">Starting camera…</p>
+            </div>
+          ) : null}
+          {paused && lastDetected ? (
+            <div className="absolute inset-x-4 bottom-20 space-y-2 rounded-2xl border border-white/10 bg-black/80 px-4 py-3 text-center backdrop-blur-md">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-white/60">
+                Detected · {lastDetected.format.replace(/_/g, "-")}
+              </p>
+              <p className="font-mono text-[18px] tracking-wide">
+                {lastDetected.value}
+              </p>
+              {!autoSubmit ? (
+                <button
+                  type="button"
+                  className="min-h-11 rounded-full bg-white px-5 text-[11px] font-medium uppercase tracking-[0.12em] text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  onClick={() =>
+                    onDetectedRef.current(lastDetected.value, {
+                      format: lastDetected.format,
+                      source: "camera",
+                    })
+                  }
+                >
+                  Use this code
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
-          <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+          <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-center gap-2 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
             {devices.length > 1 ? (
-              <select
-                className="min-w-0 flex-1 border border-black/15 bg-transparent px-2 py-2 text-[12px]"
-                value={deviceId}
-                onChange={(e) => setDeviceId(e.target.value)}
-              >
-                {devices.map((d) => (
-                  <option key={d.deviceId} value={d.deviceId}>
-                    {d.label || `Camera ${d.deviceId.slice(0, 8)}`}
-                  </option>
-                ))}
-              </select>
+              <label className="relative">
+                <span className="sr-only">Select camera</span>
+                <Camera className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2" />
+                <select
+                  className="h-11 w-11 appearance-none rounded-full border border-white/15 bg-black/60 text-transparent outline-none backdrop-blur-md focus-visible:ring-2 focus-visible:ring-white"
+                  value={deviceId}
+                  onChange={(e) => setDeviceId(e.target.value)}
+                  aria-label="Select camera"
+                >
+                  {devices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Camera ${d.deviceId.slice(0, 8)}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ) : null}
             {torchSupported ? (
               <button
                 type="button"
                 onClick={() => void toggleTorch()}
                 className={cn(
-                  "inline-flex items-center gap-1.5 border px-3 py-2 text-[11px] uppercase tracking-[0.12em]",
+                  "inline-flex h-11 w-11 items-center justify-center rounded-full border bg-black/60 backdrop-blur-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
                   torchOn
-                    ? "border-black bg-black text-white"
-                    : "border-black/15",
+                    ? "border-white bg-white text-black"
+                    : "border-white/15 text-white",
                 )}
+                aria-label={torchOn ? "Turn flashlight off" : "Turn flashlight on"}
+                aria-pressed={torchOn}
               >
-                <Flashlight className="h-3.5 w-3.5" /> Torch
+                <Flashlight className="h-4 w-4" />
               </button>
             ) : null}
+            <button
+              type="button"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white backdrop-blur-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              onClick={() => galleryRef.current?.click()}
+              aria-label="Scan barcode from image"
+            >
+              <ImageIcon className="h-4 w-4" />
+            </button>
+            <input
+              ref={galleryRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void decodeGallery(f);
+                e.target.value = "";
+              }}
+            />
             {zoomSupported ? (
-              <label className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-black/50">
+              <label className="hidden h-11 items-center gap-2 rounded-full border border-white/15 bg-black/60 px-3 text-[10px] uppercase tracking-[0.12em] text-white/70 backdrop-blur-md sm:inline-flex">
                 Zoom
                 <input
                   type="range"
@@ -532,37 +644,40 @@ export default function BarcodeScannerPanel({
                   max={zoomMax}
                   step={0.1}
                   value={zoom}
-                  className="w-24"
+                  className="w-20 accent-white"
                   onChange={(e) => void applyZoom(Number(e.target.value))}
+                  aria-label="Camera zoom"
                 />
               </label>
             ) : null}
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 border border-black/15 px-3 py-2 text-[11px] uppercase tracking-[0.12em]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white backdrop-blur-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-40"
               onClick={() => void startCamera()}
               disabled={starting}
+              aria-label={paused ? "Scan again" : "Restart camera"}
             >
-              <RefreshCw className="h-3.5 w-3.5" />
-              {paused ? "Scan again" : "Restart"}
+              <RefreshCw className={cn("h-4 w-4", starting && "animate-spin")} />
             </button>
-            {!paused && ready && !error ? (
-              <p className="flex items-center gap-2 text-[12px] text-black/50">
-                <Camera className="h-3.5 w-3.5" /> Align barcode in the frame
-              </p>
+            {continuousMode ? (
+              <span className="absolute right-4 top-[-2rem] rounded-full bg-black/55 px-2.5 py-1 text-[9px] uppercase tracking-[0.14em] text-white/60 backdrop-blur-md">
+                Continuous
+              </span>
             ) : null}
           </div>
-        </>
+        </div>
       ) : (
-        <div className="space-y-3 px-4 py-6">
-          <p className="flex items-center gap-2 text-[13px] text-black/55">
-            <Keyboard className="h-4 w-4" />
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center space-y-5 px-5 py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-white/[0.06]">
+            <Keyboard className="h-5 w-5 text-white/70" />
+          </div>
+          <p className="max-w-sm text-[13px] leading-relaxed text-white/55">
             USB / Bluetooth scanner ready — focus stays here; scan then Enter
           </p>
           <input
             ref={hardwareRef}
             autoFocus
-            className="h-12 w-full border-0 border-b border-black/20 bg-transparent font-mono text-[20px] tracking-wide outline-none"
+            className="h-14 w-full max-w-md border-0 border-b border-white/20 bg-transparent text-center font-mono text-[20px] tracking-wide text-white outline-none placeholder:text-white/25 focus:border-white/60"
             placeholder="Waiting for hardware scan…"
             value={hardware}
             onChange={(e) => setHardware(e.target.value)}
@@ -576,36 +691,47 @@ export default function BarcodeScannerPanel({
         </div>
       )}
 
-      <div className="space-y-2 border-t border-black/10 px-4 py-3">
-        {error ? (
-          <p className="text-[13px] leading-snug text-red-700">{error}</p>
-        ) : null}
-        <label className="block text-[11px] uppercase tracking-[0.14em] text-black/40">
-          Manual entry
-        </label>
-        <div className="flex gap-2">
-          <input
-            className="h-11 min-w-0 flex-1 border border-black/15 bg-transparent px-3 font-mono text-[15px] outline-none"
-            placeholder="EAN-13 / UPC / GTIN"
-            value={manual}
-            onChange={(e) => setManual(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                submitEntry("manual");
-              }
-            }}
-          />
-          <button
-            type="button"
-            className="bg-black px-4 text-[11px] font-medium uppercase tracking-[0.12em] text-white disabled:opacity-40"
-            disabled={!manual.trim()}
-            onClick={() => submitEntry("manual")}
-          >
-            Look up
-          </button>
+      {showManualEntry ? (
+        <div className="space-y-2 border-t border-white/10 bg-black px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+          {error ? (
+            <p className="text-[13px] leading-snug text-red-300" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <label className="block text-[10px] uppercase tracking-[0.14em] text-white/40">
+            Manual entry
+          </label>
+          <div className="flex gap-2">
+            <input
+              className="h-11 min-w-0 flex-1 rounded-full border border-white/15 bg-white/[0.06] px-4 font-mono text-[15px] text-white outline-none placeholder:text-white/30 focus-visible:ring-2 focus-visible:ring-white"
+              placeholder="EAN-13 / UPC / GTIN"
+              value={manual}
+              onChange={(e) => setManual(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitEntry("manual");
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="min-h-11 rounded-full bg-white px-5 text-[11px] font-medium uppercase tracking-[0.12em] text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-40"
+              disabled={!manual.trim()}
+              onClick={() => submitEntry("manual")}
+            >
+              Look up
+            </button>
+          </div>
         </div>
-      </div>
+      ) : error ? (
+        <p
+          className="absolute inset-x-4 bottom-16 z-20 rounded-xl border border-red-300/20 bg-black/80 px-3 py-2 text-center text-[12px] text-red-200 backdrop-blur-md"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

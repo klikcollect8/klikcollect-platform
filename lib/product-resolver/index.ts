@@ -5,6 +5,14 @@ export {
   listConfiguredProviders,
 } from "@/lib/product-resolver/resolve";
 export { commitResolvedProduct } from "@/lib/product-resolver/commit";
+export { bulkApproveDiscoveryCandidates } from "@/lib/product-resolver/bulk-approve";
+export { runAutoEnrichment } from "@/lib/product-resolver/auto-enrich";
+export { runReconciliation } from "@/lib/product-resolver/reconcile";
+export {
+  listSourceRegistry,
+  getOrderedProviders,
+  probeSourceHealth,
+} from "@/lib/product-resolver/source-registry";
 export {
   mergeProviderResults,
   candidateCompleteness,

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 import ScannerWorkspace from "@/components/admin/catalogue/scanner/ScannerWorkspace";
 import type { ProductScannerContext } from "@/lib/admin/product-scanner-events";
 import { cn } from "@/lib/utils";
@@ -16,7 +15,9 @@ export type ProductScannerModalProps = {
 };
 
 /**
- * Large scanner popup (catalogue / discovery). Page uses ScannerWorkspace directly.
+ * Full-screen scanner pop-up (catalogue / discovery), matching the sign-in /
+ * profile / search overlay pattern. The page route mounts ScannerWorkspace
+ * directly.
  */
 export default function ProductScannerModal({
   open,
@@ -26,73 +27,101 @@ export default function ProductScannerModal({
   context = "catalogue",
 }: ProductScannerModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
+    if (!open) {
+      setVisible(false);
+      return;
+    }
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setVisible(true));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
+
+  const handleClose = useCallback(() => {
+    setVisible(false);
+    setTimeout(onClose, 280);
+  }, [onClose]);
+
+  useEffect(() => {
     if (!open) return;
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // Escape is owned by ScannerWorkspace (steps back through screens,
+      // then calls onRequestClose). This handler only traps Tab.
+      if (e.key !== "Tab") return;
+
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) || [],
+      ).filter((element) => element.getClientRects().length > 0);
+      if (!focusable.length) {
+        e.preventDefault();
+        dialogRef.current?.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
+    const focusFrame = requestAnimationFrame(() => dialogRef.current?.focus());
     return () => {
+      cancelAnimationFrame(focusFrame);
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
+      previouslyFocused?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!mounted || !open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-900/30 p-3 pt-[3vh] backdrop-blur-[2px] sm:p-6 sm:pt-[4vh]">
-      <button
-        type="button"
-        className="absolute inset-0"
-        aria-label="Close scanner"
-        onClick={onClose}
-      />
-      <div
-        className={cn(
-          "relative flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl",
-          "h-[min(94vh,960px)]",
-        )}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Product scanner"
-      >
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-              {context === "discovery" ? "Discovery" : "Catalogue"}
-            </p>
-            <h2 className="text-[17px] font-medium tracking-tight text-slate-900">
-              Product scanner
-            </h2>
-          </div>
-          <div className="flex items-center gap-3">
-            <kbd className="hidden rounded-md border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-400 sm:inline">
-              Esc
-            </kbd>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex items-center gap-1 text-[13px] text-slate-500 hover:text-slate-900"
-            >
-              <X className="h-4 w-4" /> Close
-            </button>
-          </div>
-        </div>
-        <ScannerWorkspace
-          key={`${context}-${initialBarcode || ""}-${discoveryId || ""}`}
-          context={context}
-          variant="popup"
-          initialBarcode={initialBarcode}
-          discoveryId={discoveryId}
-          onRequestClose={onClose}
-        />
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="product-scanner-title"
+      tabIndex={-1}
+      className={cn(
+        "fixed inset-0 z-[9999] bg-black outline-none transition-opacity duration-300 ease-out",
+        visible ? "opacity-100" : "opacity-0",
+      )}
+    >
+      <div className="sr-only">
+        <h2 id="product-scanner-title">Product scanner</h2>
+        <p>
+          {context === "discovery"
+            ? "Scan products for discovery"
+            : "Scan products for the catalogue"}
+        </p>
       </div>
+      <ScannerWorkspace
+        key={`${context}-${initialBarcode || ""}-${discoveryId || ""}`}
+        context={context}
+        variant="popup"
+        initialBarcode={initialBarcode}
+        discoveryId={discoveryId}
+        onRequestClose={handleClose}
+        className="h-full"
+      />
     </div>,
     document.body,
   );

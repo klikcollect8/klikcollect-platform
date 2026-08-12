@@ -947,18 +947,92 @@ export async function duplicateProduct(
   return created;
 }
 
-export async function listBrands(q?: string) {
+export async function listBrands(
+  q?: string,
+  opts?: { includeArchived?: boolean },
+) {
   const sb = getServiceSupabase();
   let query = sb
     .from("brands")
-    .select("public_id, name, slug, status")
-    .eq("status", "active")
+    .select(
+      "public_id, name, slug, status, description, country, logo_url, aliases, manufacturer, updated_at, created_at",
+    )
     .order("name")
-    .limit(50);
+    .limit(100);
+  if (!opts?.includeArchived) query = query.eq("status", "active");
   if (q?.trim()) query = query.ilike("name", `%${q.trim()}%`);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return data || [];
+}
+
+export async function upsertBrand(input: {
+  publicId?: string | null;
+  name: string;
+  description?: string | null;
+  country?: string | null;
+  logoUrl?: string | null;
+  manufacturer?: string | null;
+  aliases?: string[];
+  status?: "active" | "archived";
+}) {
+  const sb = getServiceSupabase();
+  const name = input.name.trim();
+  if (!name) throw Object.assign(new Error("Brand name required"), { status: 400 });
+  const slug = productSlugify(name);
+  const aliases = (input.aliases || [])
+    .map((a) => a.trim())
+    .filter(Boolean)
+    .slice(0, 40);
+  const payload = {
+    name,
+    slug,
+    description: input.description?.trim() || null,
+    country: input.country?.trim() || null,
+    logo_url: input.logoUrl?.trim() || null,
+    manufacturer: input.manufacturer?.trim() || null,
+    aliases,
+    status: input.status || "active",
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.publicId) {
+    const { data, error } = await sb
+      .from("brands")
+      .update(payload)
+      .eq("public_id", input.publicId)
+      .select(
+        "public_id, name, slug, status, description, country, logo_url, aliases, manufacturer",
+      )
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  const { data, error } = await sb
+    .from("brands")
+    .insert({
+      public_id: publicId("brd"),
+      ...payload,
+    })
+    .select(
+      "public_id, name, slug, status, description, country, logo_url, aliases, manufacturer",
+    )
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function archiveBrand(publicIdValue: string) {
+  const sb = getServiceSupabase();
+  const { data, error } = await sb
+    .from("brands")
+    .update({ status: "archived", updated_at: new Date().toISOString() })
+    .eq("public_id", publicIdValue)
+    .select("public_id, status")
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function listCategoryTree() {

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { adminUi } from "@/components/admin/admin-ui";
+import NutritionBars from "@/components/admin/catalogue/viz/NutritionBars";
+import ProviderConfidenceChart from "@/components/admin/catalogue/viz/ProviderConfidenceChart";
+import ScoreRadar from "@/components/admin/catalogue/viz/ScoreRadar";
 import type {
   CandidateField,
   CandidateProduct,
@@ -52,71 +55,6 @@ function fieldVal<T>(f?: CandidateField<T> | null): T | null {
   return f.value;
 }
 
-function Meter({
-  label,
-  value,
-  max = 100,
-}: {
-  label: string;
-  value: number | null;
-  max?: number;
-}) {
-  const pct =
-    value == null || !Number.isFinite(value)
-      ? 0
-      : Math.max(0, Math.min(100, (value / max) * 100));
-  return (
-    <div className="min-w-[4.5rem] flex-1">
-      <div className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="text-[10px] uppercase tracking-[0.12em] text-black/35">
-          {label}
-        </span>
-        <span className="text-[12px] font-medium tabular-nums text-black">
-          {value == null ? "—" : value}
-        </span>
-      </div>
-      <div className="h-1 w-full bg-black/[0.06]">
-        <div
-          className="h-full bg-black/70 transition-[width] duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function LetterMeter({
-  label,
-  letter,
-}: {
-  label: string;
-  letter: string | null | undefined;
-}) {
-  const order = ["a", "b", "c", "d", "e"];
-  const idx = letter
-    ? order.indexOf(String(letter).toLowerCase().charAt(0))
-    : -1;
-  const pct = idx >= 0 ? ((order.length - idx) / order.length) * 100 : 0;
-  return (
-    <div className="min-w-[4.5rem] flex-1">
-      <div className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="text-[10px] uppercase tracking-[0.12em] text-black/35">
-          {label}
-        </span>
-        <span className="text-[12px] font-medium uppercase text-black">
-          {letter || "—"}
-        </span>
-      </div>
-      <div className="h-1 w-full bg-black/[0.06]">
-        <div
-          className="h-full bg-black/70 transition-[width] duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 function groupVariants(similar: SimilarProductHit[]) {
   const byQty = new Map<string, SimilarProductHit[]>();
   for (const s of similar) {
@@ -142,20 +80,6 @@ function groupVariants(similar: SimilarProductHit[]) {
     byQty.set(bucket, list);
   }
   return [...byQty.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-}
-
-function nutritionRows(nutrition: Record<string, unknown> | null | undefined) {
-  if (!nutrition) return [];
-  const rows: Array<{ key: string; value: string }> = [];
-  for (const [k, v] of Object.entries(nutrition)) {
-    if (v == null) continue;
-    if (typeof v === "object") {
-      rows.push({ key: k, value: JSON.stringify(v) });
-    } else {
-      rows.push({ key: k, value: String(v) });
-    }
-  }
-  return rows.slice(0, 24);
 }
 
 function Section({
@@ -207,7 +131,6 @@ export default function ProductDataVisual({
   const showVariants = Boolean(data.showVariants && similar.length);
   const groups = showVariants ? groupVariants(similar) : [];
   const specs = c?.specs || [];
-  const nutriRows = nutritionRows(fieldVal(c?.nutrition) || null);
   const providers = data.providerResults || [];
 
   const textBlocks: Array<{ label: string; value: string }> = [];
@@ -339,29 +262,24 @@ export default function ProductDataVisual({
         </Section>
       ) : null}
 
-      <Section title="Scores">
-        <div className="flex flex-wrap gap-3">
-          <LetterMeter label="Nutri" letter={fieldVal(c?.nutriscore)} />
-          <Meter
-            label="NOVA"
-            value={
-              fieldVal(c?.novaGroup) != null
-                ? Number(fieldVal(c?.novaGroup))
-                : null
-            }
-            max={4}
-          />
-          <LetterMeter label="Eco" letter={fieldVal(c?.ecoscore)} />
-          <Meter
-            label="Complete"
-            value={
-              fieldVal(c?.completeness) != null
-                ? Number(fieldVal(c?.completeness))
-                : null
-            }
-          />
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-black/50">
+      <div className="grid gap-5 lg:grid-cols-2">
+        <ScoreRadar
+          nutriscore={fieldVal(c?.nutriscore)}
+          novaGroup={fieldVal(c?.novaGroup)}
+          ecoscore={fieldVal(c?.ecoscore)}
+          completeness={
+            fieldVal(c?.completeness) != null
+              ? Number(fieldVal(c?.completeness))
+              : null
+          }
+        />
+        <NutritionBars nutrition={fieldVal(c?.nutrition) || null} />
+      </div>
+
+      {(fieldVal(c?.vegan) ||
+        fieldVal(c?.vegetarian) ||
+        fieldVal(c?.palmOil)) && (
+        <div className="flex flex-wrap gap-2 text-[11px] text-black/50">
           {fieldVal(c?.vegan) ? (
             <span className="border border-black/10 px-2 py-0.5">Vegan</span>
           ) : null}
@@ -376,42 +294,22 @@ export default function ProductDataVisual({
             </span>
           ) : null}
         </div>
-      </Section>
-
-      {(specs.length > 0 || nutriRows.length > 0) && (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {specs.length ? (
-            <Section title="Specs">
-              <table className="w-full border-collapse text-left text-[12px]">
-                <tbody>
-                  {specs.map((s) => (
-                    <tr key={s.key} className="border-b border-black/[0.05]">
-                      <td className="py-1.5 pr-2 text-black/40">{s.key}</td>
-                      <td className="py-1.5 font-medium">{s.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Section>
-          ) : null}
-          {nutriRows.length ? (
-            <Section title="Nutrition">
-              <table className="w-full border-collapse text-left text-[12px]">
-                <tbody>
-                  {nutriRows.map((r) => (
-                    <tr key={r.key} className="border-b border-black/[0.05]">
-                      <td className="py-1.5 pr-2 text-black/40">{r.key}</td>
-                      <td className="py-1.5 font-medium tabular-nums">
-                        {r.value}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Section>
-          ) : null}
-        </div>
       )}
+
+      {specs.length > 0 ? (
+        <Section title="Specs">
+          <table className="w-full border-collapse text-left text-[12px]">
+            <tbody>
+              {specs.map((s) => (
+                <tr key={s.key} className="border-b border-black/[0.05]">
+                  <td className="py-1.5 pr-2 text-black/40">{s.key}</td>
+                  <td className="py-1.5 font-medium">{s.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Section>
+      ) : null}
 
       {textBlocks.length ? (
         <Section title="Composition & packaging">
@@ -453,32 +351,35 @@ export default function ProductDataVisual({
       )}
 
       {providers.length ? (
-        <Section title="Provenance">
-          <table className="w-full border-collapse text-left text-[12px]">
-            <thead>
-              <tr className="border-b border-black/10 text-[10px] uppercase tracking-[0.12em] text-black/35">
-                <th className="py-1.5 pr-2 font-medium">Provider</th>
-                <th className="py-1.5 pr-2 font-medium">Status</th>
-                <th className="py-1.5 font-medium">Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {providers.map((p, i) => (
-                <tr
-                  key={`${p.provider}-${i}`}
-                  className="border-b border-black/[0.05]"
-                >
-                  <td className="py-1.5 pr-2">{p.provider}</td>
-                  <td className="py-1.5 pr-2">{p.status}</td>
-                  <td className="py-1.5 text-black/45">
-                    {p.fromCache ? "cache · " : ""}
-                    {p.message || "—"}
-                  </td>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <ProviderConfidenceChart providerResults={providers} />
+          <Section title="Provenance">
+            <table className="w-full border-collapse text-left text-[12px]">
+              <thead>
+                <tr className="border-b border-black/10 text-[10px] uppercase tracking-[0.12em] text-black/35">
+                  <th className="py-1.5 pr-2 font-medium">Provider</th>
+                  <th className="py-1.5 pr-2 font-medium">Status</th>
+                  <th className="py-1.5 font-medium">Note</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </Section>
+              </thead>
+              <tbody>
+                {providers.map((p, i) => (
+                  <tr
+                    key={`${p.provider}-${i}`}
+                    className="border-b border-black/[0.05]"
+                  >
+                    <td className="py-1.5 pr-2">{p.provider}</td>
+                    <td className="py-1.5 pr-2">{p.status}</td>
+                    <td className="py-1.5 text-black/45">
+                      {p.fromCache ? "cache · " : ""}
+                      {p.message || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Section>
+        </div>
       ) : null}
 
       {c?.sources?.length ? (

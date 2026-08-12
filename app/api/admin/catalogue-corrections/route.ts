@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import {
   handleRequireAdminError,
   requireAdminPermission,
 } from "@/lib/auth/require-admin";
 import { listCatalogueCorrections } from "@/lib/offers-mutations";
 import { getServiceSupabase } from "@/lib/supabase/admin";
+import { writeProductAudit } from "@/lib/catalogue/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,6 +25,11 @@ export async function PATCH(request: NextRequest) {
     const publicId = String(body?.publicId || "");
     const status = String(body?.status || "");
     const adminNotes = body?.adminNotes ? String(body.adminNotes) : null;
+    const applyFields = body?.applyFields === true;
+    const fieldOverrides =
+      body?.fieldOverrides && typeof body.fieldOverrides === "object"
+        ? (body.fieldOverrides as Record<string, string>)
+        : null;
 
     if (
       !publicId ||
@@ -36,6 +42,76 @@ export async function PATCH(request: NextRequest) {
     }
 
     const sb = getServiceSupabase();
+    const { data: existing } = await sb
+      .from("catalogue_correction_requests")
+      .select("*")
+      .eq("public_id", publicId)
+      .maybeSingle();
+    if (!existing) {
+      return NextResponse.json(
+        { error: { message: "Correction not found" } },
+        { status: 404 },
+      );
+    }
+
+    let applied: Record<string, string> | null = null;
+    if (status === "resolved" && applyFields) {
+      const productPublicId = String(existing.product_public_id || "");
+      const suggested = (existing.fields as Record<string, string>) || {};
+      const toApply = fieldOverrides || suggested;
+      const productPatch: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      for (const [key, value] of Object.entries(toApply)) {
+        if (!value || value === "needs_correction") continue;
+        if (key === "name") productPatch.name = value;
+        else if (key === "description") productPatch.description = value;
+        else if (key === "barcode") productPatch.barcode = value;
+        else if (key === "gtin") productPatch.gtin = value;
+        else if (key === "sku") productPatch.sku = value;
+        else if (
+          key === "brand" ||
+          key === "brandName" ||
+          key === "manufacturer"
+        )
+          productPatch.manufacturer = value;
+      }
+      if (Object.keys(productPatch).length > 1 && productPublicId) {
+        const { data: before } = await sb
+          .from("products")
+          .select("name, description, barcode, gtin, sku, manufacturer, version")
+          .eq("public_id", productPublicId)
+          .maybeSingle();
+        const { error: prodErr } = await sb
+          .from("products")
+          .update({
+            ...productPatch,
+            version: Number(before?.version || 1) + 1,
+          })
+          .eq("public_id", productPublicId);
+        if (prodErr) {
+          return NextResponse.json(
+            { error: { message: prodErr.message } },
+            { status: 500 },
+          );
+        }
+        applied = Object.fromEntries(
+          Object.entries(productPatch)
+            .filter(([k]) => k !== "updated_at")
+            .map(([k, v]) => [k, String(v)]),
+        );
+        await writeProductAudit({
+          productPublicId,
+          actorClerkUserId: admin.user.id,
+          actorEmail: admin.user.email || null,
+          action: "correction.fields_applied",
+          before,
+          after: applied,
+          reason: adminNotes || existing.message || null,
+        });
+      }
+    }
+
     const patch: Record<string, unknown> = {
       status,
       admin_notes: adminNotes,
@@ -58,7 +134,26 @@ export async function PATCH(request: NextRequest) {
         { status: 500 },
       );
     }
-    return NextResponse.json({ data });
+
+    await writeProductAudit({
+      productPublicId: String(existing.product_public_id),
+      actorClerkUserId: admin.user.id,
+      actorEmail: admin.user.email || null,
+      action: `correction.${status}`,
+      before: {
+        correctionId: publicId,
+        status: existing.status,
+        fields: existing.fields,
+      },
+      after: {
+        status,
+        adminNotes,
+        applied,
+      },
+      reason: adminNotes || existing.message || null,
+    });
+
+    return NextResponse.json({ data, applied });
   } catch (error) {
     return handleRequireAdminError(error);
   }

@@ -95,6 +95,9 @@ function mapRow(row: Record<string, unknown>): DiscoveryCandidateRow {
     similaritySeedBarcode: (row.similarity_seed_barcode as string) || null,
     lastSeenAt: String(row.last_seen_at),
     createdAt: String(row.created_at),
+    confidenceBand: (row.confidence_band as DiscoveryCandidateRow["confidenceBand"]) || null,
+    confidenceScore:
+      row.confidence_score != null ? Number(row.confidence_score) : null,
     preview: derivePreview(payload),
   };
 }

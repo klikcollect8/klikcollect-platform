@@ -12,7 +12,16 @@ import PageContainer, {
   AdminPageHeader,
 } from "@/components/admin/PageContainer";
 import SlideOver from "@/components/admin/SlideOver";
+import DiscoveryReviewPanel from "@/components/admin/catalogue/DiscoveryReviewPanel";
 import ProductDataVisual from "@/components/admin/catalogue/ProductDataVisual";
+import CatalogueKpiStrip from "@/components/admin/catalogue/viz/CatalogueKpiStrip";
+import DistributionBar from "@/components/admin/catalogue/viz/DistributionBar";
+import StatusDonut from "@/components/admin/catalogue/viz/StatusDonut";
+import {
+  completenessBuckets,
+  countByKey,
+  nutriscoreBuckets,
+} from "@/components/admin/catalogue/viz/aggregate";
 import { adminUi } from "@/components/admin/admin-ui";
 import ThemeSelect from "@/components/ui/ThemeSelect";
 import { openProductScanner } from "@/lib/admin/product-scanner-events";
@@ -36,6 +45,13 @@ type RelatedHit = {
   nutriscore?: string | null;
   categoryHint?: string | null;
   temporary: true;
+};
+
+type ReviewTarget = {
+  barcode: string;
+  discoveryId?: string | null;
+  seed?: DiscoveryCandidateRow | null;
+  related?: RelatedHit | null;
 };
 
 function relativeTime(iso: string): string {
@@ -70,14 +86,46 @@ function DiscoveryWorkspace() {
   const [q, setQ] = useState("");
   const [source, setSource] = useState("");
   const [brand, setBrand] = useState("");
+  const [provider, setProvider] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [related, setRelated] = useState<RelatedHit[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [slideItem, setSlideItem] = useState<DiscoveryCandidateRow | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [focusIndex, setFocusIndex] = useState(0);
+  const [defaultCategoryId, setDefaultCategoryId] = useState("");
+  const [categories, setCategories] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [approveMsg, setApproveMsg] = useState<string | null>(null);
   const prevQRef = useRef(q);
+
+  const openReview = (target: ReviewTarget) => {
+    setSlideItem(null);
+    setReviewTarget(target);
+  };
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/catalogue/meta");
+        const data = await res.json();
+        const cats = (data.categories || []).map(
+          (c: { id?: string; public_id?: string; name: string }) => ({
+            id: c.public_id || c.id || "",
+            name: c.name,
+          }),
+        );
+        setCategories(cats);
+        if (cats[0]?.id) setDefaultCategoryId(cats[0].id);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -90,6 +138,7 @@ function DiscoveryWorkspace() {
       if (query) params.set("q", query);
       if (source) params.set("source", source);
       if (brand) params.set("brand", brand);
+      if (provider) params.set("provider", provider);
       const [listRes, brandsRes] = await Promise.all([
         fetch(`/api/admin/catalogue/discovery?${params}`),
         fetch(
@@ -113,7 +162,7 @@ function DiscoveryWorkspace() {
       setLoading(false);
       setRelatedLoading(false);
     }
-  }, [status, q, source, brand]);
+  }, [status, q, source, brand, provider]);
 
   useEffect(() => {
     if (prevQRef.current === q) return;
@@ -187,6 +236,44 @@ function DiscoveryWorkspace() {
     }
   };
 
+  const bulkApproveHigh = async (ids: string[]) => {
+    if (!ids.length) return;
+    if (!defaultCategoryId) {
+      setError("Pick a default category before bulk approve");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setApproveMsg(null);
+    try {
+      const res = await fetch("/api/admin/catalogue/discovery/bulk-approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids,
+          defaultCategoryId,
+          highConfidenceOnly: true,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(
+          (data as { error?: string }).error || "Bulk approve failed",
+        );
+        return;
+      }
+      setApproveMsg(
+        `Created ${data.created || 0} · skipped ${data.skipped || 0} · failed ${data.failed || 0}`,
+      );
+      setSelected(new Set());
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Bulk approve failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const enqueueRelated = async (hit: RelatedHit) => {
     setBusy(true);
     setError(null);
@@ -220,6 +307,78 @@ function DiscoveryWorkspace() {
     [items],
   );
 
+  useEffect(() => {
+    setFocusIndex(0);
+  }, [status, items]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (reviewTarget || slideItem) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (status !== "pending" || !flatItems.length) return;
+
+      const focused = flatItems[Math.min(focusIndex, flatItems.length - 1)];
+      if (!focused) return;
+
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusIndex((i) => Math.min(flatItems.length - 1, i + 1));
+        return;
+      }
+      if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusIndex((i) => Math.max(0, i - 1));
+        return;
+      }
+      if (e.key === "x" || e.key === " ") {
+        e.preventDefault();
+        toggleSelect(focused.publicId);
+        return;
+      }
+      if (e.key === "e" || e.key === "Enter") {
+        e.preventDefault();
+        openReview({
+          barcode: focused.barcode || "",
+          discoveryId: focused.publicId,
+          seed: focused,
+        });
+        return;
+      }
+      if (e.key === "a" || e.key === "A") {
+        e.preventDefault();
+        openReview({
+          barcode: focused.barcode || "",
+          discoveryId: focused.publicId,
+          seed: focused,
+        });
+        return;
+      }
+      if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        void patchOne(focused.publicId, "dismiss");
+        return;
+      }
+      if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        setFocusIndex((i) => Math.min(flatItems.length - 1, i + 1));
+        return;
+      }
+      if (e.key === "d" || e.key === "D") {
+        e.preventDefault();
+        if (focused.barcode) {
+          window.open(
+            `/admin/products/merge?q=${encodeURIComponent(focused.barcode)}`,
+            "_blank",
+          );
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyboard binds stable handlers
+  }, [flatItems, focusIndex, reviewTarget, slideItem, status]);
+
   const allVisibleSelected =
     flatItems.length > 0 && flatItems.every((i) => selected.has(i.publicId));
 
@@ -236,6 +395,34 @@ function DiscoveryWorkspace() {
     if (allVisibleSelected) setSelected(new Set());
     else setSelected(new Set(flatItems.map((i) => i.publicId)));
   };
+
+  const statusChart = useMemo(
+    () => [
+      { key: "pending", label: "To add", value: counts.pending },
+      { key: "imported", label: "Imported", value: counts.imported },
+      { key: "dismissed", label: "Dismissed", value: counts.dismissed },
+    ],
+    [counts],
+  );
+
+  const providerChart = useMemo(
+    () =>
+      countByKey(items as unknown as Array<Record<string, unknown>>, (i) =>
+        String(i.provider || "unknown"),
+      ),
+    [items],
+  );
+
+  const completenessChart = useMemo(
+    () =>
+      completenessBuckets(items.map((i) => i.preview?.completeness ?? null)),
+    [items],
+  );
+
+  const nutriChart = useMemo(
+    () => nutriscoreBuckets(items.map((i) => i.preview?.nutriscore ?? null)),
+    [items],
+  );
 
   const tabs: Array<{ id: StatusTab; label: string; count: number }> = [
     { id: "pending", label: "To add", count: counts.pending },
@@ -270,6 +457,59 @@ function DiscoveryWorkspace() {
       />
 
       <div className="space-y-3">
+        <CatalogueKpiStrip
+          items={[
+            {
+              label: "To add",
+              value: counts.pending,
+              active: status === "pending",
+              onClick: () => setStatus("pending"),
+            },
+            {
+              label: "Imported",
+              value: counts.imported,
+              active: status === "imported",
+              onClick: () => setStatus("imported"),
+            },
+            {
+              label: "Dismissed",
+              value: counts.dismissed,
+              active: status === "dismissed",
+              onClick: () => setStatus("dismissed"),
+            },
+            {
+              label: "Live related",
+              value: related.length,
+              description: relatedLoading ? "Searching…" : undefined,
+            },
+          ]}
+        />
+
+        <div className="grid gap-6 border-b border-black/10 pb-6 lg:grid-cols-4">
+          <StatusDonut
+            title="Queue status"
+            data={statusChart}
+            activeKey={status}
+            onSelect={(key) => setStatus(key as StatusTab)}
+          />
+          <DistributionBar
+            title="Provider"
+            data={providerChart}
+            activeKey={provider || null}
+            onSelect={(key) =>
+              setProvider((prev) => (prev === key ? "" : key))
+            }
+          />
+          <DistributionBar
+            title="Completeness"
+            data={completenessChart}
+          />
+          <DistributionBar
+            title="Nutri-Score"
+            data={nutriChart}
+          />
+        </div>
+
         <div className="flex flex-wrap gap-2 border-b border-black/10 pb-px">
           {tabs.map((tab) => (
             <button
@@ -278,7 +518,9 @@ function DiscoveryWorkspace() {
               onClick={() => {
                 setStatus(tab.id);
                 setBrand("");
+                setProvider("");
                 setSlideItem(null);
+                setReviewTarget(null);
                 setSelected(new Set());
               }}
               className={cn(
@@ -294,8 +536,8 @@ function DiscoveryWorkspace() {
           ))}
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_10rem]">
-          <div className="relative min-w-0">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_8rem_8rem_10rem]">
+          <div className="relative min-w-0 sm:col-span-2 lg:col-span-1">
             <Search className="pointer-events-none absolute left-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-black/35" />
             <input
               className={cn(adminUi.input, "h-10 pl-5 text-[13px]")}
@@ -316,6 +558,21 @@ function DiscoveryWorkspace() {
               { value: "scan", label: "Scan" },
               { value: "similar", label: "Similar" },
               { value: "search", label: "Search" },
+            ]}
+          />
+          <ThemeSelect
+            value={provider || "all"}
+            onValueChange={(v) => setProvider(v === "all" ? "" : v)}
+            size="sm"
+            fullWidth
+            placeholder="Provider"
+            triggerClassName="h-10 w-full"
+            options={[
+              { value: "all", label: "All providers" },
+              ...providerChart.map((p) => ({
+                value: p.key,
+                label: p.label,
+              })),
             ]}
           />
           <ThemeSelect
@@ -350,6 +607,31 @@ function DiscoveryWorkspace() {
               </button>
               {status === "pending" ? (
                 <>
+                  <ThemeSelect
+                    value={defaultCategoryId || "none"}
+                    onValueChange={(v) =>
+                      setDefaultCategoryId(v === "none" ? "" : v)
+                    }
+                    size="sm"
+                    placeholder="Default category"
+                    triggerClassName="h-8 min-w-[160px]"
+                    options={[
+                      { value: "none", label: "Category for approve…" },
+                      ...categories.map((c) => ({
+                        value: c.id,
+                        label: c.name,
+                      })),
+                    ]}
+                  />
+                  <button
+                    type="button"
+                    className={adminUi.btnGhost}
+                    disabled={!selected.size || busy || !defaultCategoryId}
+                    title="Only high-confidence candidates (completeness ≥70% + resolve band high)"
+                    onClick={() => void bulkApproveHigh([...selected])}
+                  >
+                    Approve high-confidence
+                  </button>
                   <button
                     type="button"
                     className={adminUi.btnGhost}
@@ -403,6 +685,15 @@ function DiscoveryWorkspace() {
       </div>
 
       {error ? <p className="text-[12px] text-red-700">{error}</p> : null}
+      {approveMsg ? (
+        <p className="text-[12px] text-emerald-800">{approveMsg}</p>
+      ) : null}
+      {status === "pending" ? (
+        <p className="text-[11px] text-black/35">
+          Keys: j/k move · x select · e/a review · r reject · s skip · d merge
+          tab
+        </p>
+      ) : null}
 
       {status === "pending" && q.trim().length >= 2 ? (
         <section>
@@ -447,9 +738,9 @@ function DiscoveryWorkspace() {
                     className={cn(adminUi.btnPrimary, "px-2 py-1 text-[10px]")}
                     disabled={busy}
                     onClick={() =>
-                      openProductScanner({
-                        context: "discovery",
+                      openReview({
                         barcode: hit.barcode,
+                        related: hit,
                       })
                     }
                   >
@@ -512,12 +803,17 @@ function DiscoveryWorkspace() {
               </tr>
             </thead>
             <tbody>
-              {flatItems.map((item) => {
+              {flatItems.map((item, idx) => {
                 const p = item.preview;
+                const focused = status === "pending" && idx === focusIndex;
                 return (
                   <tr
                     key={item.publicId}
-                    className="border-b border-black/[0.05] hover:bg-black/[0.012]"
+                    className={cn(
+                      "border-b border-black/[0.05] hover:bg-black/[0.012]",
+                      focused && "bg-black/[0.04]",
+                    )}
+                    onClick={() => setFocusIndex(idx)}
                   >
                     <td
                       className={cn(
@@ -604,10 +900,10 @@ function DiscoveryWorkspace() {
                               disabled={!item.barcode || busy}
                               onClick={() => {
                                 if (!item.barcode) return;
-                                openProductScanner({
-                                  context: "discovery",
+                                openReview({
                                   barcode: item.barcode,
                                   discoveryId: item.publicId,
+                                  seed: item,
                                 });
                               }}
                             >
@@ -673,11 +969,10 @@ function DiscoveryWorkspace() {
                     disabled={!slideItem.barcode || busy}
                     onClick={() => {
                       if (!slideItem.barcode) return;
-                      setSlideItem(null);
-                      openProductScanner({
-                        context: "discovery",
+                      openReview({
                         barcode: slideItem.barcode,
                         discoveryId: slideItem.publicId,
+                        seed: slideItem,
                       });
                     }}
                   >
@@ -769,6 +1064,61 @@ function DiscoveryWorkspace() {
                     ]
                   : []),
               ],
+            }}
+          />
+        </SlideOver>
+      ) : null}
+
+      {reviewTarget ? (
+        <SlideOver
+          open
+          onClose={() => setReviewTarget(null)}
+          title="Review"
+          subtitle={
+            reviewTarget.seed?.name ||
+            reviewTarget.related?.name ||
+            reviewTarget.barcode
+          }
+          dashboard
+        >
+          <DiscoveryReviewPanel
+            barcode={reviewTarget.barcode}
+            discoveryId={reviewTarget.discoveryId}
+            seed={
+              reviewTarget.seed ||
+              (reviewTarget.related
+                ? {
+                    name: reviewTarget.related.name,
+                    brand: reviewTarget.related.brand,
+                    barcode: reviewTarget.related.barcode,
+                    preview: {
+                      image: reviewTarget.related.image,
+                      quantity: reviewTarget.related.quantity || null,
+                      nutriscore: reviewTarget.related.nutriscore || null,
+                      ingredientsPreview: null,
+                      categoryHint: reviewTarget.related.categoryHint || null,
+                      completeness: 0,
+                    },
+                    payload: {},
+                    status: "pending",
+                    source: "search",
+                    provider: reviewTarget.related.provider,
+                  }
+                : null)
+            }
+            onClose={() => setReviewTarget(null)}
+            onDismiss={
+              reviewTarget.discoveryId
+                ? () => {
+                    const id = reviewTarget.discoveryId!;
+                    setReviewTarget(null);
+                    void patchOne(id, "dismiss");
+                  }
+                : undefined
+            }
+            onCreated={() => {
+              setReviewTarget(null);
+              void load();
             }}
           />
         </SlideOver>

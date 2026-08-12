@@ -227,6 +227,8 @@ export type DiscoveryCandidateRow = {
   similaritySeedBarcode: string | null;
   lastSeenAt: string;
   createdAt: string;
+  confidenceBand?: "high" | "medium" | "low" | null;
+  confidenceScore?: number | null;
   /** Derived preview fields for list UI */
   preview?: {
     image: string | null;

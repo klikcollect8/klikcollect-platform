@@ -11,6 +11,7 @@ import {
 import { openFoodFactsProvider } from "@/lib/product-resolver/providers/open-food-facts";
 import { openProductsFactsProvider } from "@/lib/product-resolver/providers/open-products-facts";
 import { upsertDiscoveryCandidate } from "@/lib/product-resolver/discovery";
+import { getOrderedProviders } from "@/lib/product-resolver/source-registry";
 import type { ProductDataProvider } from "@/lib/product-resolver/interface";
 import type {
   LocalProductHit,
@@ -21,7 +22,8 @@ import type {
   SimilarProductHit,
 } from "@/lib/product-resolver/types";
 
-function providerOrder(): ProductDataProvider[] {
+/** Sync fallback when registry table unavailable. */
+function staticProviderOrder(): ProductDataProvider[] {
   const raw = process.env.PRODUCT_RESOLVER_PROVIDER_ORDER || "";
   const map: Record<string, ProductDataProvider> = {
     klikcollect: klikCollectProvider,
@@ -41,6 +43,16 @@ function providerOrder(): ProductDataProvider[] {
     .filter(Boolean)
     .map((id) => map[id])
     .filter(Boolean);
+}
+
+async function providerOrder(): Promise<ProductDataProvider[]> {
+  try {
+    const ordered = await getOrderedProviders();
+    if (ordered.length) return ordered;
+  } catch {
+    /* fall through */
+  }
+  return staticProviderOrder();
 }
 
 async function writeScanEvent(input: {
@@ -248,7 +260,7 @@ export async function resolveBarcode(input: {
     };
   }
 
-  const providers = providerOrder().filter(
+  const providers = (await providerOrder()).filter(
     (p) => p.getProviderName() !== "klikcollect",
   );
   const settled = await Promise.all(
@@ -439,5 +451,9 @@ export async function searchProducts(input: {
 }
 
 export function listConfiguredProviders(): ProviderId[] {
-  return providerOrder().map((p) => p.getProviderName());
+  return staticProviderOrder().map((p) => p.getProviderName());
+}
+
+export async function listConfiguredProvidersAsync(): Promise<ProviderId[]> {
+  return (await providerOrder()).map((p) => p.getProviderName());
 }
