@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Archive,
   Copy,
   ImageIcon,
   Plus,
   ScanBarcode,
+  BarChart3,
+  ChevronDown,
+  MoreHorizontal,
 } from "lucide-react";
 import AccessControl from "@/components/admin/AccessControl";
 import PageContainer, {
@@ -19,6 +22,15 @@ import SlideOver from "@/components/admin/SlideOver";
 import ProductDataVisual from "@/components/admin/catalogue/ProductDataVisual";
 import ProductCreateWizard from "@/components/admin/catalogue/ProductCreateWizard";
 import CatalogueSearchBar from "@/components/admin/catalogue/CatalogueSearchBar";
+import CatalogueKpiStrip from "@/components/admin/catalogue/viz/CatalogueKpiStrip";
+import DistributionBar from "@/components/admin/catalogue/viz/DistributionBar";
+import PriceCompareBars from "@/components/admin/catalogue/viz/PriceCompareBars";
+import StatusDonut from "@/components/admin/catalogue/viz/StatusDonut";
+import {
+  countByKey,
+  offersSplit,
+  stockBands,
+} from "@/components/admin/catalogue/viz/aggregate";
 import ThemeSelect from "@/components/ui/ThemeSelect";
 import { adminUi } from "@/components/admin/admin-ui";
 import { useToast } from "@/components/ToastProvider";
@@ -80,7 +92,6 @@ export default function AdminProductsPage() {
 }
 
 function ProductsCatalogue() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -110,6 +121,7 @@ function ProductsCatalogue() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [showImages, setShowImages] = useState(true);
   const [slideRow, setSlideRow] = useState<Row | null>(null);
   const [slideDetail, setSlideDetail] = useState<{
@@ -438,6 +450,53 @@ function ProductsCatalogue() {
     else setSelected(new Set(items.map((i) => i.id)));
   };
 
+  const publishedOnPage = useMemo(
+    () => items.filter((i) => i.status === "published").length,
+    [items],
+  );
+  const missingOffersOnPage = useMemo(
+    () => items.filter((i) => !i.offerCount).length,
+    [items],
+  );
+  const lowStockOnPage = useMemo(
+    () =>
+      items.filter((i) => i.totalStock == null || Number(i.totalStock) <= 0)
+        .length,
+    [items],
+  );
+
+  const statusChart = useMemo(
+    () =>
+      countByKey(items as unknown as Array<Record<string, unknown>>, (i) =>
+        String(i.status || "unknown"),
+      ).map((b) => ({
+        ...b,
+        label: b.label.replace(/_/g, " "),
+      })),
+    [items],
+  );
+
+  const kindChart = useMemo(
+    () =>
+      countByKey(items as unknown as Array<Record<string, unknown>>, (i) =>
+        String(i.productKind || "unknown"),
+      ).map((b) => ({
+        ...b,
+        label: kindLabel(b.key),
+      })),
+    [items],
+  );
+
+  const offersChart = useMemo(
+    () => offersSplit(items.map((i) => i.offerCount)),
+    [items],
+  );
+
+  const stockChart = useMemo(
+    () => stockBands(items.map((i) => i.totalStock)),
+    [items],
+  );
+
   return (
     <PageContainer className="scrollbar-hide">
       <AdminPageHeader
@@ -468,7 +527,93 @@ function ProductsCatalogue() {
         }
       />
 
-      <div className="sticky top-0 z-20 -mx-1 space-y-3 bg-[#f7f7f5]/95 px-1 py-3 backdrop-blur-md">
+      <div className="mb-4 md:mb-6">
+        <button
+          type="button"
+          onClick={() => setAnalyticsOpen((open) => !open)}
+          aria-expanded={analyticsOpen}
+          className="mb-3 flex min-h-11 w-full items-center justify-between border-y border-black/[0.06] py-2 text-left text-[12px] font-medium text-black/60 md:hidden"
+        >
+          <span className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Catalogue insights
+          </span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform",
+              analyticsOpen && "rotate-180",
+            )}
+          />
+        </button>
+        <div
+          className={cn(
+            "space-y-4 md:block md:space-y-6",
+            analyticsOpen ? "block" : "hidden",
+          )}
+        >
+          <CatalogueKpiStrip
+          items={[
+            {
+              label: "Matching",
+              value: total.toLocaleString(),
+              description: loading ? "Loading…" : "Current filters",
+            },
+            {
+              label: "Published (page)",
+              value: publishedOnPage,
+              active: status === "published",
+              onClick: () => setStatus(status === "published" ? "" : "published"),
+            },
+            {
+              label: "No offers (page)",
+              value: missingOffersOnPage,
+              active: noOffers,
+              onClick: () => {
+                setNoOffers(!noOffers);
+                if (!noOffers) setHasOffers(false);
+              },
+            },
+            {
+              label: "Zero stock (page)",
+              value: lowStockOnPage,
+            },
+          ]}
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+          <StatusDonut
+            title="Status"
+            data={statusChart}
+            activeKey={status || null}
+            onSelect={(key) => setStatus((prev) => (prev === key ? "" : key))}
+          />
+          <DistributionBar
+            title="Product type"
+            data={kindChart}
+            activeKey={kind || null}
+            onSelect={(key) => setKind((prev) => (prev === key ? "" : key))}
+          />
+          <DistributionBar
+            title="Offers"
+            data={offersChart}
+            activeKey={
+              hasOffers ? "has" : noOffers ? "none" : null
+            }
+            onSelect={(key) => {
+              if (key === "has") {
+                setHasOffers(true);
+                setNoOffers(false);
+              } else if (key === "none") {
+                setNoOffers(true);
+                setHasOffers(false);
+              }
+            }}
+          />
+          <DistributionBar title="Stock bands" data={stockChart} />
+          </div>
+        </div>
+      </div>
+
+      <div className="sticky top-14 z-20 -mx-1 space-y-3 bg-[#f7f7f5]/95 px-1 py-3 backdrop-blur-md">
         <CatalogueSearchBar
           ref={searchRef}
           query={q}
@@ -487,7 +632,7 @@ function ProductsCatalogue() {
         />
 
         {advancedOpen ? (
-          <div className="space-y-4 border-y border-black/[0.06] py-4">
+          <div className="max-h-[60dvh] space-y-4 overflow-y-auto rounded-xl border border-black/[0.06] bg-[#f7f7f5] p-4 md:max-h-none md:overflow-visible md:rounded-none md:border-x-0 md:px-0">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[11px] uppercase tracking-[0.14em] text-black/35">
                 Filters
@@ -583,7 +728,7 @@ function ProductsCatalogue() {
                     onClick={() => set(!checked)}
                     aria-pressed={checked}
                     className={cn(
-                      "px-2.5 py-1.5 text-[11px] transition-colors",
+                      "min-h-10 px-3 py-2 text-[11px] transition-colors",
                       checked
                         ? "bg-black text-white"
                         : "text-black/45 hover:text-black",
@@ -630,7 +775,102 @@ function ProductsCatalogue() {
         </div>
       </div>
 
-      <div className="scrollbar-hide overflow-x-auto">
+      <div className="divide-y divide-black/[0.06] border-y border-black/[0.08] md:hidden">
+        {items.map((row) => (
+          <article key={row.id} className="relative flex gap-3 py-4">
+            <label className="flex min-h-11 min-w-11 shrink-0 items-center justify-center self-start">
+              <input
+                type="checkbox"
+                checked={selected.has(row.id)}
+                onChange={() => toggleSelect(row.id)}
+                aria-label={`Select ${row.name}`}
+                className="h-4 w-4"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setSlideRow(row)}
+              className="flex min-w-0 flex-1 items-start gap-3 text-left"
+            >
+              {showImages ? (
+                <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-black/[0.04]">
+                  {row.image ? (
+                    <Image
+                      src={row.image}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  ) : null}
+                </span>
+              ) : null}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate pr-8 text-sm font-medium text-black">
+                  {row.name}
+                </span>
+                <span className="mt-1 block truncate text-[11px] text-black/40">
+                  {row.sku || row.barcode || kindLabel(row.productKind)}
+                </span>
+                <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-black/45">
+                  <span className="font-medium tabular-nums text-black/75">
+                    {formatKesMinor(row.guidePriceAvgMinor)}
+                  </span>
+                  <span>{row.offerCount ?? 0} offers</span>
+                  <span>{row.totalStock ?? "—"} stock</span>
+                  <span className="uppercase tracking-[0.08em]">
+                    {String(row.status || "").replace("_", " ")}
+                  </span>
+                </span>
+              </span>
+            </button>
+
+            <details className="group absolute right-0 top-3">
+              <summary
+                className="flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-full text-black/45 [&::-webkit-details-marker]:hidden"
+                aria-label={`Actions for ${row.name}`}
+              >
+                <MoreHorizontal className="h-5 w-5" />
+              </summary>
+              <div className="absolute right-0 top-11 z-10 min-w-36 overflow-hidden rounded-xl border border-black/10 bg-white py-1 shadow-xl">
+                <Link
+                  href={`/admin/products/${row.id}`}
+                  className="flex min-h-11 items-center px-4 text-xs text-black/70"
+                >
+                  Open page
+                </Link>
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center px-4 text-left text-xs text-black/70"
+                  onClick={() => {
+                    setEditId(row.id);
+                    setWizardOpen(true);
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center px-4 text-left text-xs text-black/70"
+                  onClick={() => void duplicate(row.id)}
+                >
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center px-4 text-left text-xs text-black/55"
+                  onClick={() => void archive(row.id)}
+                >
+                  Archive
+                </button>
+              </div>
+            </details>
+          </article>
+        ))}
+      </div>
+
+      <div className="scrollbar-hide hidden overflow-x-auto md:block">
         <table className="w-full min-w-[1200px] border-collapse text-left text-[12px]">
           <thead>
             <tr className="border-b border-black/10 text-[10px] uppercase tracking-[0.12em] text-black/35">
@@ -778,22 +1018,23 @@ function ProductsCatalogue() {
             ))}
           </tbody>
         </table>
-        {!loading && items.length === 0 ? (
-          <div className="border-b border-black/10 py-16 text-center">
-            <p className="text-[15px] text-black/50">No products match.</p>
-            <button
-              type="button"
-              className={cn(adminUi.btnPrimary, "mt-6")}
-              onClick={() => {
-                setEditId(null);
-                setWizardOpen(true);
-              }}
-            >
-              Create product
-            </button>
-          </div>
-        ) : null}
       </div>
+
+      {!loading && items.length === 0 ? (
+        <div className="border-b border-black/10 py-16 text-center">
+          <p className="text-[15px] text-black/50">No products match.</p>
+          <button
+            type="button"
+            className={cn(adminUi.btnPrimary, "mt-6 min-h-11")}
+            onClick={() => {
+              setEditId(null);
+              setWizardOpen(true);
+            }}
+          >
+            Create product
+          </button>
+        </div>
+      ) : null}
 
       {hasMore ? (
         <div className="mt-10 text-center">
@@ -865,6 +1106,23 @@ function ProductsCatalogue() {
           {slideLoading ? (
             <p className="text-[12px] text-black/40">Loading detail…</p>
           ) : null}
+          <div className="mb-6 space-y-4">
+            <PriceCompareBars
+              guide={slideRow.guidePriceAvgMinor}
+              minOffer={slideRow.minPriceMinor}
+            />
+            {slideDetail?.attributes &&
+            Object.keys(slideDetail.attributes).length > 0 ? (
+              <p className="text-[12px] text-black/45">
+                <span className="uppercase tracking-[0.12em] text-black/35">
+                  Attributes
+                </span>{" "}
+                <span className="tabular-nums text-black">
+                  {Object.keys(slideDetail.attributes).length}
+                </span>
+              </p>
+            ) : null}
+          </div>
           <ProductDataVisual
             data={{
               name: slideRow.name,

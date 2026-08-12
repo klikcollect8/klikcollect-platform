@@ -14,9 +14,9 @@ import {
   Layout,
   LayoutDashboard,
   Lock,
-  Menu,
   MessageSquare,
   Package,
+  PackagePlus,
   PanelLeftClose,
   PanelLeftOpen,
   Scale,
@@ -34,13 +34,13 @@ import {
   Truck,
   Users,
   Wallet,
-  X,
 } from "lucide-react";
 import { Show, UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/components/admin/admin-ui";
 import { ControlPanel } from "@/components/os/ControlPanel";
 import ProductScannerHost from "@/components/admin/catalogue/scanner/ProductScannerHost";
+import AdminMobileNavigation from "@/components/admin/navigation/AdminMobileNavigation";
 import { openInstallAppPrompt } from "@/components/InstallAppPrompt";
 import {
   PLATFORM_ROLES,
@@ -49,17 +49,32 @@ import {
   type PlatformRole,
 } from "@/lib/authz/role-ids";
 
+type NavGroupId =
+  | "platform"
+  | "intelligence"
+  | "catalogue"
+  | "operations"
+  | "analytics"
+  | "marketplace"
+  | "support"
+  | "finance"
+  | "system";
+
 type NavItem = {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
   roles: PlatformRole[];
   permission?: string;
-  group: "platform" | "marketplace" | "support" | "finance" | "system";
+  group: NavGroupId;
 };
 
 const GROUPS = [
   { id: "platform" as const, label: "Main menu" },
+  { id: "intelligence" as const, label: "Intelligence" },
+  { id: "catalogue" as const, label: "Catalogue" },
+  { id: "operations" as const, label: "Operations" },
+  { id: "analytics" as const, label: "Analytics" },
   { id: "marketplace" as const, label: "Marketplace" },
   { id: "finance" as const, label: "Finances" },
   { id: "support" as const, label: "Support" },
@@ -117,19 +132,6 @@ const allNavItems: NavItem[] = [
     group: "marketplace",
   },
   {
-    href: "/admin/products",
-    label: "Catalogue",
-    icon: Package,
-    roles: [
-      "super_admin",
-      "platform_admin",
-      "marketplace_curator",
-      "content_manager",
-    ],
-    permission: "products:view",
-    group: "marketplace",
-  },
-  {
     href: "/admin/products/scanner",
     label: "Product scanner",
     icon: ScanBarcode,
@@ -140,7 +142,7 @@ const allNavItems: NavItem[] = [
       "content_manager",
     ],
     permission: "barcode:scan",
-    group: "marketplace",
+    group: "intelligence",
   },
   {
     href: "/admin/products/discovery",
@@ -153,7 +155,83 @@ const allNavItems: NavItem[] = [
       "content_manager",
     ],
     permission: "products:view",
-    group: "marketplace",
+    group: "intelligence",
+  },
+  {
+    href: "/admin/products/review-queue",
+    label: "Confidence review",
+    icon: BadgeCheck,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "products:view",
+    group: "intelligence",
+  },
+  {
+    href: "/admin/products/sources",
+    label: "Product sources",
+    icon: Activity,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+    ],
+    permission: "products:view",
+    group: "intelligence",
+  },
+  {
+    href: "/admin/products",
+    label: "Catalogue",
+    icon: Package,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "products:view",
+    group: "catalogue",
+  },
+  {
+    href: "/admin/products/brands",
+    label: "Brands",
+    icon: Tag,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "brands:manage",
+    group: "catalogue",
+  },
+  {
+    href: "/admin/products/barcodes",
+    label: "Barcodes",
+    icon: ScanBarcode,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "products:view",
+    group: "catalogue",
+  },
+  {
+    href: "/admin/products/merge",
+    label: "Merge products",
+    icon: Package,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+    ],
+    permission: "products:edit",
+    group: "catalogue",
   },
   {
     href: "/admin/offers",
@@ -165,7 +243,7 @@ const allNavItems: NavItem[] = [
       "marketplace_curator",
     ],
     permission: "offers:view",
-    group: "marketplace",
+    group: "operations",
   },
   {
     href: "/admin/catalogue-corrections",
@@ -177,7 +255,45 @@ const allNavItems: NavItem[] = [
       "marketplace_curator",
     ],
     permission: "products:edit",
-    group: "marketplace",
+    group: "operations",
+  },
+  {
+    href: "/admin/products/import",
+    label: "CSV import",
+    icon: PackagePlus,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+    ],
+    permission: "products:create",
+    group: "operations",
+  },
+  {
+    href: "/admin/products/quality",
+    label: "Quality Centre",
+    icon: Activity,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "products:view",
+    group: "analytics",
+  },
+  {
+    href: "/admin/products/analytics",
+    label: "Intelligence analytics",
+    icon: TrendingUp,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "products:view",
+    group: "analytics",
   },
   {
     href: "/admin/orders",
@@ -408,6 +524,10 @@ const allNavItems: NavItem[] = [
 function isActive(pathname: string | null, href: string) {
   if (!pathname) return false;
   if (href === "/admin") return pathname === "/admin";
+  // Exact catalogue hub — do not mark active for /admin/products/*
+  if (href === "/admin/products") {
+    return pathname === "/admin/products";
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -445,7 +565,6 @@ export default function AdminNav({
 }) {
   const pathname = usePathname();
   const { user, isSignedIn } = useUser();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [controlOpen, setControlOpen] = useState(false);
@@ -458,16 +577,14 @@ export default function AdminNav({
     pathname === "/admin/login" || pathname?.startsWith("/admin/login");
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => setMobileOpen(false));
-    return () => cancelAnimationFrame(id);
-  }, [pathname]);
-
-  useEffect(() => {
+    const savedCollapsed =
+      window.localStorage.getItem("kc-admin-sidebar-collapsed") === "true";
+    setCollapsed(savedCollapsed);
     document.documentElement.style.setProperty(
       "--admin-aside",
-      collapsed ? "72px" : "260px",
+      savedCollapsed ? "72px" : "260px",
     );
-  }, [collapsed]);
+  }, []);
 
   useEffect(() => {
     if (isLogin) return;
@@ -504,7 +621,6 @@ export default function AdminNav({
       }
       if (e.key === "Escape") {
         setCmdOpen(false);
-        setMobileOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -539,6 +655,21 @@ export default function AdminNav({
     () => resolveAdminNavMatch(pathname),
     [pathname],
   );
+
+  const toggleCollapsed = () => {
+    setCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem(
+        "kc-admin-sidebar-collapsed",
+        String(next),
+      );
+      document.documentElement.style.setProperty(
+        "--admin-aside",
+        next ? "72px" : "260px",
+      );
+      return next;
+    });
+  };
 
   // Must stay after all hooks — early return previously broke Rules of Hooks
   // when pathname flipped between /admin/login and the console.
@@ -596,7 +727,7 @@ export default function AdminNav({
               type="button"
               className="hidden h-9 w-9 items-center justify-center text-black/35 transition-colors hover:text-black lg:inline-flex"
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              onClick={() => setCollapsed((v) => !v)}
+              onClick={toggleCollapsed}
             >
               {collapsed ? (
                 <PanelLeftOpen className="h-4 w-4" />
@@ -744,45 +875,15 @@ export default function AdminNav({
         {renderSidebar()}
       </aside>
 
-      {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="Close"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(300px,90vw)] flex-col bg-[var(--kc-canvas)]">
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center text-black/40"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            {renderSidebar(() => setMobileOpen(false), true)}
-          </aside>
-        </div>
-      ) : null}
-
       <header
         className={cn(
-          "sticky top-0 z-30 flex h-14 items-center gap-2 bg-[var(--kc-canvas)]/90 px-3 backdrop-blur-sm sm:gap-3 sm:px-6 lg:px-10",
+          "sticky top-0 z-30 flex items-center gap-2 bg-[var(--kc-canvas)]/90 px-4 backdrop-blur-sm sm:gap-3 sm:px-6 lg:px-10",
+          adminUi.headerHeight,
           collapsed
             ? "lg:pl-[calc(72px+2.5rem)] xl:pl-[calc(72px+4rem)]"
             : "lg:pl-[calc(260px+2.5rem)] xl:pl-[calc(260px+4rem)]",
         )}
       >
-        <button
-          type="button"
-          className="flex h-11 w-11 shrink-0 items-center justify-center text-black lg:hidden"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
-        >
-          <Menu className="h-5 w-5" strokeWidth={1.5} />
-        </button>
-
         <div className="min-w-0 flex-1 lg:hidden">
           <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-black/35">
             {normalizedRole
@@ -858,6 +959,19 @@ export default function AdminNav({
         </div>
       </header>
 
+      <AdminMobileNavigation
+        pathname={pathname}
+        items={navItems.map((item) => ({
+          href: item.href,
+          label: item.label,
+          icon: item.icon,
+          groupLabel:
+            GROUPS.find((group) => group.id === item.group)?.label ?? "Other",
+        }))}
+        onOpenControlPanel={() => setControlOpen(true)}
+        onOpenInstallPrompt={openInstallAppPrompt}
+      />
+
       {cmdOpen ? (
         <AdminCommandPalette
           items={navItems}
@@ -887,10 +1001,45 @@ function AdminCommandPalette({
 }) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     inputRef.current?.focus();
-  }, []);
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const focusable = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+      previousFocus?.focus();
+    };
+  }, [onClose]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -906,9 +1055,18 @@ function AdminCommandPalette({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-command-title"
+        className="relative w-full max-w-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+      >
         <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
           <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          <span id="admin-command-title" className="sr-only">
+            Search admin modules
+          </span>
           <input
             ref={inputRef}
             value={query}
@@ -929,7 +1087,7 @@ function AdminCommandPalette({
                     key={item.href}
                     href={item.href}
                     onClick={onClose}
-                    className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-[14px] font-medium text-slate-800 transition hover:bg-slate-50"
+                    className="flex min-h-11 items-center gap-3 rounded-xl px-2.5 py-2.5 text-[14px] font-medium text-slate-800 transition hover:bg-slate-50"
                   >
                     <Icon className="h-4 w-4 text-slate-400" />
                     <span className="flex-1">{item.label}</span>

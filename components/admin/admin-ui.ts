@@ -25,6 +25,7 @@ export const adminUi = {
     "text-[11px] font-medium uppercase tracking-[0.2em] text-black/35",
   navActive: "font-medium text-black",
   navIdle: "font-medium text-black/40 transition-colors hover:text-black",
+  headerHeight: "h-[var(--admin-header-h,56px)]",
   shellAside: "w-[260px]",
   shellAsidePad: "lg:pl-[var(--admin-aside,260px)]",
   navActiveItem:
@@ -32,7 +33,7 @@ export const adminUi = {
   navIdleItem:
     "font-medium text-black/42 transition-colors hover:text-black",
   shellMain:
-    "w-full max-w-none px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12 xl:px-16",
+    "w-full max-w-none px-4 pt-6 pb-[calc(var(--admin-bottom-nav-h,72px)+1.5rem+env(safe-area-inset-bottom,0px))] sm:px-8 sm:pt-8 lg:px-12 lg:py-12 xl:px-16",
   badge:
     "inline-flex min-w-[18px] items-center justify-center text-[11px] font-medium tabular-nums text-black/40",
   sectionLabel:

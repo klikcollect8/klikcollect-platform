@@ -3,19 +3,14 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import AccessControl from "@/components/admin/AccessControl";
-import PageContainer, {
-  AdminPageHeader,
-} from "@/components/admin/PageContainer";
 import ScannerWorkspace from "@/components/admin/catalogue/scanner/ScannerWorkspace";
-import Link from "next/link";
-import { adminUi } from "@/components/admin/admin-ui";
 
 export default function CatalogueScannerPage() {
   return (
     <AccessControl requiredPermission="barcode:scan">
       <Suspense
         fallback={
-          <div className="flex min-h-[40vh] items-center justify-center text-[14px] text-black/45">
+          <div className="flex min-h-[60vh] items-center justify-center bg-black text-[14px] text-white/50">
             Loading scanner…
           </div>
         }
@@ -32,30 +27,14 @@ function ScannerPageInner() {
   const discoveryId = searchParams.get("discovery") || undefined;
 
   return (
-    <PageContainer>
-      <AdminPageHeader
-        title="Product scanner"
-        description="Search or scan a barcode, review the visual board, then add it to the catalogue."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Link href="/admin/products" className={adminUi.btnGhost}>
-              Catalogue
-            </Link>
-            <Link href="/admin/products/discovery" className={adminUi.btnGhost}>
-              Discovery
-            </Link>
-          </div>
-        }
+    <div className="fixed inset-0 z-40 flex flex-col bg-black lg:left-[var(--admin-aside,260px)]">
+      <ScannerWorkspace
+        context="page"
+        variant="page"
+        initialBarcode={barcode}
+        discoveryId={discoveryId}
+        className="h-full"
       />
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <ScannerWorkspace
-          context="page"
-          variant="page"
-          initialBarcode={barcode}
-          discoveryId={discoveryId}
-          className="min-h-[75vh]"
-        />
-      </div>
-    </PageContainer>
+    </div>
   );
 }

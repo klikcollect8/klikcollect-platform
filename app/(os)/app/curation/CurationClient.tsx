@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ChevronLeft } from "lucide-react";
 import {
   ADMISSION_CRITERIA,
   REJECTION_CLASSES,
@@ -25,6 +26,7 @@ export function CurationClient() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [mobileReviewOpen, setMobileReviewOpen] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/curation");
@@ -44,6 +46,11 @@ export function CurationClient() {
   const current = apps.find((a) => a.id === selected) || null;
   const pending = apps.filter((a) => a.status === "pending");
   const decided = apps.filter((a) => a.status !== "pending");
+
+  function openApplication(id: string) {
+    setSelected(id);
+    setMobileReviewOpen(true);
+  }
 
   async function decide(outcome: "admitted" | "rejected") {
     if (!current) return;
@@ -103,8 +110,8 @@ export function CurationClient() {
               <button
                 key={a.id}
                 type="button"
-                onClick={() => setSelected(a.id)}
-                className={`w-full rounded-[var(--kc-radius-sm)] px-3 py-2.5 text-left transition-colors ${
+                onClick={() => openApplication(a.id)}
+                className={`min-h-14 w-full rounded-[var(--kc-radius-sm)] px-3 py-2.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
                   selected === a.id
                     ? "bg-[var(--kc-canvas)]"
                     : "hover:bg-[var(--kc-canvas)]"
@@ -129,7 +136,26 @@ export function CurationClient() {
           </div>
         </aside>
 
-        <div className="rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white p-5 sm:p-6">
+        <div
+          className={`${mobileReviewOpen ? "fixed" : "hidden"} inset-0 z-50 overflow-y-auto bg-white pb-[env(safe-area-inset-bottom)] lg:static lg:z-auto lg:block lg:overflow-visible lg:rounded-[var(--kc-radius)] lg:border lg:border-[var(--kc-line)] lg:p-6`}
+          role={mobileReviewOpen ? "dialog" : undefined}
+          aria-modal={mobileReviewOpen ? true : undefined}
+          aria-label={current ? `Review ${current.businessName}` : "Vendor review"}
+        >
+          <div className="sticky top-0 z-10 flex min-h-14 items-center gap-2 border-b border-[var(--kc-line-soft)] bg-white/95 px-3 backdrop-blur lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileReviewOpen(false)}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--kc-radius-sm)] text-[var(--kc-ink)] hover:bg-[var(--kc-canvas)]"
+              aria-label="Back to vendor queue"
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <p className="truncate text-[13px] font-semibold text-[var(--kc-ink)]">
+              Vendor review
+            </p>
+          </div>
+          <div className="p-4 pb-28 sm:p-6 sm:pb-28 lg:p-0 lg:pb-0">
           {!current ? (
             <p className="text-sm text-neutral-500">Select an application</p>
           ) : (
@@ -175,7 +201,8 @@ export function CurationClient() {
                                   : [...prev, c.id],
                               )
                             }
-                            className={`rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
+                            aria-pressed={on}
+                            className={`min-h-11 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
                               on
                                 ? "border-neutral-900 bg-neutral-900 text-white"
                                 : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
@@ -207,7 +234,8 @@ export function CurationClient() {
                                   : [...prev, r.id],
                               )
                             }
-                            className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                            aria-pressed={on}
+                            className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
                               on
                                 ? "border-neutral-900 bg-neutral-900 text-white"
                                 : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
@@ -221,10 +249,14 @@ export function CurationClient() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                    <label
+                      htmlFor="curation-decision-reason"
+                      className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500"
+                    >
                       Decision reason
                     </label>
                     <textarea
+                      id="curation-decision-reason"
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       rows={3}
@@ -233,12 +265,12 @@ export function CurationClient() {
                     />
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 gap-2 border-t border-neutral-200 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur lg:static lg:flex lg:border-0 lg:bg-transparent lg:p-0">
                     <button
                       type="button"
                       disabled={busy}
                       onClick={() => void decide("admitted")}
-                      className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                      className="min-h-11 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                     >
                       Admit vendor
                     </button>
@@ -246,7 +278,7 @@ export function CurationClient() {
                       type="button"
                       disabled={busy}
                       onClick={() => void decide("rejected")}
-                      className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+                      className="min-h-11 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50"
                     >
                       Reject
                     </button>
@@ -277,14 +309,21 @@ export function CurationClient() {
               ) : null}
             </div>
           )}
+          </div>
         </div>
       </div>
 
       {decided.length ? (
-        <div className="rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white">
-          <div className="border-b border-[var(--kc-line-soft)] px-4 py-3 text-[13px] font-semibold text-[var(--kc-ink)]">
+        <details className="group rounded-[var(--kc-radius)] border border-[var(--kc-line)] bg-white">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-[13px] font-semibold text-[var(--kc-ink)] [&::-webkit-details-marker]:hidden">
             Audit trail ({decided.length})
-          </div>
+            <span className="text-[11px] font-normal text-[var(--kc-faint)] group-open:hidden">
+              Show
+            </span>
+            <span className="hidden text-[11px] font-normal text-[var(--kc-faint)] group-open:inline">
+              Hide
+            </span>
+          </summary>
           <div className="divide-y divide-[var(--kc-line-soft)]">
             {decided.map((a) => (
               <div
@@ -304,7 +343,7 @@ export function CurationClient() {
               </div>
             ))}
           </div>
-        </div>
+        </details>
       ) : null}
     </div>
   );

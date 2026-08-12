@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { usePathname } from "next/navigation";
 import AdminNav from "@/components/AdminNav";
 import { adminUi } from "@/components/admin/admin-ui";
@@ -22,7 +23,13 @@ export default function AdminShell({
 
   return (
     <div
-      className={`min-h-screen overflow-x-hidden text-black ${adminUi.canvas}`}
+      className={`min-h-[100dvh] overflow-x-hidden text-black ${adminUi.canvas}`}
+      style={
+        {
+          "--admin-header-h": "56px",
+          "--admin-bottom-nav-h": "72px",
+        } as CSSProperties
+      }
     >
       <AdminNav initialRole={initialRole} />
       <div className={`w-full ${adminUi.shellAsidePad}`}>

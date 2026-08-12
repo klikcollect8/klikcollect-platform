@@ -20,6 +20,7 @@ import {
   CheckSquare,
   Square,
   ChevronRight,
+  SlidersHorizontal,
 } from "lucide-react";
 import PageContainer from "@/components/admin/PageContainer";
 import AccessControl from "@/components/admin/AccessControl";
@@ -98,6 +99,7 @@ function OrdersContent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -266,8 +268,8 @@ function OrdersContent() {
   if (loading) return null;
 
   return (
-    <PageContainer className="max-w-[1600px] px-6 py-12 relative">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+    <PageContainer className="relative max-w-[1600px] px-4 py-6 sm:px-6 sm:py-12">
+      <div className="mb-6 flex flex-col justify-between gap-4 md:mb-12 md:flex-row md:items-end md:gap-6">
         <div>
           <h1 className="text-3xl font-light tracking-tight text-neutral-900">
             Orders
@@ -278,7 +280,7 @@ function OrdersContent() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-10">
+      <div className="mb-6 grid grid-cols-3 gap-2 md:mb-10 md:grid-cols-6 md:gap-4">
         {[
           { label: "Total Orders", value: stats.total, filter: "all" },
           {
@@ -297,21 +299,21 @@ function OrdersContent() {
             <button
               key={i}
               onClick={() => setFilter(stat.filter)}
-              className={`p-5 rounded-2xl border text-left transition-all duration-200 ${
+              className={`min-h-16 rounded-xl border p-3 text-left transition-all duration-200 md:rounded-2xl md:p-5 ${
                 isActive
                   ? "ring-1 ring-neutral-300 border-neutral-300 bg-neutral-50"
                   : `bg-white hover:border-neutral-300 hover:shadow-sm ${stat.alert ? "border-black/10 bg-black/[0.04]/30" : "border-neutral-100"}`
               }`}
             >
               <p
-                className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                className={`mb-1 text-[10px] font-medium uppercase tracking-wider md:text-xs ${
                   stat.alert ? "text-black/60" : "text-neutral-500"
                 }`}
               >
                 {stat.label}
               </p>
               <p
-                className={`text-2xl font-light ${
+                className={`text-xl font-light md:text-2xl ${
                   stat.alert ? "text-black" : "text-neutral-900"
                 }`}
               >
@@ -322,26 +324,39 @@ function OrdersContent() {
         })}
       </div>
 
-      <div className="sticky top-4 z-20 mb-8 space-y-4">
-        <div className="bg-white/80 backdrop-blur-xl border border-neutral-200/60 p-2 rounded-2xl shadow-sm flex flex-col md:flex-row gap-2">
-          <div className="relative flex-1">
+      <div className="sticky top-14 z-20 mb-5 space-y-2 md:mb-8 md:space-y-4">
+        <div className="flex flex-col gap-2 rounded-2xl border border-neutral-200/60 bg-white/90 p-2 shadow-sm backdrop-blur-xl md:flex-row">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
             <input
               type="text"
               placeholder="Search by order #, name, or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-transparent text-sm focus:outline-none placeholder:text-neutral-400"
+              className="h-11 w-full bg-transparent pl-10 pr-4 text-sm placeholder:text-neutral-400 focus:outline-none"
             />
+            </div>
+            <button
+              type="button"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((open) => !open)}
+              className="flex h-11 min-w-11 items-center justify-center rounded-xl bg-neutral-100 text-neutral-600 md:hidden"
+              aria-label="Toggle order filters"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </button>
           </div>
 
           <div className="w-px h-8 bg-neutral-200 hidden md:block" />
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
+          <div
+            className={`${filtersOpen ? "flex" : "hidden"} items-center gap-2 overflow-x-auto border-t border-neutral-100 pt-2 md:flex md:border-0 md:pt-0 hide-scrollbar`}
+          >
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="px-3 py-2 bg-neutral-50 border-none rounded-xl text-sm font-medium text-neutral-700 focus:ring-0 cursor-pointer hover:bg-neutral-100 transition-colors"
+              className="h-11 min-w-44 cursor-pointer rounded-xl border-none bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus:ring-0"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -354,7 +369,7 @@ function OrdersContent() {
 
             <div className="w-px h-8 bg-neutral-200 hidden md:block mx-1" />
 
-            <div className="flex bg-neutral-100 rounded-xl p-1">
+            <div className="hidden bg-neutral-100 rounded-xl p-1 md:flex">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-neutral-900" : "text-neutral-400 hover:text-neutral-600"}`}
@@ -372,10 +387,10 @@ function OrdersContent() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-4 px-2">
+      <div className="mb-3 flex items-center gap-2 px-1 md:mb-4 md:px-2">
         <button
           onClick={toggleSelectAll}
-          className="flex items-center gap-2 text-xs font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+          className="flex min-h-11 items-center gap-2 text-xs font-medium text-neutral-500 transition-colors hover:text-neutral-900"
         >
           {selectedIds.size === filteredOrders.length &&
           filteredOrders.length > 0 ? (
@@ -408,8 +423,69 @@ function OrdersContent() {
             </p>
           </div>
         </SectionCard>
-      ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-24">
+      ) : (
+        <>
+          <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-100 bg-white md:hidden">
+            {filteredOrders.map((order) => {
+              const isSelected = selectedIds.has(order.id);
+              return (
+                <div
+                  key={order.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedOrder(order)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedOrder(order);
+                    }
+                  }}
+                  className="flex min-h-24 items-center gap-3 p-4 text-left active:bg-neutral-50"
+                >
+                  <button
+                    type="button"
+                    onClick={(event) => toggleSelect(order.id, event)}
+                    className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-neutral-400"
+                    aria-label={`Select order ${order.orderNumber}`}
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="h-5 w-5 text-neutral-900" />
+                    ) : (
+                      <Square className="h-5 w-5" />
+                    )}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-neutral-900">
+                        #{order.orderNumber}
+                      </p>
+                      <span
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${getStatusColor(order.status)}`}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+                    <p className="truncate text-sm text-neutral-600">
+                      {order.customerName}
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-400">
+                      {order.items?.length || 0} items ·{" "}
+                      {format(new Date(order.createdAt), "MMM d, h:mm a")}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-medium text-neutral-900">
+                      KES {(order.total || 0).toFixed(2)}
+                    </p>
+                    <ChevronRight className="ml-auto mt-2 h-4 w-4 text-neutral-300" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {viewMode === "grid" ? (
+        <div className="hidden grid-cols-1 gap-6 pb-24 md:grid lg:grid-cols-2 xl:grid-cols-3">
           {filteredOrders.map((order) => {
             const isSelected = selectedIds.has(order.id);
             return (
@@ -507,7 +583,7 @@ function OrdersContent() {
           })}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden shadow-sm pb-24">
+        <div className="hidden overflow-hidden rounded-2xl border border-neutral-100 bg-white pb-24 shadow-sm md:block">
           <table className="w-full text-left">
             <thead className="bg-neutral-50 border-b border-neutral-100">
               <tr>
@@ -613,13 +689,15 @@ function OrdersContent() {
           </table>
         </div>
       )}
+        </>
+      )}
 
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white border border-neutral-200 shadow-2xl rounded-full px-6 py-3 flex items-center gap-4 z-40 animate-in slide-in-from-bottom-6 fade-in">
+        <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex w-[calc(100%-2rem)] -translate-x-1/2 animate-in items-center gap-3 overflow-x-auto rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-2xl fade-in slide-in-from-bottom-6 sm:bottom-6 sm:w-auto sm:rounded-full sm:px-6">
           <span className="text-sm font-medium text-neutral-900 border-r border-neutral-200 pr-4">
             {selectedIds.size} selected
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               onClick={() => handleBulkStatusUpdate("confirmed")}
               className="px-3 py-1.5 bg-black/[0.04] text-black hover:bg-black/[0.06] rounded-lg text-xs font-medium transition-colors"
@@ -656,16 +734,16 @@ function OrdersContent() {
       )}
 
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6">
           <div
             className="fixed inset-0 bg-neutral-900/40 backdrop-blur-md transition-opacity animate-in fade-in duration-300"
             onClick={() => setSelectedOrder(null)}
           />
-          <div className="relative w-full max-w-4xl bg-white shadow-2xl shadow-neutral-900/20 rounded-[2rem] flex flex-col max-h-[90vh] animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 overflow-hidden ring-1 ring-black/5">
-            <div className="px-8 py-6 border-b border-neutral-100 flex items-start justify-between bg-white/80 backdrop-blur-xl z-10 shrink-0">
+          <div className="relative flex h-[100dvh] max-h-none w-full flex-col overflow-hidden bg-white shadow-2xl shadow-neutral-900/20 ring-1 ring-black/5 animate-in slide-in-from-bottom-4 duration-300 sm:h-auto sm:max-h-[90vh] sm:max-w-4xl sm:rounded-[2rem] sm:zoom-in-95">
+            <div className="z-10 flex shrink-0 items-start justify-between border-b border-neutral-100 bg-white/90 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl sm:px-8 sm:py-6">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-3xl font-light tracking-tight text-neutral-900">
+                  <h2 className="text-xl font-light tracking-tight text-neutral-900 sm:text-3xl">
                     #{selectedOrder.orderNumber}
                   </h2>
                   <div
@@ -674,7 +752,7 @@ function OrdersContent() {
                     {selectedOrder.status}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-neutral-500 font-light">
+                <div className="flex items-center gap-2 text-xs text-neutral-500 font-light sm:text-sm">
                   <Calendar className="w-4 h-4 text-neutral-400" />
                   <span>
                     Placed on{" "}
@@ -695,7 +773,7 @@ function OrdersContent() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => window.print()}
-                  className="group p-2.5 rounded-full hover:bg-neutral-100 transition-all duration-200 border border-transparent hover:border-neutral-200"
+                  className="group hidden min-h-11 min-w-11 items-center justify-center rounded-full border border-transparent transition-all duration-200 hover:border-neutral-200 hover:bg-neutral-100 sm:flex"
                   title="Print Invoice"
                 >
                   <Printer className="w-5 h-5 text-neutral-400 group-hover:text-neutral-900" />
@@ -703,7 +781,8 @@ function OrdersContent() {
                 <div className="w-px h-8 bg-neutral-100 mx-1" />
                 <button
                   onClick={() => setSelectedOrder(null)}
-                  className="group p-2.5 rounded-full hover:bg-neutral-100 transition-all duration-200 border border-transparent hover:border-neutral-200"
+                  className="group flex min-h-11 min-w-11 items-center justify-center rounded-full border border-transparent transition-all duration-200 hover:border-neutral-200 hover:bg-neutral-100"
+                  aria-label="Close order detail"
                 >
                   <X className="w-5 h-5 text-neutral-400 group-hover:text-neutral-900" />
                 </button>
@@ -711,9 +790,9 @@ function OrdersContent() {
             </div>
 
             <div className="flex-1 overflow-y-auto bg-neutral-50/30">
-              <div className="p-8 space-y-8">
+              <div className="space-y-4 p-4 pb-8 sm:space-y-8 sm:p-8">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                  <div className="md:col-span-5 bg-white rounded-3xl p-6 border border-neutral-100 shadow-sm">
+                  <div className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm md:col-span-5 md:rounded-3xl md:p-6">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-full bg-neutral-50 flex items-center justify-center border border-neutral-100">
                         <User className="w-5 h-5 text-neutral-400" />
@@ -760,7 +839,7 @@ function OrdersContent() {
                     </div>
                   </div>
 
-                  <div className="md:col-span-7 bg-white rounded-3xl p-6 border border-neutral-100 shadow-sm relative overflow-hidden">
+                  <div className="relative overflow-hidden rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm md:col-span-7 md:rounded-3xl md:p-6">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-neutral-50 to-transparent rounded-bl-full -mr-8 -mt-8" />
 
                     <div className="flex items-center gap-3 mb-6 relative">
@@ -772,19 +851,19 @@ function OrdersContent() {
                       </h3>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8 relative">
+                    <div className="relative grid grid-cols-2 gap-4 sm:gap-8">
                       <div>
                         <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
                           Collect hub
                         </p>
-                        <p className="text-2xl font-light text-neutral-900">
+                        <p className="text-lg font-light text-neutral-900 sm:text-2xl">
                           {selectedOrder.collectHub ||
                             selectedOrder.pickupTime ||
                             "—"}
                         </p>
                       </div>
 
-                      <div className="pl-8 border-l border-neutral-100">
+                      <div className="border-l border-neutral-100 pl-4 sm:pl-8">
                         <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
                           Placed
                         </p>
@@ -805,7 +884,7 @@ function OrdersContent() {
                 </div>
 
                 <div className="bg-white rounded-[2rem] border border-neutral-100 shadow-sm overflow-hidden">
-                  <div className="px-8 py-6 border-b border-neutral-100 flex justify-between items-center bg-white">
+                  <div className="flex items-center justify-between border-b border-neutral-100 bg-white px-4 py-4 sm:px-8 sm:py-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-neutral-900 flex items-center justify-center text-white shadow-lg shadow-neutral-900/20">
                         <ShoppingBag className="w-5 h-5" />
@@ -825,9 +904,9 @@ function OrdersContent() {
                     {(selectedOrder.items || []).map((item, idx) => (
                       <div
                         key={idx}
-                        className="p-6 flex items-center gap-6 hover:bg-neutral-50/50 transition-colors group"
+                        className="group flex items-center gap-3 p-4 transition-colors hover:bg-neutral-50/50 sm:gap-6 sm:p-6"
                       >
-                        <div className="w-20 h-20 bg-neutral-100 rounded-2xl border border-neutral-100 overflow-hidden relative shadow-sm group-hover:shadow-md transition-all">
+                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-neutral-100 bg-neutral-100 shadow-sm transition-all group-hover:shadow-md sm:h-20 sm:w-20 sm:rounded-2xl">
                           <Image
                             src={itemImage(item)}
                             alt={itemName(item)}
@@ -838,10 +917,10 @@ function OrdersContent() {
 
                         <div className="flex-1 min-w-0 py-1">
                           <div className="flex justify-between items-start mb-2">
-                            <h4 className="text-lg font-medium text-neutral-900 truncate pr-4">
+                            <h4 className="truncate pr-2 text-sm font-medium text-neutral-900 sm:pr-4 sm:text-lg">
                               {itemName(item)}
                             </h4>
-                            <p className="text-lg font-semibold text-neutral-900">
+                            <p className="text-sm font-semibold text-neutral-900 sm:text-lg">
                               KES{" "}
                               {(
                                 item.quantity * itemUnitPrice(item)
@@ -864,13 +943,13 @@ function OrdersContent() {
                     ))}
                   </div>
 
-                  <div className="bg-neutral-50/50 px-8 py-6 border-t border-neutral-100">
+                  <div className="border-t border-neutral-100 bg-neutral-50/50 px-4 py-5 sm:px-8 sm:py-6">
                     <div className="flex justify-between items-end">
                       <div className="space-y-1">
                         <p className="text-sm text-neutral-500">Total Amount</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-4xl font-light tracking-tight text-neutral-900">
+                        <span className="text-2xl font-light tracking-tight text-neutral-900 sm:text-4xl">
                           KES {(selectedOrder.total || 0).toFixed(2)}
                         </span>
                       </div>
@@ -880,8 +959,8 @@ function OrdersContent() {
               </div>
             </div>
 
-            <div className="px-8 py-6 border-t border-neutral-100 bg-white z-10 shrink-0">
-              <div className="flex gap-4">
+            <div className="z-10 shrink-0 border-t border-neutral-100 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-8 sm:py-6">
+              <div className="flex gap-2 sm:gap-4">
                 {selectedOrder.status === "pending" && (
                   <>
                     <button
@@ -889,7 +968,7 @@ function OrdersContent() {
                       onClick={() =>
                         updateOrderStatus(selectedOrder.id, "confirmed")
                       }
-                      className="flex-[2] py-4 bg-neutral-900 text-white rounded-2xl font-medium hover:bg-neutral-800 transition-all shadow-xl shadow-neutral-900/20 text-base flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex min-h-12 flex-[2] items-center justify-center gap-2 rounded-xl bg-neutral-900 px-3 py-3 text-sm font-medium text-white shadow-xl shadow-neutral-900/20 transition-all hover:bg-neutral-800 disabled:opacity-50 sm:rounded-2xl sm:py-4 sm:text-base"
                     >
                       <CheckCircle className="w-5 h-5" />
                       Confirm Order
@@ -899,7 +978,7 @@ function OrdersContent() {
                       onClick={() =>
                         updateOrderStatus(selectedOrder.id, "cancelled")
                       }
-                      className="flex-1 py-4 bg-white border border-black/10 text-black/55 rounded-2xl font-medium hover:bg-black/[0.04] transition-colors disabled:opacity-50"
+                      className="min-h-12 flex-1 rounded-xl border border-black/10 bg-white px-3 py-3 text-sm font-medium text-black/55 transition-colors hover:bg-black/[0.04] disabled:opacity-50 sm:rounded-2xl sm:py-4"
                     >
                       Cancel Order
                     </button>

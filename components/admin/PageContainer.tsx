@@ -23,15 +23,29 @@ export function AdminPageHeader({
   title,
   description,
   actions,
+  badge,
+  eyebrow = "Admin",
+  className,
 }: {
   title: string;
   description?: string;
   actions?: React.ReactNode;
+  badge?: React.ReactNode;
+  eyebrow?: string;
+  className?: string;
 }) {
   return (
-    <header className="flex w-full flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <header
+      className={cn(
+        "flex w-full flex-col gap-5 sm:flex-row sm:items-end sm:justify-between",
+        className,
+      )}
+    >
       <div className="max-w-2xl">
-        <p className={adminUi.pageEyebrow}>Admin</p>
+        <div className="flex items-center gap-2.5">
+          <p className={adminUi.pageEyebrow}>{eyebrow}</p>
+          {badge}
+        </div>
         <h1
           className={cn(adminUi.pageTitle, "mt-2")}
           style={{ fontFamily: "var(--font-display), sans-serif" }}

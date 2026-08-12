@@ -76,8 +76,8 @@ export function AdminDashboard(props: AdminDashboardProps) {
   const segmentTotal = props.segments.reduce((s, c) => s + c.value, 0) || 1;
 
   return (
-    <div className="w-full space-y-12">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="w-full space-y-8 sm:space-y-12">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className={adminUi.pageEyebrow}>Platform</p>
           <h1
@@ -90,24 +90,28 @@ export function AdminDashboard(props: AdminDashboardProps) {
             Marketplace ops · {props.published} published listings
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <button
             type="button"
             onClick={() => setControlOpen(true)}
-            className={adminUi.btnGhost}
+            className={cn(adminUi.btnGhost, "min-h-11")}
+            aria-label="Open platform controls"
           >
             <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
             Control
           </button>
-          <Link href="/admin/vendors" className={adminUi.btnPrimary}>
+          <Link
+            href="/admin/vendors"
+            className={cn(adminUi.btnPrimary, "min-h-11")}
+          >
             Review vendors
           </Link>
         </div>
       </div>
 
       <section>
-        <h2 className={cn("mb-5", adminUi.sectionLabel)}>Alerts</h2>
-        <div className="grid w-full gap-8 sm:grid-cols-2 xl:grid-cols-4">
+        <h2 className={cn("mb-3 sm:mb-5", adminUi.sectionLabel)}>Alerts</h2>
+        <div className="grid w-full grid-cols-2 gap-3 sm:gap-8 xl:grid-cols-4">
           <StatCard
             label="Pending vendors"
             value={props.metrics.vendorsPending}
@@ -141,10 +145,10 @@ export function AdminDashboard(props: AdminDashboardProps) {
         </div>
       </section>
 
-      <div className="grid w-full gap-12 xl:grid-cols-12">
+      <div className="grid w-full gap-8 sm:gap-12 xl:grid-cols-12">
         {flags.widget_profit ? (
           <section className="xl:col-span-8">
-            <div className="mb-5 flex items-end justify-between gap-3">
+            <div className="mb-3 flex items-end justify-between gap-3 sm:mb-5">
               <div>
                 <h2 className={adminUi.sectionLabel}>
                   {props.volumeLabel || "Marketplace GMV"}
@@ -162,11 +166,14 @@ export function AdminDashboard(props: AdminDashboardProps) {
                     : ""}
                 </p>
               </div>
-              <Link href="/admin/finance" className={adminUi.btnGhost}>
+              <Link
+                href="/admin/finance"
+                className={cn(adminUi.btnGhost, "min-h-11")}
+              >
                 Ledger
               </Link>
             </div>
-            <div className="h-[220px] w-full">
+            <div className="h-[168px] w-full sm:h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={props.profitSeries}>
                   <defs>
@@ -225,11 +232,14 @@ export function AdminDashboard(props: AdminDashboardProps) {
         ) : null}
 
         {flags.widget_activity ? (
-          <section className="xl:col-span-4">
-            <h2 className={cn("mb-5", adminUi.sectionLabel)}>
-              Most day active
-            </h2>
-            <div className="h-[220px] w-full">
+          <details className="group xl:col-span-4" open>
+            <summary className="mb-3 flex min-h-11 cursor-pointer list-none items-center justify-between sm:mb-5 [&::-webkit-details-marker]:hidden">
+              <h2 className={adminUi.sectionLabel}>Most day active</h2>
+              <span className="text-[12px] text-black/40 group-open:hidden sm:hidden">
+                Show chart
+              </span>
+            </summary>
+            <div className="h-[168px] w-full sm:h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={props.activity}>
                   <XAxis
@@ -266,19 +276,20 @@ export function AdminDashboard(props: AdminDashboardProps) {
                 Peak {peak.day}: {peak.value.toLocaleString("en-KE")}
               </p>
             ) : null}
-          </section>
+          </details>
         ) : null}
       </div>
 
-      <div className="grid w-full gap-12 xl:grid-cols-12">
+      <div className="grid w-full gap-8 sm:gap-12 xl:grid-cols-12">
         <section className="xl:col-span-5">
-          <h2 className={cn("mb-5", adminUi.sectionLabel)}>Queues</h2>
-          <div className="space-y-4">
+          <h2 className={cn("mb-3 sm:mb-5", adminUi.sectionLabel)}>Queues</h2>
+          <div className="space-y-1 sm:space-y-4">
             {props.queues.map((q) => (
               <Link
                 key={q.href}
                 href={q.href}
-                className="flex items-baseline justify-between gap-4 border-b border-black/10 py-3 transition-opacity hover:opacity-70"
+                className="flex min-h-14 items-center justify-between gap-4 border-b border-black/10 py-3 transition-opacity hover:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                aria-label={`${q.title}: ${q.value}. ${q.hint}`}
               >
                 <div>
                   <p className="text-[15px] font-medium text-black">
@@ -294,8 +305,13 @@ export function AdminDashboard(props: AdminDashboardProps) {
           </div>
         </section>
 
-        <section className="xl:col-span-3">
-          <h2 className={cn("mb-5", adminUi.sectionLabel)}>Segments</h2>
+        <details className="group xl:col-span-3" open>
+          <summary className="mb-3 flex min-h-11 cursor-pointer list-none items-center justify-between sm:mb-5 [&::-webkit-details-marker]:hidden">
+            <h2 className={adminUi.sectionLabel}>Segments</h2>
+            <span className="text-[12px] text-black/40 group-open:hidden sm:hidden">
+              Show breakdown
+            </span>
+          </summary>
           <div className="space-y-4">
             {props.segments.map((c) => (
               <div key={c.label}>
@@ -316,11 +332,16 @@ export function AdminDashboard(props: AdminDashboardProps) {
               </div>
             ))}
           </div>
-        </section>
+        </details>
 
         {flags.widget_repeat ? (
-          <section className="xl:col-span-4">
-            <h2 className={cn("mb-5", adminUi.sectionLabel)}>Ops health</h2>
+          <details className="group xl:col-span-4" open>
+            <summary className="mb-3 flex min-h-11 cursor-pointer list-none items-center justify-between sm:mb-5 [&::-webkit-details-marker]:hidden">
+              <h2 className={adminUi.sectionLabel}>Ops health</h2>
+              <span className="text-[12px] text-black/40 group-open:hidden sm:hidden">
+                Show score
+              </span>
+            </summary>
             <p className="text-[40px] font-medium tracking-tight text-black tabular-nums">
               {props.repeatRate}%
             </p>
@@ -333,12 +354,17 @@ export function AdminDashboard(props: AdminDashboardProps) {
             >
               System health
             </Link>
-          </section>
+          </details>
         ) : null}
       </div>
 
-      <section>
-        <h2 className={cn("mb-5", adminUi.sectionLabel)}>Modules</h2>
+      <details className="group" open>
+        <summary className="mb-3 flex min-h-11 cursor-pointer list-none items-center justify-between sm:mb-5 [&::-webkit-details-marker]:hidden">
+          <h2 className={adminUi.sectionLabel}>Modules</h2>
+          <span className="text-[12px] text-black/40 group-open:hidden sm:hidden">
+            Show shortcuts
+          </span>
+        </summary>
         <div className="grid w-full grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           {[
             { href: "/admin/customers", label: "Customers", icon: Users },
@@ -351,7 +377,7 @@ export function AdminDashboard(props: AdminDashboardProps) {
               <Link
                 key={m.href}
                 href={m.href}
-                className="flex items-center gap-2.5 py-1.5 text-[14px] text-black/50 transition-colors hover:text-black"
+                className="flex min-h-11 items-center gap-2.5 py-1.5 text-[14px] text-black/50 transition-colors hover:text-black"
               >
                 <Icon className="h-3.5 w-3.5 text-black/25" strokeWidth={1.5} />
                 {m.label}
@@ -359,7 +385,7 @@ export function AdminDashboard(props: AdminDashboardProps) {
             );
           })}
         </div>
-      </section>
+      </details>
 
       <ControlPanel
         open={controlOpen}
