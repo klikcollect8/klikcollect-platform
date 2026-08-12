@@ -5,48 +5,45 @@ Manual warehouse flow against staging/prod admin (platform role with `barcode:sc
 ## Preconditions
 
 - [ ] `KLIKCOLLECT_PRODUCT_RESOLVER_USER_AGENT` set (descriptive UA string)
-- [ ] Migration `032_product_resolver` applied
+- [ ] Migrations `032`–`034` applied (`034` expands `product_media.role`)
 - [ ] Camera permission granted (or use Hardware / Manual mode)
+- [ ] Role has `barcode:scan` (scanner) and `products:create` (commit)
 - [ ] At least one KlikCollect category exists for mapping
 
-## Happy path (known grocery barcode)
+## Fullscreen scan + full import
 
-Use a real EAN-13 on pack (e.g. Nutella `3017620422003` or a local Kenyan SKU known in Open Food Facts).
+Use a real EAN-13 on pack (e.g. Nutella `3017620422003`).
 
-1. [ ] Open `/admin/products/scanner`
-2. [ ] Scan with camera **or** enter barcode + Look up **or** hardware wedge (focus field, scan, Enter)
-3. [ ] UI shows normalised format + code
-4. [ ] If not already in catalogue: candidate fields + provenance (✓ OFF / ⚠)
-5. [ ] Choose a KlikCollect category (never auto-map OFF taxonomy)
-6. [ ] Edit name/brand if needed → **Create KlikCollect product**
-7. [ ] Lands on `/admin/products/[id]` with status `pending_review`
-8. [ ] `product_external_sources` + `product_field_provenance` rows present
-9. [ ] `barcode_scan_events` row written; `product_audit_log` has `resolver.imported`
-10. [ ] Product appears in Catalogue list; **not** `published`
+1. [ ] Open `/admin/products/scanner` — fullscreen camera + session tray
+2. [ ] Scan with camera **or** bottom search (name/barcode) **or** hardware wedge
+3. [ ] Resolve progress steps show (Detect → KlikCollect → Databases → Ready)
+4. [ ] If already in KC: intelligence sheet shows **Already in KlikCollect** — no create
+5. [ ] If new: sheet shows identity, diet flags, ingredients, nutrition, packaging/origin, media (pick main)
+6. [ ] Perishability options map to DB values (`non_perishable` / `refrigerated` / `perishable` / `frozen`)
+7. [ ] Similar products strip appears (In catalogue / Not in KlikCollect)
+8. [ ] Required: choose KC category, product type, sale unit; ack fuzzy dups if shown
+9. [ ] **Create KlikCollect product** — with Continuous on, returns to camera; tray shows `created`
+10. [ ] Product has attributes (ingredients, nutrition_json, vegan, storage, …), specs, media roles
+11. [ ] Re-scan same barcode → existing product only (no second create)
+12. [ ] Invalid checksum (manual force) → invalid UI → optional manual create
 
-## Duplicate protection
+## Search
 
-1. [ ] Re-scan the same barcode
-2. [ ] UI shows existing product (no second create)
-3. [ ] Audit action `resolver.duplicate_blocked` (or equivalent)
+1. [ ] Type a product name in scanner search → local + external hits
+2. [ ] Tap local → opens catalogue product
+3. [ ] Tap external → resolve/review flow
 
-## Miss / manual
+## Discovery page
 
-1. [ ] Scan a valid checksum barcode unlikely in OFF
-2. [ ] Manual create fallback → fill name + category → commit `pending_review`
-
-## Local-only path
-
-1. [ ] Quick local hit via `GET /api/admin/catalogue/barcode/[code]` still returns `{ found, product }`
-2. [ ] Wizard Scan → Look up enriches draft; does not auto-publish
-
-## Resilience (optional)
-
-1. [ ] With network blocked: resolve still allows manual create; friendly error, no crash
-2. [ ] Torch / device picker work on supported Android Chrome
+1. [ ] Open `/admin/products/discovery`
+2. [ ] Type `milk` / category → temporary **Related products** live list
+3. [ ] **Review** / **Add to queue** work; failed PATCH shows an error
+4. [ ] Pending items from scan/similar/search appear
+5. [ ] **Dismiss** / restore / bulk actions work
 
 ## Automated offline checks
 
 ```bash
 npx tsx scripts/verify-product-resolver.ts
+npx tsc --noEmit
 ```

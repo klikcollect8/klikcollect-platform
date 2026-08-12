@@ -15,6 +15,9 @@ export interface ProductDataProvider {
   getProviderName(): ProviderId;
   getSupportedProductTypes(): ProductTypeSupport[];
   getProductByBarcode(barcode: string): Promise<ProviderLookupResult>;
-  searchProduct?(query: string): Promise<ProviderLookupResult[]>;
+  searchProduct?(
+    query: string,
+    opts?: { pageSize?: number },
+  ): Promise<ProviderLookupResult[]>;
   normaliseResponse(raw: unknown, barcode: string): Partial<CandidateProduct> | null;
 }

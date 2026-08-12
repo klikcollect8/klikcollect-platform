@@ -24,6 +24,10 @@ type Props = {
   /** When false, camera stays stopped (e.g. modal closed). Default true for embedded use. */
   active?: boolean;
   className?: string;
+  /** Full-bleed camera for warehouse scanner page. */
+  fullscreen?: boolean;
+  /** Hide built-in header (parent provides chrome). */
+  hideHeader?: boolean;
   /** Auto-emit on first valid decode (warehouse flow). */
   autoSubmit?: boolean;
   onDetected: (code: string, meta?: ScannerDetectMeta) => void;
@@ -39,6 +43,8 @@ type ZXingLib = typeof import("@zxing/library");
 export default function BarcodeScannerPanel({
   active = true,
   className,
+  fullscreen = false,
+  hideHeader = false,
   autoSubmit = true,
   onDetected,
 }: Props) {
@@ -60,6 +66,9 @@ export default function BarcodeScannerPanel({
   const [deviceId, setDeviceId] = useState("");
   const [torchOn, setTorchOn] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
+  const [zoomSupported, setZoomSupported] = useState(false);
+  const [zoomMax, setZoomMax] = useState(1);
+  const [zoom, setZoom] = useState(1);
   const [paused, setPaused] = useState(false);
   const [lastDetected, setLastDetected] = useState<{
     value: string;
@@ -91,13 +100,27 @@ export default function BarcodeScannerPanel({
   }, []);
 
   const emit = useCallback(
-    (raw: string, formatHint: string | undefined, source: ScannerDetectMeta["source"]) => {
+    (
+      raw: string,
+      formatHint: string | undefined,
+      source: ScannerDetectMeta["source"],
+      opts?: { force?: boolean },
+    ) => {
       const n = normaliseBarcode(raw, { formatHint });
-      if (!n.valid && n.value.length < 6) {
+      // Camera / hardware: only emit valid GTINs. Manual can force-submit.
+      if (!n.valid && !opts?.force) {
+        setError(n.error || "Invalid barcode checksum — enter manually to force");
+        setLastDetected({
+          value: n.value || raw,
+          format: formatHint || n.format || "unknown",
+        });
+        return;
+      }
+      const value = n.valid ? n.value : n.value || raw.replace(/\D/g, "") || raw;
+      if (!value || value.length < 6) {
         setError(n.error || "Invalid barcode");
         return;
       }
-      const value = n.valid ? n.value : n.value || raw;
       const now = Date.now();
       if (value === lastCodeRef.current && now - lastAtRef.current < 1800) {
         return;
@@ -106,7 +129,11 @@ export default function BarcodeScannerPanel({
       lastAtRef.current = now;
       const format = formatHint || n.format;
       setLastDetected({ value, format });
-      setError(null);
+      setError(
+        n.valid
+          ? null
+          : "Checksum invalid — submitting anyway for manual review",
+      );
 
       if (source === "camera") {
         pausedRef.current = true;
@@ -120,13 +147,38 @@ export default function BarcodeScannerPanel({
 
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         try {
-          navigator.vibrate(35);
+          navigator.vibrate(n.valid ? 35 : [20, 40, 20]);
         } catch {
           /* ignore */
         }
       }
 
-      if (autoSubmit || source !== "camera") {
+      // Short beep on successful valid decode
+      if (n.valid && typeof window !== "undefined") {
+        try {
+          const Ctx =
+            window.AudioContext ||
+            (window as unknown as { webkitAudioContext?: typeof AudioContext })
+              .webkitAudioContext;
+          if (Ctx) {
+            const ctx = new Ctx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.value = 880;
+            gain.gain.value = 0.04;
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.08);
+            void ctx.close();
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (autoSubmit || source !== "camera" || opts?.force) {
         onDetectedRef.current(value, { format, source });
       }
     },
@@ -260,8 +312,21 @@ export default function BarcodeScannerPanel({
 
       const stream = videoEl.srcObject as MediaStream | null;
       const track = stream?.getVideoTracks()?.[0];
-      const caps = track?.getCapabilities?.() as { torch?: boolean } | undefined;
+      const caps = track?.getCapabilities?.() as {
+        torch?: boolean;
+        zoom?: { min?: number; max?: number };
+      } | undefined;
       setTorchSupported(Boolean(caps?.torch));
+      const zMax = caps?.zoom?.max;
+      if (typeof zMax === "number" && zMax > 1) {
+        setZoomSupported(true);
+        setZoomMax(zMax);
+        setZoom(1);
+      } else {
+        setZoomSupported(false);
+        setZoomMax(1);
+        setZoom(1);
+      }
     } catch (e) {
       setEngine("unavailable");
       const raw = e instanceof Error ? e.message : String(e);
@@ -308,10 +373,25 @@ export default function BarcodeScannerPanel({
     }
   };
 
+  const applyZoom = async (value: number) => {
+    const stream = videoRef.current?.srcObject as MediaStream | null;
+    const track = stream?.getVideoTracks()?.[0];
+    if (!track) return;
+    try {
+      await track.applyConstraints({
+        advanced: [{ zoom: value } as unknown as MediaTrackConstraintSet],
+      });
+      setZoom(value);
+    } catch {
+      setZoomSupported(false);
+    }
+  };
+
   const submitEntry = (source: "hardware" | "manual") => {
     const v = (source === "hardware" ? hardware : manual).trim();
     if (!v) return;
-    emit(v, undefined, source);
+    // Manual entry may force-submit invalid checksums for review
+    emit(v, undefined, source, { force: source === "manual" });
     if (source === "hardware") setHardware("");
     else setManual("");
   };
@@ -319,25 +399,28 @@ export default function BarcodeScannerPanel({
   return (
     <div
       className={cn(
-        "overflow-hidden border border-black/10 bg-[#f7f7f5]",
+        "overflow-hidden bg-white",
+        fullscreen ? "flex h-full flex-col border-0" : "border border-slate-200",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <ScanBarcode className="h-4 w-4 text-black/50" />
-          <p className="text-[11px] uppercase tracking-[0.16em] text-black/45">
-            Live barcode scanner
+      {!hideHeader ? (
+        <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <ScanBarcode className="h-4 w-4 text-black/50" />
+            <p className="text-[11px] uppercase tracking-[0.16em] text-black/45">
+              Live barcode scanner
+            </p>
+          </div>
+          <p className="text-[11px] text-black/40">
+            {engine === "zxing"
+              ? "ZXing engine"
+              : engine === "loading"
+                ? "Loading engine…"
+                : "Camera offline"}
           </p>
         </div>
-        <p className="text-[11px] text-black/40">
-          {engine === "zxing"
-            ? "ZXing engine"
-            : engine === "loading"
-              ? "Loading engine…"
-              : "Camera offline"}
-        </p>
-      </div>
+      ) : null}
 
       <div className="flex gap-2 border-b border-black/10 px-4 py-2">
         <button
@@ -366,7 +449,12 @@ export default function BarcodeScannerPanel({
 
       {mode === "camera" ? (
         <>
-          <div className="relative aspect-[4/3] bg-black sm:aspect-[16/10]">
+          <div
+            className={cn(
+              "relative bg-black",
+              fullscreen ? "min-h-0 flex-1" : "aspect-[4/3] sm:aspect-[16/10]",
+            )}
+          >
             <video
               ref={videoRef}
               className="h-full w-full object-cover"
@@ -434,6 +522,20 @@ export default function BarcodeScannerPanel({
               >
                 <Flashlight className="h-3.5 w-3.5" /> Torch
               </button>
+            ) : null}
+            {zoomSupported ? (
+              <label className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-black/50">
+                Zoom
+                <input
+                  type="range"
+                  min={1}
+                  max={zoomMax}
+                  step={0.1}
+                  value={zoom}
+                  className="w-24"
+                  onChange={(e) => void applyZoom(Number(e.target.value))}
+                />
+              </label>
             ) : null}
             <button
               type="button"

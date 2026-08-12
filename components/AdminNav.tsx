@@ -40,6 +40,7 @@ import { Show, UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/components/admin/admin-ui";
 import { ControlPanel } from "@/components/os/ControlPanel";
+import ProductScannerHost from "@/components/admin/catalogue/scanner/ProductScannerHost";
 import { openInstallAppPrompt } from "@/components/InstallAppPrompt";
 import {
   PLATFORM_ROLES,
@@ -132,6 +133,19 @@ const allNavItems: NavItem[] = [
     href: "/admin/products/scanner",
     label: "Product scanner",
     icon: ScanBarcode,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "content_manager",
+    ],
+    permission: "barcode:scan",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/products/discovery",
+    label: "Product discovery",
+    icon: Package,
     roles: [
       "super_admin",
       "platform_admin",
@@ -616,29 +630,33 @@ export default function AdminNav({
                 {items.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(pathname, item.href);
+                  const className = cn(
+                    "flex w-full min-h-10 items-center gap-2.5 rounded-none py-2.5 text-left text-[13.5px] tracking-tight",
+                    collapsed && !mobileDrawer
+                      ? "justify-center px-2"
+                      : "px-3",
+                    active
+                      ? "bg-black/[0.045] font-medium text-black"
+                      : "font-medium text-black/42 transition-colors hover:bg-black/[0.03] hover:text-black",
+                  );
+                  const iconEl = (
+                    <Icon
+                      className={cn(
+                        "h-[15px] w-[15px] shrink-0",
+                        active ? "text-black" : "text-black/32",
+                      )}
+                      strokeWidth={active ? 1.75 : 1.5}
+                    />
+                  );
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={onNavigate}
                       title={item.label}
-                      className={cn(
-                        "flex min-h-10 items-center gap-2.5 rounded-none py-2.5 text-[13.5px] tracking-tight",
-                        collapsed && !mobileDrawer
-                          ? "justify-center px-2"
-                          : "px-3",
-                        active
-                          ? "bg-black/[0.045] font-medium text-black"
-                          : "font-medium text-black/42 transition-colors hover:bg-black/[0.03] hover:text-black",
-                      )}
+                      className={className}
                     >
-                      <Icon
-                        className={cn(
-                          "h-[15px] w-[15px] shrink-0",
-                          active ? "text-black" : "text-black/32",
-                        )}
-                        strokeWidth={active ? 1.75 : 1.5}
-                      />
+                      {iconEl}
                       {mobileDrawer || !collapsed ? (
                         <span className="truncate">{item.label}</span>
                       ) : null}
@@ -847,6 +865,8 @@ export default function AdminNav({
         />
       ) : null}
 
+      <ProductScannerHost />
+
       <ControlPanel
         open={controlOpen}
         onClose={() => setControlOpen(false)}
@@ -905,18 +925,18 @@ function AdminCommandPalette({
             results.map((item) => {
               const Icon = item.icon;
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onClose}
-                  className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-[14px] font-medium text-slate-800 transition hover:bg-slate-50"
-                >
-                  <Icon className="h-4 w-4 text-slate-400" />
-                  <span className="flex-1">{item.label}</span>
-                  <span className="text-[11px] capitalize text-slate-400">
-                    {item.group}
-                  </span>
-                </Link>
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onClose}
+                    className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-[14px] font-medium text-slate-800 transition hover:bg-slate-50"
+                  >
+                    <Icon className="h-4 w-4 text-slate-400" />
+                    <span className="flex-1">{item.label}</span>
+                    <span className="text-[11px] capitalize text-slate-400">
+                      {item.group}
+                    </span>
+                  </Link>
               );
             })
           ) : (

@@ -6,10 +6,18 @@ import { config } from "dotenv";
 config();
 
 import { normaliseBarcode } from "../lib/catalogue/barcode-normalize";
-import { mergeProviderResults } from "../lib/product-resolver/merge";
+import {
+  mergeProviderResults,
+  candidateToAttributes,
+  mapPerishabilityToDb,
+} from "../lib/product-resolver/merge";
 import { fieldFromProvider, emptyField } from "../lib/product-resolver/field";
 import { roleHasPermission } from "../lib/authz/roles";
-import type { ProviderLookupResult } from "../lib/product-resolver/types";
+import { createOpenFoodFactsProvider } from "../lib/product-resolver/providers/open-food-facts";
+import type {
+  CandidateProduct,
+  ProviderLookupResult,
+} from "../lib/product-resolver/types";
 
 let failed = 0;
 
@@ -20,6 +28,65 @@ function assert(cond: boolean, msg: string) {
   } else {
     console.log("ok:", msg);
   }
+}
+
+function baseCandidate(
+  name: string,
+  brand: string,
+  provider: "open_food_facts" | "klikcollect",
+): Partial<CandidateProduct> {
+  return {
+    barcode: "3017620422003",
+    format: "EAN_13",
+    name: fieldFromProvider(name, provider),
+    brand: fieldFromProvider(brand, provider),
+    genericName: emptyField(),
+    quantity: fieldFromProvider("400g", provider),
+    unit: emptyField(),
+    description: emptyField(),
+    ingredients: fieldFromProvider("sugar, cocoa", provider),
+    allergens: fieldFromProvider("milk", provider),
+    additives: emptyField(),
+    traces: emptyField(),
+    nutrition: fieldFromProvider(
+      { "energy-kcal_100g": 539 },
+      provider,
+    ),
+    nutriscore: fieldFromProvider("E", provider),
+    novaGroup: fieldFromProvider("4", provider),
+    ecoscore: fieldFromProvider("D", provider),
+    labels: emptyField(),
+    externalCategories: fieldFromProvider(["Spreads"], provider),
+    countries: emptyField(),
+    stores: emptyField(),
+    origins: emptyField(),
+    packaging: emptyField(),
+    manufacturer: emptyField(),
+    servingSize: emptyField(),
+    storage: emptyField(),
+    vegan: fieldFromProvider("yes", provider),
+    vegetarian: fieldFromProvider("yes", provider),
+    palmOil: fieldFromProvider("no", provider),
+    pnnsGroup: fieldFromProvider("sweet spreads", provider),
+    foodGroup: emptyField(),
+    nutrientLevels: emptyField(),
+    embCodes: emptyField(),
+    producerLink: emptyField(),
+    brandsAll: fieldFromProvider(brand, provider),
+    completeness: fieldFromProvider(72, provider),
+    extraAttributes: { nova_group: "4", ecoscore: "D" },
+    specs: [{ key: "Energy (kcal/100g)", value: "539" }],
+    similarQuery: { brand, searchTerms: `${brand} Spreads` },
+    images: [],
+    sources: [
+      {
+        provider,
+        externalProductId: "3017620422003",
+        sourceUrl: "https://example.com",
+        fetchedAt: new Date().toISOString(),
+      },
+    ],
+  };
 }
 
 // —— Barcode normalisation ——
@@ -64,37 +131,7 @@ assert(
 const off: ProviderLookupResult = {
   provider: "open_food_facts",
   status: "hit",
-  candidate: {
-    barcode: "3017620422003",
-    format: "EAN_13",
-    name: fieldFromProvider("OFF Name", "open_food_facts"),
-    brand: fieldFromProvider("OFF Brand", "open_food_facts"),
-    genericName: emptyField(),
-    quantity: emptyField(),
-    unit: emptyField(),
-    description: emptyField(),
-    ingredients: emptyField(),
-    allergens: emptyField(),
-    additives: emptyField(),
-    traces: emptyField(),
-    nutrition: emptyField(),
-    nutriscore: emptyField(),
-    labels: emptyField(),
-    externalCategories: emptyField(),
-    countries: emptyField(),
-    packaging: emptyField(),
-    images: [],
-    manufacturer: emptyField(),
-    servingSize: emptyField(),
-    sources: [
-      {
-        provider: "open_food_facts",
-        externalProductId: "3017620422003",
-        sourceUrl: "https://world.openfoodfacts.org/product/3017620422003",
-        fetchedAt: new Date().toISOString(),
-      },
-    ],
-  },
+  candidate: baseCandidate("OFF Name", "OFF Brand", "open_food_facts"),
   fetchedAt: new Date().toISOString(),
 };
 
@@ -102,9 +139,7 @@ const local: ProviderLookupResult = {
   provider: "klikcollect",
   status: "hit",
   candidate: {
-    ...off.candidate!,
-    name: fieldFromProvider("KC Approved Name", "klikcollect"),
-    brand: fieldFromProvider("KC Brand", "klikcollect"),
+    ...baseCandidate("KC Approved Name", "KC Brand", "klikcollect"),
     sources: [
       {
         provider: "klikcollect",
@@ -123,6 +158,85 @@ assert(merged?.brand.value === "KC Brand", "merge prefers KlikCollect brand");
 
 const offOnly = mergeProviderResults("3017620422003", "EAN_13", [off]);
 assert(offOnly?.name.value === "OFF Name", "OFF used when no local");
+assert(offOnly?.novaGroup.value === "4", "merge keeps nova group");
+assert(
+  Boolean(offOnly && candidateToAttributes(offOnly).ingredients),
+  "candidateToAttributes includes ingredients",
+);
+assert(
+  Boolean(offOnly && candidateToAttributes(offOnly).nutrition_json),
+  "candidateToAttributes includes nutrition_json",
+);
+assert(
+  Boolean(offOnly?.similarQuery.searchTerms),
+  "similarQuery hints present",
+);
+assert(
+  offOnly != null && candidateToAttributes(offOnly).vegan === "yes",
+  "candidateToAttributes includes vegan",
+);
+assert(
+  offOnly != null && candidateToAttributes(offOnly).dietary?.includes("Vegan"),
+  "candidateToAttributes dietary aggregates diet flags",
+);
+assert(
+  mapPerishabilityToDb("ambient") === "non_perishable",
+  "perishability ambient → non_perishable",
+);
+assert(
+  mapPerishabilityToDb("chilled") === "refrigerated",
+  "perishability chilled → refrigerated",
+);
+assert(
+  mapPerishabilityToDb("fresh") === "perishable",
+  "perishability fresh → perishable",
+);
+assert(mapPerishabilityToDb("frozen") === "frozen", "perishability frozen stays");
+
+// —— OFF normaliser: diet tags / unit / storage ——
+const offProvider = createOpenFoodFactsProvider();
+const normalised = offProvider.normaliseResponse(
+  {
+    status: 1,
+    product: {
+      code: "3017620422003",
+      product_name: "Test Spread",
+      brands: "BrandA, BrandB",
+      quantity: "400 g",
+      product_quantity: 400,
+      product_quantity_unit: "g",
+      ingredients_analysis_tags: ["en:vegan", "en:vegetarian", "en:palm-oil-free"],
+      pnns_groups_1: "Sugary snacks",
+      pnns_groups_2: "Sweets",
+      conservation_conditions: "Keep cool and dry",
+      nutrient_levels: { fat: "high", salt: "low" },
+      nutriments: { "energy-kcal_100g": 100, fiber_100g: 2, "iron_100g": 0.01, "alcohol_100g": 0 },
+      emb_codes: "FR 01.001",
+      link: "https://example.com/product",
+      completeness: 0.81,
+    },
+  },
+  "3017620422003",
+);
+assert(normalised?.vegan?.value === "yes", "OFF maps vegan tag");
+assert(normalised?.palmOil?.value === "no", "OFF maps palm-oil-free → no");
+assert(normalised?.unit?.value === "g", "OFF maps product_quantity_unit");
+assert(
+  normalised?.storage?.value === "Keep cool and dry",
+  "OFF maps conservation_conditions",
+);
+assert(
+  normalised?.pnnsGroup?.value === "Sweets",
+  "OFF prefers pnns_groups_2",
+);
+assert(
+  Boolean(normalised?.specs?.some((s) => /fibre|fiber/i.test(s.key))),
+  "OFF nutrition specs include fibre",
+);
+assert(
+  Boolean(normalised?.specs?.some((s) => /iron|alcohol/i.test(s.key))),
+  "OFF nutrition specs include extra nutriments",
+);
 
 // —— Auth gates for resolve/commit ——
 assert(

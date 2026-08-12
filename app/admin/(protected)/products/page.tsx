@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Archive,
   Copy,
+  ImageIcon,
   Plus,
   ScanBarcode,
 } from "lucide-react";
@@ -14,10 +15,14 @@ import AccessControl from "@/components/admin/AccessControl";
 import PageContainer, {
   AdminPageHeader,
 } from "@/components/admin/PageContainer";
+import SlideOver from "@/components/admin/SlideOver";
+import ProductDataVisual from "@/components/admin/catalogue/ProductDataVisual";
 import ProductCreateWizard from "@/components/admin/catalogue/ProductCreateWizard";
 import CatalogueSearchBar from "@/components/admin/catalogue/CatalogueSearchBar";
+import ThemeSelect from "@/components/ui/ThemeSelect";
 import { adminUi } from "@/components/admin/admin-ui";
 import { useToast } from "@/components/ToastProvider";
+import { openProductScanner } from "@/lib/admin/product-scanner-events";
 import { PRODUCT_KINDS } from "@/lib/catalogue/product-draft";
 import { cn } from "@/lib/utils";
 
@@ -105,7 +110,20 @@ function ProductsCatalogue() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [dense, setDense] = useState(false);
+  const [showImages, setShowImages] = useState(true);
+  const [slideRow, setSlideRow] = useState<Row | null>(null);
+  const [slideDetail, setSlideDetail] = useState<{
+    brand?: string | null;
+    categoryName?: string | null;
+    description?: string | null;
+    saleUnit?: string | null;
+    attributes?: Record<string, string> | null;
+    image?: string | null;
+    barcode?: string | null;
+    sku?: string | null;
+    gtin?: string | null;
+  } | null>(null);
+  const [slideLoading, setSlideLoading] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(
     searchParams.get("create") === "1",
   );
@@ -121,14 +139,77 @@ function ProductsCatalogue() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "/" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+      const typing =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable);
+      if (e.key === "/" && !typing) {
         e.preventDefault();
         searchRef.current?.focus();
+        return;
+      }
+      if ((e.key === "s" || e.key === "S") && !typing && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        openProductScanner({ context: "catalogue" });
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    if (!slideRow) {
+      setSlideDetail(null);
+      setSlideLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSlideLoading(true);
+    setSlideDetail(null);
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/catalogue/products/${encodeURIComponent(slideRow.id)}`,
+        );
+        const data = await res.json();
+        if (cancelled || !res.ok) return;
+        const p = data.product as {
+          brandName?: string | null;
+          categoryName?: string | null;
+          description?: string | null;
+          saleUnit?: string | null;
+          attributes?: Record<string, string> | null;
+          image?: string | null;
+          barcode?: string | null;
+          sku?: string | null;
+          gtin?: string | null;
+          media?: Array<{ url?: string; role?: string }>;
+        };
+        const primaryMedia =
+          p.media?.find((m) => m.role === "primary")?.url ||
+          p.media?.[0]?.url ||
+          null;
+        setSlideDetail({
+          brand: p.brandName || null,
+          categoryName: p.categoryName || null,
+          description: p.description || null,
+          saleUnit: p.saleUnit || null,
+          attributes: p.attributes || null,
+          image: primaryMedia || p.image || null,
+          barcode: p.barcode || null,
+          sku: p.sku || null,
+          gtin: p.gtin || null,
+        });
+      } catch {
+        /* keep list fields */
+      } finally {
+        if (!cancelled) setSlideLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slideRow]);
 
   useEffect(() => {
     void (async () => {
@@ -364,13 +445,14 @@ function ProductsCatalogue() {
         description="Every platform product. Vendors set their own price and stock on offers."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link
-              href="/admin/products/scanner"
+            <button
+              type="button"
               className={cn(adminUi.btnSecondary, "inline-flex items-center gap-2")}
+              onClick={() => openProductScanner({ context: "catalogue" })}
             >
               <ScanBarcode className="h-4 w-4" />
-              Product scanner
-            </Link>
+              Scan product
+            </button>
             <button
               type="button"
               className={adminUi.btnPrimary}
@@ -405,109 +487,112 @@ function ProductsCatalogue() {
         />
 
         {advancedOpen ? (
-          <div className="scrollbar-hide max-h-[50vh] overflow-y-auto border border-black/10 bg-white/40 p-4 sm:p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-black/40">
-                Advanced filters
+          <div className="space-y-4 border-y border-black/[0.06] py-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-black/35">
+                Filters
               </p>
               {activeFilterCount > 0 ? (
                 <button
                   type="button"
                   onClick={clearAdvanced}
-                  className="text-[12px] text-black/50 underline decoration-black/20 underline-offset-4 hover:text-black"
+                  className="text-[12px] text-black/45 underline decoration-black/15 underline-offset-4 hover:text-black"
                 >
                   Clear
                 </button>
               ) : null}
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="block text-[12px] text-black/50">
-                Product type
-                <select
-                  className={cn(adminUi.input, "mt-1")}
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value)}
-                >
-                  <option value="">All types</option>
-                  {PRODUCT_KINDS.map((k) => (
-                    <option key={k.id} value={k.id}>
-                      {k.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-[12px] text-black/50">
-                Category
-                <select
-                  className={cn(adminUi.input, "mt-1")}
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                >
-                  <option value="">All categories</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-[12px] text-black/50">
-                Brand
-                <select
-                  className={cn(adminUi.input, "mt-1")}
-                  value={brandId}
-                  onChange={(e) => setBrandId(e.target.value)}
-                >
-                  <option value="">All brands</option>
-                  {brands.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-[12px] text-black/50">
-                Guide min (KES)
-                <input
-                  className={cn(adminUi.input, "mt-1")}
-                  inputMode="numeric"
-                  value={guideMin}
-                  onChange={(e) => setGuideMin(e.target.value)}
-                  placeholder="0"
-                />
-              </label>
-              <label className="block text-[12px] text-black/50">
-                Guide max (KES)
-                <input
-                  className={cn(adminUi.input, "mt-1")}
-                  inputMode="numeric"
-                  value={guideMax}
-                  onChange={(e) => setGuideMax(e.target.value)}
-                  placeholder="Any"
-                />
-              </label>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ThemeSelect
+                value={kind || "all"}
+                onValueChange={(v) => setKind(v === "all" ? "" : v)}
+                size="sm"
+                fullWidth
+                placeholder="Product type"
+                triggerClassName="h-10 w-full"
+                options={[
+                  { value: "all", label: "All types" },
+                  ...PRODUCT_KINDS.map((k) => ({
+                    value: k.id,
+                    label: k.label,
+                  })),
+                ]}
+              />
+              <ThemeSelect
+                value={categoryId || "all"}
+                onValueChange={(v) => setCategoryId(v === "all" ? "" : v)}
+                size="sm"
+                fullWidth
+                placeholder="Category"
+                triggerClassName="h-10 w-full"
+                options={[
+                  { value: "all", label: "All categories" },
+                  ...categories.map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                  })),
+                ]}
+              />
+              <ThemeSelect
+                value={brandId || "all"}
+                onValueChange={(v) => setBrandId(v === "all" ? "" : v)}
+                size="sm"
+                fullWidth
+                placeholder="Brand"
+                triggerClassName="h-10 w-full"
+                options={[
+                  { value: "all", label: "All brands" },
+                  ...brands.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+              />
             </div>
-            <div className="mt-4 flex flex-wrap gap-4 text-[12px] text-black/55">
-              {(
-                [
-                  ["Missing images", missingImage, setMissingImage],
-                  ["Missing barcode", missingBarcode, setMissingBarcode],
-                  ["Missing SEO", missingSeo, setMissingSeo],
-                  ["Has variants", hasVariants, setHasVariants],
-                  ["No vendor offers", noOffers, setNoOffers],
-                  ["Has vendor offers", hasOffers, setHasOffers],
-                  ["Featured only", featuredOnly, setFeaturedOnly],
-                ] as const
-              ).map(([label, checked, set]) => (
-                <label key={label} className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => set(e.target.checked)}
-                  />
-                  {label}
-                </label>
-              ))}
+
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <input
+                className={cn(adminUi.input, "h-10")}
+                inputMode="numeric"
+                value={guideMin}
+                onChange={(e) => setGuideMin(e.target.value)}
+                placeholder="Guide min (KES)"
+                aria-label="Guide min"
+              />
+              <input
+                className={cn(adminUi.input, "h-10")}
+                inputMode="numeric"
+                value={guideMax}
+                onChange={(e) => setGuideMax(e.target.value)}
+                placeholder="Guide max (KES)"
+                aria-label="Guide max"
+              />
+              <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                {(
+                  [
+                    ["No image", missingImage, setMissingImage],
+                    ["No barcode", missingBarcode, setMissingBarcode],
+                    ["No SEO", missingSeo, setMissingSeo],
+                    ["Variants", hasVariants, setHasVariants],
+                    ["No offers", noOffers, setNoOffers],
+                    ["Has offers", hasOffers, setHasOffers],
+                    ["Featured", featuredOnly, setFeaturedOnly],
+                  ] as const
+                ).map(([label, checked, set]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => set(!checked)}
+                    aria-pressed={checked}
+                    className={cn(
+                      "px-2.5 py-1.5 text-[11px] transition-colors",
+                      checked
+                        ? "bg-black text-white"
+                        : "text-black/45 hover:text-black",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : null}
@@ -530,20 +615,26 @@ function ProductsCatalogue() {
             ) : null}
             <button
               type="button"
-              className={adminUi.btnGhost}
-              onClick={() => setDense((d) => !d)}
+              className={cn(
+                adminUi.btnGhost,
+                "inline-flex items-center gap-1.5",
+                showImages && "text-black",
+              )}
+              onClick={() => setShowImages((v) => !v)}
+              aria-pressed={showImages}
             >
-              {dense ? "Comfortable" : "Dense"}
+              <ImageIcon className="h-3.5 w-3.5" />
+              {showImages ? "Hide images" : "Show images"}
             </button>
           </div>
         </div>
       </div>
 
       <div className="scrollbar-hide overflow-x-auto">
-        <table className="w-full min-w-[960px] border-collapse text-left text-[13px]">
+        <table className="w-full min-w-[1200px] border-collapse text-left text-[12px]">
           <thead>
-            <tr className="border-b border-black/10 text-[11px] uppercase tracking-[0.14em] text-black/40">
-              <th className={cn("py-3 pr-2", dense ? "py-2" : "")}>
+            <tr className="border-b border-black/10 text-[10px] uppercase tracking-[0.12em] text-black/35">
+              <th className="sticky left-0 z-[1] bg-[var(--kc-canvas,#f7f7f5)] py-2 pr-2">
                 <input
                   type="checkbox"
                   checked={items.length > 0 && selected.size === items.length}
@@ -551,22 +642,28 @@ function ProductsCatalogue() {
                   aria-label="Select all"
                 />
               </th>
-              <th className="py-3 pr-4 font-medium">Product</th>
-              <th className="py-3 pr-4 font-medium">SKU</th>
-              <th className="py-3 pr-4 font-medium">Type</th>
-              <th className="py-3 pr-4 font-medium">Guide</th>
-              <th className="py-3 pr-4 font-medium">Offers</th>
-              <th className="py-3 pr-4 font-medium">Status</th>
-              <th className="py-3 font-medium">Actions</th>
+              <th className="sticky left-7 z-[1] bg-[var(--kc-canvas,#f7f7f5)] py-2 pr-3 font-medium">
+                Product
+              </th>
+              <th className="whitespace-nowrap py-2 pr-3 font-medium">SKU</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-medium">Barcode</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-medium">Type</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-medium">Guide</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-medium">Min offer</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-medium">Offers</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-medium">Stock</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-medium">Status</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-medium">Updated</th>
+              <th className="whitespace-nowrap py-2 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
             {items.map((row) => (
               <tr
                 key={row.id}
-                className="border-b border-black/[0.06] hover:bg-black/[0.015]"
+                className="border-b border-black/[0.05] hover:bg-black/[0.012]"
               >
-                <td className={cn("py-3 pr-2 align-middle", dense && "py-2")}>
+                <td className="sticky left-0 z-[1] bg-[var(--kc-canvas,#f7f7f5)] py-1.5 pr-2 align-middle">
                   <input
                     type="checkbox"
                     checked={selected.has(row.id)}
@@ -574,63 +671,80 @@ function ProductsCatalogue() {
                     aria-label={`Select ${row.name}`}
                   />
                 </td>
-                <td className={cn("py-3 pr-4 align-middle", dense && "py-2")}>
-                  <Link
-                    href={`/admin/products/${row.id}`}
-                    className="flex items-center gap-3"
+                <td className="sticky left-7 z-[1] bg-[var(--kc-canvas,#f7f7f5)] py-1.5 pr-3 align-middle">
+                  <button
+                    type="button"
+                    onClick={() => setSlideRow(row)}
+                    className="flex max-w-[220px] items-center gap-2 text-left"
                   >
-                    <span className="relative h-10 w-10 shrink-0 overflow-hidden bg-black/[0.04]">
-                      {row.image ? (
-                        <Image
-                          src={row.image}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="40px"
-                        />
-                      ) : null}
-                    </span>
+                    {showImages ? (
+                      <span className="relative h-7 w-7 shrink-0 overflow-hidden bg-black/[0.04]">
+                        {row.image ? (
+                          <Image
+                            src={row.image}
+                            alt=""
+                            fill
+                            className="object-cover"
+                            sizes="28px"
+                          />
+                        ) : null}
+                      </span>
+                    ) : null}
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-black">
                         {row.name}
                       </span>
-                      <span className="block truncate text-[11px] text-black/35">
-                        {row.barcode || "No barcode"}
-                        {row.featured ? " · Featured" : ""}
-                      </span>
+                      {row.featured ? (
+                        <span className="text-[10px] text-black/35">Featured</span>
+                      ) : null}
                     </span>
-                  </Link>
+                  </button>
                 </td>
-                <td className={cn("py-3 pr-4 align-middle tabular-nums text-black/60", dense && "py-2")}>
+                <td className="whitespace-nowrap py-1.5 pr-3 align-middle tabular-nums text-black/55">
                   {row.sku || "—"}
                 </td>
-                <td className={cn("py-3 pr-4 align-middle text-black/55", dense && "py-2")}>
+                <td className="whitespace-nowrap py-1.5 pr-3 align-middle font-mono text-[11px] text-black/40">
+                  {row.barcode || "—"}
+                </td>
+                <td className="whitespace-nowrap py-1.5 pr-3 align-middle text-black/50">
                   {kindLabel(row.productKind)}
                 </td>
-                <td className={cn("py-3 pr-4 align-middle tabular-nums", dense && "py-2")}>
-                  <span className="block text-black">
-                    {formatKesMinor(row.guidePriceAvgMinor)}
-                  </span>
-                  <span className="block text-[11px] text-black/35">
-                    {formatKesMinor(row.guidePriceMinMinor)} –{" "}
-                    {formatKesMinor(row.guidePriceMaxMinor)}
-                  </span>
+                <td className="whitespace-nowrap py-1.5 pr-3 align-middle tabular-nums">
+                  {formatKesMinor(row.guidePriceAvgMinor)}
                 </td>
-                <td className={cn("py-3 pr-4 align-middle tabular-nums text-black/55", dense && "py-2")}>
+                <td className="whitespace-nowrap py-1.5 pr-3 align-middle tabular-nums text-black/50">
+                  {formatKesMinor(row.minPriceMinor)}
+                </td>
+                <td className="whitespace-nowrap py-1.5 pr-3 align-middle tabular-nums text-black/50">
                   {row.offerCount ?? 0}
                 </td>
-                <td className={cn("py-3 pr-4 align-middle", dense && "py-2")}>
-                  <span className="text-[11px] uppercase tracking-[0.12em] text-black/45">
+                <td className="whitespace-nowrap py-1.5 pr-3 align-middle tabular-nums text-black/50">
+                  {row.totalStock ?? "—"}
+                </td>
+                <td className="whitespace-nowrap py-1.5 pr-3 align-middle">
+                  <span className="text-[10px] uppercase tracking-[0.1em] text-black/40">
                     {String(row.status || "").replace("_", " ")}
                   </span>
                 </td>
-                <td className={cn("py-3 align-middle", dense && "py-2")}>
-                  <div className="flex flex-wrap gap-1">
+                <td className="whitespace-nowrap py-1.5 pr-3 align-middle text-[11px] text-black/35">
+                  {row.updatedAt
+                    ? new Date(row.updatedAt).toLocaleDateString()
+                    : "—"}
+                </td>
+                <td className="whitespace-nowrap py-1.5 align-middle">
+                  <div className="flex flex-wrap items-center gap-0.5">
+                    <button
+                      type="button"
+                      className={adminUi.btnGhost}
+                      onClick={() => setSlideRow(row)}
+                    >
+                      Open
+                    </button>
                     <Link
                       href={`/admin/products/${row.id}`}
                       className={adminUi.btnGhost}
                     >
-                      View
+                      Page
                     </Link>
                     <button
                       type="button"
@@ -692,6 +806,108 @@ function ProductsCatalogue() {
             Load more
           </button>
         </div>
+      ) : null}
+
+      {slideRow ? (
+        <SlideOver
+          open
+          onClose={() => setSlideRow(null)}
+          title="Catalogue"
+          subtitle={slideRow.name}
+          wide
+          footer={
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/admin/products/${slideRow.id}`}
+                className={adminUi.btnPrimary}
+                onClick={() => setSlideRow(null)}
+              >
+                Open page
+              </Link>
+              <button
+                type="button"
+                className={adminUi.btnSecondary}
+                onClick={() => {
+                  setEditId(slideRow.id);
+                  setWizardOpen(true);
+                  setSlideRow(null);
+                }}
+              >
+                Edit
+              </button>
+              {slideRow.barcode ? (
+                <button
+                  type="button"
+                  className={adminUi.btnGhost}
+                  onClick={() => {
+                    openProductScanner({
+                      context: "catalogue",
+                      barcode: slideRow.barcode,
+                    });
+                  }}
+                >
+                  Rescan
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className={adminUi.btnGhost}
+                onClick={() => {
+                  void duplicate(slideRow.id);
+                  setSlideRow(null);
+                }}
+              >
+                Duplicate
+              </button>
+            </div>
+          }
+        >
+          {slideLoading ? (
+            <p className="text-[12px] text-black/40">Loading detail…</p>
+          ) : null}
+          <ProductDataVisual
+            data={{
+              name: slideRow.name,
+              brand: slideDetail?.brand,
+              barcode: slideDetail?.barcode || slideRow.barcode,
+              image: slideDetail?.image || slideRow.image,
+              description: slideDetail?.description,
+              statusLabel: String(slideRow.status || "").replace("_", " "),
+              sku: slideDetail?.sku || slideRow.sku,
+              productKind: kindLabel(slideRow.productKind),
+              saleUnit: slideDetail?.saleUnit,
+              guidePrice: formatKesMinor(slideRow.guidePriceAvgMinor),
+              minOffer: formatKesMinor(slideRow.minPriceMinor),
+              offerCount: slideRow.offerCount,
+              totalStock: slideRow.totalStock,
+              updatedAt: slideRow.updatedAt,
+              productStatus: slideRow.status,
+              categoryName: slideDetail?.categoryName,
+              attributes: slideDetail?.attributes,
+              extraMeta: [
+                ...(slideDetail?.gtin
+                  ? [{ label: "GTIN", value: slideDetail.gtin }]
+                  : []),
+                ...(slideRow.featured
+                  ? [{ label: "Featured", value: "Yes" }]
+                  : []),
+              ],
+              localProduct: {
+                id: slideRow.id,
+                name: slideRow.name,
+                sku: slideDetail?.sku || slideRow.sku || null,
+                barcode: slideDetail?.barcode || slideRow.barcode || null,
+                gtin: slideDetail?.gtin || null,
+                status: slideRow.status,
+                image: slideDetail?.image || slideRow.image || null,
+                brand: slideDetail?.brand || null,
+                categoryId: null,
+                categoryName: slideDetail?.categoryName || null,
+                updatedAt: slideRow.updatedAt || null,
+              },
+            }}
+          />
+        </SlideOver>
       ) : null}
 
       <ProductCreateWizard

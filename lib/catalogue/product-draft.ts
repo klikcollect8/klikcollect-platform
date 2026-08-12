@@ -62,7 +62,13 @@ export type CatalogueDraft = {
   media?: Array<{
     publicId?: string;
     url: string;
-    role: "main" | "gallery" | "variant";
+    role:
+      | "main"
+      | "gallery"
+      | "variant"
+      | "ingredients"
+      | "nutrition"
+      | "packaging";
     sortOrder?: number;
   }>;
   optionAxes?: Array<{ name: string; values: string[] }>;

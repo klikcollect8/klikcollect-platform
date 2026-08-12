@@ -165,28 +165,62 @@ export default function ProductCreateWizard({
           return;
         }
         const c = data.candidate;
-        const attrs: Record<string, string> = {};
-        if (c?.ingredients?.value) attrs.ingredients = String(c.ingredients.value);
-        if (c?.allergens?.value) attrs.allergens = String(c.allergens.value);
-        if (c?.quantity?.value) attrs.quantity = String(c.quantity.value);
-        if (c?.nutriscore?.value) attrs.nutriscore = String(c.nutriscore.value);
-        const imageUrl = c?.images?.[0]?.url || null;
+        const { candidateToAttributes } = await import(
+          "@/lib/product-resolver/merge"
+        );
+        const attrs = c
+          ? candidateToAttributes(c)
+          : ({} as Record<string, string>);
+        const imageUrls = (c?.images || [])
+          .map((i: { url: string }) => i.url)
+          .filter(Boolean);
+        const imageUrl = imageUrls[0] || null;
+        const media = (c?.images || []).map(
+          (
+            i: { url: string; role: string },
+            idx: number,
+          ) => ({
+            url: i.url,
+            role:
+              i.role === "front" || idx === 0
+                ? ("main" as const)
+                : i.role === "ingredients" ||
+                    i.role === "nutrition" ||
+                    i.role === "packaging"
+                  ? (i.role as "ingredients" | "nutrition" | "packaging")
+                  : ("gallery" as const),
+            sortOrder: idx,
+          }),
+        );
         patch({
           barcode: data.barcode || digits,
           gtin: data.barcode || digits,
           productKind: draft.productKind || "packaged_grocery",
           name: c?.name?.value || draft.name || "",
           brandName: c?.brand?.value || draft.brandName || null,
+          manufacturer: c?.manufacturer?.value || draft.manufacturer || null,
           description:
             c?.description?.value ||
             c?.genericName?.value ||
             draft.description ||
             "",
+          longDescription:
+            c?.ingredients?.value || draft.longDescription || undefined,
           attributes: { ...(draft.attributes || {}), ...attrs },
+          specs: c?.specs?.length
+            ? c.specs.map((s: { key: string; value: string }) => ({
+                key: s.key,
+                value: s.value,
+              }))
+            : draft.specs,
           imageUrl: imageUrl || draft.imageUrl,
-          images: imageUrl
-            ? [imageUrl, ...(draft.images || []).filter((u) => u !== imageUrl)]
+          images: imageUrls.length
+            ? [
+                ...imageUrls,
+                ...(draft.images || []).filter((u) => !imageUrls.includes(u)),
+              ]
             : draft.images,
+          media: media.length ? media : draft.media,
           status: "pending_review",
         });
         setResolveNote(
@@ -201,7 +235,20 @@ export default function ProductCreateWizard({
         setResolving(false);
       }
     },
-    [draft.attributes, draft.description, draft.imageUrl, draft.images, draft.name, draft.brandName, draft.productKind, patch],
+    [
+      draft.attributes,
+      draft.description,
+      draft.imageUrl,
+      draft.images,
+      draft.name,
+      draft.brandName,
+      draft.manufacturer,
+      draft.longDescription,
+      draft.specs,
+      draft.media,
+      draft.productKind,
+      patch,
+    ],
   );
 
   useEffect(() => {
