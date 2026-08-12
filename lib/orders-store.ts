@@ -48,6 +48,16 @@ export type OrderTransition = {
   illegal?: boolean;
 };
 
+/** Authoritative delivery point stored on delivery orders (038). */
+export type OrderDeliveryPoint = {
+  lat: number | null;
+  lng: number | null;
+  landmark?: string | null;
+  instructions?: string | null;
+  confidence?: string | null;
+  placeId?: string | null;
+};
+
 export type OsOrder = {
   id: string;
   orderNumber: string;
@@ -65,6 +75,8 @@ export type OsOrder = {
   vendorId: string;
   notes?: string;
   receiptCode?: string;
+  /** Delivery coordinates + rider context (delivery orders only). */
+  delivery?: OrderDeliveryPoint;
   createdAt: string;
   updatedAt: string;
   /** INV-6 order-level snapshot bag. */
@@ -104,6 +116,25 @@ function mapDbOrder(
     vendorId: vendorIds[0] || "ven_unknown",
     notes: row.notes ? String(row.notes) : undefined,
     receiptCode: row.receipt_code ? String(row.receipt_code) : undefined,
+    delivery:
+      row.delivery_lat != null && row.delivery_lng != null
+        ? {
+            lat: Number(row.delivery_lat),
+            lng: Number(row.delivery_lng),
+            landmark: row.delivery_landmark
+              ? String(row.delivery_landmark)
+              : null,
+            instructions: row.delivery_instructions
+              ? String(row.delivery_instructions)
+              : null,
+            confidence: row.delivery_confidence
+              ? String(row.delivery_confidence)
+              : null,
+            placeId: row.delivery_place_id
+              ? String(row.delivery_place_id)
+              : null,
+          }
+        : undefined,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     snapshot: row.snapshot as OsOrder["snapshot"],
@@ -172,6 +203,12 @@ async function persistOrder(order: OsOrder): Promise<void> {
     vendor_ids: order.vendorIds,
     notes: order.notes || null,
     receipt_code: order.receiptCode || null,
+    delivery_lat: order.delivery?.lat ?? null,
+    delivery_lng: order.delivery?.lng ?? null,
+    delivery_landmark: order.delivery?.landmark ?? null,
+    delivery_instructions: order.delivery?.instructions ?? null,
+    delivery_confidence: order.delivery?.confidence ?? null,
+    delivery_place_id: order.delivery?.placeId ?? null,
     snapshot: order.snapshot || null,
     updated_at: order.updatedAt,
   };
@@ -443,6 +480,8 @@ export async function createOsOrder(input: {
   vendorId?: string;
   /** Extra fees in minor units (e.g. gift wrap) added to order total */
   feeMinor?: number;
+  /** Authoritative delivery point (delivery orders) */
+  delivery?: OrderDeliveryPoint;
 }): Promise<
   { ok: true; order: OsOrder } | { ok: false; code: string; message: string }
 > {
@@ -508,6 +547,7 @@ export async function createOsOrder(input: {
     vendorIds: [vendorId],
     vendorId,
     notes: input.notes,
+    delivery: input.delivery,
     createdAt: now,
     updatedAt: now,
     snapshot: {

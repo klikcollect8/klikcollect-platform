@@ -12,7 +12,7 @@
  * Neighborhood zone flat fees are fallback only when routing fails.
  */
 import { distanceKm } from "@/lib/mapbox";
-import { fetchDirections } from "@/lib/mapbox-api";
+import { fetchDirections, fetchOptimizedTrip } from "@/lib/mapbox-api";
 import {
   deliveryZoneFeeMinor,
   getDeliveryZone,
@@ -252,12 +252,17 @@ export function quoteHomeDeliveryRoad(
     km < 1
       ? `${Math.round(km * 1000)} m`
       : `${km.toFixed(km < 10 ? 1 : 0)} km`,
+    stops > 1 ? `${stops} stops` : "1 stop",
     `base ${DELIVERY_BASE_MAJOR}`,
   ];
   if (billableKm > 0) {
     parts.push(`+${billableKm.toFixed(1)} km × ${DELIVERY_PER_KM_MAJOR}`);
   }
-  if (stops > 1) parts.push(`${stops} shops`);
+  if (stops > 1) {
+    parts.push(
+      `+${stops - 1} extra stop${stops > 2 ? "s" : ""} × ${DELIVERY_STOP_FEE_MAJOR}`,
+    );
+  }
 
   return applyAdjustments(
     baseMajor,
@@ -288,7 +293,8 @@ export function quoteHomeDelivery(
   }
 
   const farthest = Math.max(...withDist);
-  const roadKm = farthest * HAVERSINE_ROAD_FACTOR;
+  const extraStopsKm = Math.max(0, withDist.length - 1) * 0.8;
+  const roadKm = farthest * HAVERSINE_ROAD_FACTOR + extraStopsKm;
   return quoteHomeDeliveryRoad(
     roadKm,
     withDist.length,
@@ -298,8 +304,8 @@ export function quoteHomeDelivery(
 }
 
 /**
- * Live quote: Mapbox Directions road km (farthest shop → home) + stop fees
- * + operational adjustments.
+ * Live quote: Mapbox road km for the driver trip (optimized multi-shop
+ * pickup → home, or single shop → home) + per-stop fees + ops add-ons.
  */
 export async function quoteHomeDeliveryLive(
   home: Coord,
@@ -342,9 +348,52 @@ export async function quoteHomeDeliveryLive(
     return zoneFallbackQuote(opts?.zoneId, 1, adjustments);
   }
 
+  const roadKm = await measureDeliveryRoadKm(home, validShops);
+  if (roadKm != null && roadKm > 0) {
+    return quoteHomeDeliveryRoad(
+      roadKm,
+      validShops.length,
+      "road",
+      adjustments,
+    );
+  }
+
+  const hav = quoteHomeDelivery(home, validShops, adjustments);
+  if (hav.deliveryMinor > 0) return hav;
+
+  return zoneFallbackQuote(opts?.zoneId, validShops.length, adjustments);
+}
+
+/**
+ * Driver trip length in km: one shop → home, or an optimized tour of all
+ * shops ending at home (Mapbox Optimization). Falls back to farthest-leg
+ * directions, then null so the caller can haversine.
+ */
+async function measureDeliveryRoadKm(
+  home: Coord,
+  shops: Coord[],
+): Promise<number | null> {
+  if (shops.length >= 2) {
+    try {
+      const trip = await fetchOptimizedTrip(
+        [
+          ...shops.map((s) => ({ lng: s.lng, lat: s.lat })),
+          { lng: home.lng, lat: home.lat },
+        ],
+        "driving",
+        { roundtrip: false, source: "any", destination: "last" },
+      );
+      if (trip?.distanceM && trip.distanceM > 0) {
+        return trip.distanceM / 1000;
+      }
+    } catch {
+      /* fall through to per-shop directions */
+    }
+  }
+
   const roadKms: number[] = [];
   await Promise.all(
-    validShops.map(async (shop) => {
+    shops.map(async (shop) => {
       try {
         const route = await fetchDirections(
           { lng: shop.lng, lat: shop.lat },
@@ -360,21 +409,36 @@ export async function quoteHomeDeliveryLive(
       }
     }),
   );
+  if (!roadKms.length) return null;
+  // Single shop: that leg. Multi-shop without Optimization: farthest
+  // shop→home plus a stop-distance estimate (0.8 km per extra stop).
+  const farthest = Math.max(...roadKms);
+  if (shops.length === 1) return farthest;
+  return farthest + Math.max(0, shops.length - 1) * 0.8;
+}
 
-  if (roadKms.length) {
-    const farthest = Math.max(...roadKms);
-    return quoteHomeDeliveryRoad(
-      farthest,
-      validShops.length,
-      "road",
-      adjustments,
+/** Compact UI line: "3.2 km · 2 stops · ~28 min". */
+export function formatQuoteSummary(quote: DeliveryQuote): string {
+  const parts: string[] = [];
+  if (quote.distanceKm > 0) {
+    parts.push(
+      quote.distanceKm < 1
+        ? `${Math.round(quote.distanceKm * 1000)} m`
+        : `${quote.distanceKm.toFixed(quote.distanceKm < 10 ? 1 : 0)} km`,
     );
   }
-
-  const hav = quoteHomeDelivery(home, validShops, adjustments);
-  if (hav.deliveryMinor > 0) return hav;
-
-  return zoneFallbackQuote(opts?.zoneId, validShops.length, adjustments);
+  if (quote.shopCount > 1) {
+    parts.push(`${quote.shopCount} stops`);
+  }
+  if (quote.etaMinutes > 0) {
+    parts.push(`~${quote.etaMinutes} min`);
+  }
+  for (const a of quote.adjustments || []) {
+    if (a.label && a.amountMajor) {
+      parts.push(`${a.label} +${a.amountMajor}`);
+    }
+  }
+  return parts.join(" · ");
 }
 
 function zoneFallbackQuote(

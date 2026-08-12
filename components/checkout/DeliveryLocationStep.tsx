@@ -4,13 +4,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, Maximize2, Navigation } from "lucide-react";
 import { useUserLocation } from "@/components/providers/LocationProvider";
+import { useActiveLocation } from "@/components/providers/ActiveLocationProvider";
 import SameDayTiming, {
   type TimingMode,
 } from "@/components/checkout/SameDayTiming";
 import type { CheckoutVendor } from "@/lib/checkout/types";
 import type { DeliveryQuote } from "@/lib/checkout/delivery-pricing";
 import type { DayWindow } from "@/lib/checkout/same-day-slots";
-import { forwardGeocode, reverseGeocode } from "@/lib/mapbox-api";
+import { forwardGeocode } from "@/lib/mapbox-api";
+import {
+  latestWins,
+  reverseGeocodeLocation,
+} from "@/lib/location/provider";
+import {
+  confidenceFromGpsAccuracy,
+  confidenceFromProvider,
+  type LocationConfidence,
+} from "@/lib/location/types";
+import { maybeRecordCorrection } from "@/lib/location/corrections";
+import LocationConfidenceBadge from "@/components/location/LocationConfidenceBadge";
+import type { LocationPickerResult } from "@/components/location/LocationPicker";
 import {
   buildDeliveryTripRoutes,
   shopLegsToAltGeoJSON,
@@ -52,6 +65,11 @@ const CheckoutDeliveryMap = dynamic(
   { ssr: false },
 );
 
+const LocationPicker = dynamic(
+  () => import("@/components/location/LocationPicker"),
+  { ssr: false },
+);
+
 export type DeliveryLocationValue = {
   deliveryArea: string;
   areaOther: string;
@@ -63,6 +81,8 @@ export type DeliveryLocationValue = {
   label: string;
   gateCode: string;
   deliveryNote: string;
+  /** How trustworthy the pin is (GPS accuracy / provider relevance / user pin) */
+  confidence: LocationConfidence | null;
 };
 
 type Props = {
@@ -90,6 +110,7 @@ function applyPlace(
   lat: number,
   lng: number,
   place: string | null,
+  confidence?: LocationConfidence | null,
 ): DeliveryLocationValue {
   const label = place?.trim() || value.label || "Your location";
   const areaHint =
@@ -107,6 +128,7 @@ function applyPlace(
         ? value.deliveryArea
         : areaHint,
     areaOther: value.areaOther,
+    confidence: confidence ?? value.confidence ?? null,
   };
 }
 
@@ -130,6 +152,8 @@ export default function DeliveryLocationStep({
   onTimingChange,
 }: Props) {
   const { coords, status, error, track } = useUserLocation();
+  const { active: activeLocation, hydrated: activeHydrated, setActive } =
+    useActiveLocation();
   const [editing, setEditing] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
@@ -140,44 +164,73 @@ export default function DeliveryLocationStep({
     null,
   );
   const [routesLoading, setRoutesLoading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   /** When true, GPS watch won't overwrite a manually chosen pin/address. */
   const [manualOverride, setManualOverride] = useState(false);
   const lastAppliedRef = useRef<string | null>(null);
+  /** Last provider geocode applied — used to log pin corrections. */
+  const lastProviderPlaceRef = useRef<{
+    lat: number;
+    lng: number;
+    label: string;
+    placeId?: string | null;
+  } | null>(null);
   const valueRef = useRef(value);
   valueRef.current = value;
   const hasToken = Boolean(getMapboxToken());
 
+  // Stale-quote guard: remember which pin the current quote was computed for
+  // so we never show a fee/ETA for a pin the user has already moved away from.
+  const pinKey =
+    value.lat != null && value.lng != null
+      ? `${value.lat.toFixed(5)},${value.lng.toFixed(5)}`
+      : null;
+  const pinKeyRef = useRef(pinKey);
+  pinKeyRef.current = pinKey;
+  const [quotePinKey, setQuotePinKey] = useState<string | null>(null);
   useEffect(() => {
-    if (status === "idle") track();
-  }, [status, track]);
+    if (quote) setQuotePinKey(pinKeyRef.current);
+  }, [quote]);
+  const quoteStale = Boolean(quote) && quotePinKey !== pinKey;
 
-  // Live GPS → pin (skipped after manual address/map pick until "Use current location")
+  // Live GPS → pin ONLY when the user taps "Use current location".
+  // Auto-applying GPS overwrote the chosen Deliver-to pin with a noisy
+  // reverse-geocode (often the wrong neighbourhood).
   useEffect(() => {
     if (!coords) return;
-    if (manualOverride && forceApply === 0) return;
+    if (forceApply === 0) return;
 
     const key = `${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}:${forceApply}`;
     if (lastAppliedRef.current === key) return;
+    if (status !== "ready" && status !== "low_accuracy") return;
 
-    let cancelled = false;
+    const fresh = latestWins("checkout:gps-reverse");
     setResolving(true);
     void (async () => {
       try {
-        const place = hasToken
-          ? await reverseGeocode(coords.lng, coords.lat)
+        const rev = hasToken
+          ? await reverseGeocodeLocation(coords.lng, coords.lat).catch(
+              () => null,
+            )
           : null;
-        if (cancelled) return;
+        if (!fresh()) return;
         lastAppliedRef.current = key;
-        setManualOverride(false);
-        onChange(applyPlace(valueRef.current, coords.lat, coords.lng, place));
+        lastProviderPlaceRef.current = null;
+        setManualOverride(true);
+        onChange(
+          applyPlace(
+            valueRef.current,
+            coords.lat,
+            coords.lng,
+            rev?.label ?? null,
+            confidenceFromGpsAccuracy(coords.accuracy),
+          ),
+        );
       } finally {
-        if (!cancelled) setResolving(false);
+        if (fresh()) setResolving(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [coords, forceApply, hasToken, onChange, manualOverride]);
+  }, [coords, forceApply, hasToken, onChange, status]);
 
   const refreshFromGps = () => {
     setManualOverride(false);
@@ -219,27 +272,91 @@ export default function DeliveryLocationStep({
       lng: number,
       label?: string | null,
       source: SavedDeliveryPin["source"] = "map_pin",
+      opts?: { confidence?: LocationConfidence; placeId?: string | null },
     ) => {
       setManualOverride(true);
       setGeoError(null);
       setResolving(true);
+      const fresh = latestWins("checkout:manual-reverse");
+
+      // Pin moved away from a provider geocode → record the correction so the
+      // quality centre learns where the provider was wrong.
+      const isPinMove = source === "map_pin" || source === "deliver_here";
+      const provider = lastProviderPlaceRef.current;
+      if (isPinMove && provider) {
+        maybeRecordCorrection({
+          context: "checkout",
+          providerLat: provider.lat,
+          providerLng: provider.lng,
+          correctedLat: lat,
+          correctedLng: lng,
+          providerLabel: provider.label,
+          placeId: provider.placeId ?? null,
+        });
+        lastProviderPlaceRef.current = null;
+      }
+
       try {
-        const place =
-          label?.trim() ||
-          (hasToken ? await reverseGeocode(lng, lat) : null);
+        let place = label?.trim() || null;
+        if (!place && hasToken) {
+          const rev = await reverseGeocodeLocation(lng, lat).catch(() => null);
+          if (!fresh()) return;
+          place = rev?.label ?? null;
+        }
         lastAppliedRef.current = `${lat.toFixed(5)},${lng.toFixed(5)}:manual`;
-        onChange(applyPlace(valueRef.current, lat, lng, place));
+        onChange(
+          applyPlace(
+            valueRef.current,
+            lat,
+            lng,
+            place,
+            opts?.confidence ??
+              (isPinMove ? "user_pinned" : "provider_resolved"),
+          ),
+        );
         persistPin(lat, lng, place, source);
       } finally {
-        setResolving(false);
+        if (fresh()) setResolving(false);
       }
     },
     [hasToken, onChange, persistPin],
   );
 
-  // Restore last saved deliver-here pin when checkout has none yet
+  // Restore the market-wide "Deliver to" selection (preferred) or the last
+  // saved deliver-here pin when checkout has none yet.
+  const restoredRef = useRef(false);
   useEffect(() => {
-    if (value.lat != null && value.lng != null) return;
+    if (restoredRef.current) return;
+    if (valueRef.current.lat != null && valueRef.current.lng != null) {
+      restoredRef.current = true;
+      return;
+    }
+    if (!activeHydrated) return;
+    restoredRef.current = true;
+
+    if (activeLocation) {
+      setManualOverride(true);
+      lastAppliedRef.current = `${activeLocation.lat.toFixed(5)},${activeLocation.lng.toFixed(5)}:active`;
+      onChange({
+        ...valueRef.current,
+        lat: activeLocation.lat,
+        lng: activeLocation.lng,
+        label: activeLocation.label || valueRef.current.label,
+        street:
+          activeLocation.formattedAddress || valueRef.current.street,
+        building: activeLocation.building || valueRef.current.building,
+        landmark: activeLocation.landmark || valueRef.current.landmark,
+        deliveryNote:
+          activeLocation.instructions || valueRef.current.deliveryNote,
+        deliveryArea:
+          activeLocation.label ||
+          valueRef.current.deliveryArea ||
+          "Your location",
+        confidence: activeLocation.confidence,
+      });
+      return;
+    }
+
     const saved = getLatestSavedDeliveryPin();
     if (!saved) return;
     setManualOverride(true);
@@ -256,10 +373,9 @@ export default function DeliveryLocationStep({
       deliveryNote: saved.deliveryNote || valueRef.current.deliveryNote,
       deliveryArea:
         saved.area || valueRef.current.deliveryArea || "Your location",
+      confidence: "user_pinned",
     });
-    // once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeHydrated, activeLocation, onChange]);
 
   const updateFromAddress = async () => {
     const query = composeAddressQuery(value);
@@ -284,7 +400,12 @@ export default function DeliveryLocationStep({
       }
       setManualOverride(true);
       lastAppliedRef.current = `${hit.lat.toFixed(5)},${hit.lng.toFixed(5)}:geo`;
-      const next = {
+      lastProviderPlaceRef.current = {
+        lat: hit.lat,
+        lng: hit.lng,
+        label: hit.label,
+      };
+      const next: DeliveryLocationValue = {
         ...value,
         lat: hit.lat,
         lng: hit.lng,
@@ -294,6 +415,7 @@ export default function DeliveryLocationStep({
           value.deliveryArea && value.deliveryArea !== "Your location"
             ? value.deliveryArea
             : hit.label.split(",")[0]?.trim() || value.deliveryArea,
+        confidence: "provider_resolved",
       };
       onChange(next);
       persistPin(hit.lat, hit.lng, hit.label, "address_edit");
@@ -441,7 +563,7 @@ export default function DeliveryLocationStep({
       showStyleSwitcher
       showStreetPreview
       showTraffic
-      followUserDefault={Boolean(coords)}
+      followUserDefault={false}
       interactive={false}
       fitMarkers={primaryRoute ? false : fitKey || markers.length > 1}
     />
@@ -470,7 +592,7 @@ export default function DeliveryLocationStep({
                 showSearch={false}
                 showStyleSwitcher
                 showStreetPreview
-                followUserDefault
+                followUserDefault={false}
                 interactive={false}
               />
             )}
@@ -530,11 +652,24 @@ export default function DeliveryLocationStep({
                   : null
             }
             onSelect={(hit) => {
+              lastProviderPlaceRef.current = {
+                lat: hit.lat,
+                lng: hit.lng,
+                label: hit.fullAddress || hit.name,
+                placeId: hit.mapboxId ?? null,
+              };
               void setManualPlace(
                 hit.lat,
                 hit.lng,
                 hit.fullAddress || hit.name,
                 "search",
+                {
+                  confidence: confidenceFromProvider({
+                    featureType: hit.featureType,
+                    relevance: hit.relevance,
+                  }),
+                  placeId: hit.mapboxId ?? null,
+                },
               );
               setEditing(true);
             }}
@@ -543,9 +678,12 @@ export default function DeliveryLocationStep({
       ) : null}
 
       <div className="mt-6 border-y border-black/[0.06] py-5">
-        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-black/35">
-          Deliver to
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-black/35">
+            Deliver to
+          </p>
+          <LocationConfidenceBadge confidence={value.confidence} />
+        </div>
         {value.building ? (
           <p className="mt-2 text-[13px] text-black/45">{value.building}</p>
         ) : null}
@@ -571,7 +709,11 @@ export default function DeliveryLocationStep({
         ) : null}
       </div>
 
-      {quote ? (
+      {quote && quoteStale ? (
+        <p className="mt-5 border border-black/10 bg-black/[0.02] px-4 py-4 text-[13px] text-black/40">
+          Recalculating delivery for the new pin…
+        </p>
+      ) : quote ? (
         <div className="mt-5 grid grid-cols-3 gap-3 border border-black/10 bg-black/[0.02] px-4 py-4">
           <div>
             <p className="text-[10px] uppercase tracking-[0.14em] text-black/35">
@@ -661,6 +803,13 @@ export default function DeliveryLocationStep({
       ) : null}
 
       <div className="mt-5 flex flex-wrap gap-4">
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="text-[13px] font-medium text-black underline underline-offset-[5px] decoration-black/25 hover:opacity-70"
+        >
+          Choose location
+        </button>
         <button
           type="button"
           onClick={() => setEditing((v) => !v)}
@@ -811,6 +960,71 @@ export default function DeliveryLocationStep({
         }}
         onUseGps={refreshFromGps}
         gpsBusy={resolving || status === "locating"}
+      />
+
+      <LocationPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        context="checkout"
+        title="Where should we deliver?"
+        confirmLabel="Deliver here"
+        initial={
+          value.lat != null && value.lng != null
+            ? {
+                lat: value.lat,
+                lng: value.lng,
+                formattedAddress: value.street || value.label,
+                building: value.building,
+                landmark: value.landmark,
+                instructions: value.deliveryNote,
+              }
+            : null
+        }
+        onConfirm={(r: LocationPickerResult) => {
+          setPickerOpen(false);
+          setManualOverride(true);
+          setGeoError(null);
+          lastProviderPlaceRef.current = null;
+          lastAppliedRef.current = `${r.lat.toFixed(5)},${r.lng.toFixed(5)}:picker`;
+          onChange({
+            ...valueRef.current,
+            lat: r.lat,
+            lng: r.lng,
+            street: r.street || r.formattedAddress || valueRef.current.street,
+            label: r.formattedAddress || valueRef.current.label,
+            building: r.building || valueRef.current.building,
+            landmark: r.landmark || valueRef.current.landmark,
+            deliveryNote: r.instructions || valueRef.current.deliveryNote,
+            deliveryArea:
+              r.neighbourhood ||
+              r.formattedAddress?.split(",")[0]?.trim() ||
+              valueRef.current.deliveryArea ||
+              "Your location",
+            confidence: r.confidence,
+          });
+          persistPin(r.lat, r.lng, r.formattedAddress, "map_pin");
+          // Keep the market-wide "Deliver to" selection in sync
+          setActive({
+            lat: r.lat,
+            lng: r.lng,
+            label:
+              r.formattedAddress
+                ?.split(",")
+                .map((p) => p.trim())
+                .filter(Boolean)
+                .slice(0, 2)
+                .join(", ") || "Selected location",
+            formattedAddress: r.formattedAddress,
+            building: r.building,
+            landmark: r.landmark,
+            instructions: r.instructions,
+            placeId: r.placeId ?? null,
+            source: r.source,
+            confidence: r.confidence,
+            savedLocationId: r.savedLocationId ?? null,
+            setAt: Date.now(),
+          });
+        }}
       />
     </div>
   );

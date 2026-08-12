@@ -49,6 +49,11 @@ type MapCanvasProps = {
   interactive?: boolean;
   showNavControls?: boolean;
   minimalControls?: boolean;
+  /**
+   * Show Mapbox GeolocateControl. Default false — vendor/product maps must
+   * stay on the shop pin. Never auto-triggers; the user has to tap it.
+   */
+  showGeolocate?: boolean;
   followUser?: boolean;
   userLngLat?: [number, number] | null;
   /** Pass a number key to fit once per key; boolean still supported */
@@ -726,6 +731,7 @@ export default function MapCanvas({
   interactive = true,
   showNavControls = false,
   minimalControls = false,
+  showGeolocate = false,
   followUser = false,
   userLngLat = null,
   fitMarkers = false,
@@ -947,21 +953,18 @@ export default function MapCanvas({
           "bottom-left",
         );
       }
-      const geolocate = new mapboxgl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true,
-        showUserHeading: true,
-        showAccuracyCircle: true,
-      });
-      geolocateRef.current = geolocate;
-      map.addControl(geolocate, "bottom-right");
-      map.on("load", () => {
-        try {
-          geolocate.trigger();
-        } catch {
-          /* ok */
-        }
-      });
+      // Locate-me is opt-in. Auto-triggering here stole the camera from
+      // vendor/product maps and jumped them to a noisy GPS fix.
+      if (showGeolocate || followUser) {
+        const geolocate = new mapboxgl.GeolocateControl({
+          positionOptions: { enableHighAccuracy: true, timeout: 12_000 },
+          trackUserLocation: followUser,
+          showUserHeading: followUser,
+          showAccuracyCircle: true,
+        });
+        geolocateRef.current = geolocate;
+        map.addControl(geolocate, "bottom-right");
+      }
     }
 
     map.on("click", (e) => {

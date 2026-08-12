@@ -13,6 +13,7 @@ import AppChrome from "@/components/AppChrome";
 import { cn } from "@/lib/utils";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { LocationProvider } from "@/components/providers/LocationProvider";
+import { ActiveLocationProvider } from "@/components/providers/ActiveLocationProvider";
 import { CartProvider } from "@/components/providers/CartProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
@@ -78,6 +79,7 @@ export default function RootLayout({
           <PostHogProvider>
             <QueryProvider>
               <LocationProvider>
+                <ActiveLocationProvider>
                 <CartProvider>
                   <CapacitorInit />
                   <ClerkSessionRecovery />
@@ -92,6 +94,7 @@ export default function RootLayout({
                   </MaintenanceCheck>
                   <Toaster position="top-right" richColors />
                 </CartProvider>
+                </ActiveLocationProvider>
               </LocationProvider>
             </QueryProvider>
           </PostHogProvider>

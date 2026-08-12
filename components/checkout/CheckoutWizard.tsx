@@ -62,6 +62,7 @@ import {
   resolveTodayWindow,
   todayDateString,
 } from "@/lib/checkout/same-day-slots";
+import type { LocationConfidence } from "@/lib/location/types";
 
 const fieldClass =
   "w-full border-b border-black/15 bg-transparent py-3 text-[17px] outline-none transition-colors focus:border-black/40 placeholder:text-black/25";
@@ -130,6 +131,8 @@ export default function CheckoutWizard() {
   const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
   const [gateCode, setGateCode] = useState("");
   const [deliveryNote, setDeliveryNote] = useState("");
+  const [deliveryConfidence, setDeliveryConfidence] =
+    useState<LocationConfidence | null>(null);
 
   // Pickup / hybrid
   const [collectMode, setCollectMode] = useState<CollectMode>("classic");
@@ -166,6 +169,7 @@ export default function CheckoutWizard() {
     label: deliveryLabel,
     gateCode,
     deliveryNote,
+    confidence: deliveryConfidence,
   };
 
   const setDeliveryLocation = (next: DeliveryLocationValue) => {
@@ -179,6 +183,7 @@ export default function CheckoutWizard() {
     setDeliveryLabel(next.label);
     setGateCode(next.gateCode);
     setDeliveryNote(next.deliveryNote);
+    setDeliveryConfidence(next.confidence);
   };
 
   const flow = useMemo((): CheckoutStepId[] => {
@@ -753,6 +758,10 @@ export default function CheckoutWizard() {
             fulfilment === "delivery" ? deliveryNote.trim() : undefined,
           deliveryLat: fulfilment === "delivery" ? deliveryLat : undefined,
           deliveryLng: fulfilment === "delivery" ? deliveryLng : undefined,
+          deliveryConfidence:
+            fulfilment === "delivery"
+              ? deliveryConfidence || undefined
+              : undefined,
           collectMode: fulfilment === "pickup" ? collectMode : undefined,
           hubVendorId:
             fulfilment === "pickup" ? hubVendorId || undefined : undefined,

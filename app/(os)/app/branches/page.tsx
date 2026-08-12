@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { ModuleShell } from "@/components/os/ModuleShell";
+import BranchLocationEditor, {
+  type BranchLocationValue,
+} from "@/components/os/BranchLocationEditor";
 import { osUi } from "@/components/os/os-ui";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +19,19 @@ type Branch = {
   lng: number | null;
   manager_clerk_id: string | null;
   phone: string | null;
+  place_id: string | null;
+  location_verified: boolean | null;
+  location_confidence: string | null;
+  location_updated_at: string | null;
   pos_meta?: Record<string, unknown>;
+};
+
+const EMPTY_LOCATION: BranchLocationValue = {
+  lat: null,
+  lng: null,
+  placeId: null,
+  locationVerified: false,
+  addressLabel: null,
 };
 
 export default function BranchesPage() {
@@ -28,13 +43,14 @@ export default function BranchesPage() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [neighbourhood, setNeighbourhood] = useState("");
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
+  const [newLocation, setNewLocation] =
+    useState<BranchLocationValue>(EMPTY_LOCATION);
   const [editId, setEditId] = useState<string | null>(null);
   const [managerId, setManagerId] = useState("");
   const [phone, setPhone] = useState("");
-  const [editLat, setEditLat] = useState("");
-  const [editLng, setEditLng] = useState("");
+  const [editLocation, setEditLocation] =
+    useState<BranchLocationValue>(EMPTY_LOCATION);
+  const [editHadPin, setEditHadPin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -65,10 +81,12 @@ export default function BranchesPage() {
       body: JSON.stringify({
         vendorId,
         name,
-        address,
+        address: address || newLocation.addressLabel || "",
         neighbourhood,
-        lat: lat || null,
-        lng: lng || null,
+        lat: newLocation.lat,
+        lng: newLocation.lng,
+        placeId: newLocation.placeId ?? null,
+        locationVerified: !!newLocation.locationVerified,
       }),
     });
     const j = await res.json();
@@ -80,8 +98,7 @@ export default function BranchesPage() {
     setName("");
     setAddress("");
     setNeighbourhood("");
-    setLat("");
-    setLng("");
+    setNewLocation(EMPTY_LOCATION);
     load(vendorId);
   };
 
@@ -89,14 +106,23 @@ export default function BranchesPage() {
     setEditId(b.id);
     setManagerId(b.manager_clerk_id || "");
     setPhone(b.phone || "");
-    setEditLat(b.lat != null ? String(b.lat) : "");
-    setEditLng(b.lng != null ? String(b.lng) : "");
+    const hasPin = b.lat != null && b.lng != null;
+    setEditHadPin(hasPin);
+    setEditLocation({
+      lat: b.lat,
+      lng: b.lng,
+      placeId: b.place_id,
+      locationVerified: !!b.location_verified,
+      addressLabel: b.address_text,
+    });
   };
 
   const saveEdit = async () => {
     if (!editId) return;
     setBusy(true);
     setError(null);
+    const clearing =
+      editHadPin && editLocation.lat == null && editLocation.lng == null;
     const res = await fetch("/api/os/branches", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -105,8 +131,14 @@ export default function BranchesPage() {
         id: editId,
         managerClerkId: managerId,
         phone,
-        lat: editLat || null,
-        lng: editLng || null,
+        ...(clearing
+          ? { clearLocation: true }
+          : {
+              lat: editLocation.lat,
+              lng: editLocation.lng,
+              placeId: editLocation.placeId ?? null,
+              locationVerified: !!editLocation.locationVerified,
+            }),
       }),
     });
     const j = await res.json();
@@ -131,8 +163,8 @@ export default function BranchesPage() {
 
       {missingPins.length ? (
         <div className="mb-4 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-3 text-[13px] text-amber-950">
-          Add store pin (lat/lng) to appear on Eats. {missingPins.length} branch
-          {missingPins.length === 1 ? "" : "es"} missing coordinates.
+          Set a map pin so customers can find you. {missingPins.length} branch
+          {missingPins.length === 1 ? "" : "es"} missing a location.
         </div>
       ) : null}
 
@@ -151,21 +183,21 @@ export default function BranchesPage() {
         />
         <input
           className={cn(osUi.input, "sm:col-span-2")}
-          placeholder="Address"
+          placeholder="Address (optional — filled from the map pin)"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
         />
-        <input
-          className={osUi.input}
-          placeholder="Latitude"
-          value={lat}
-          onChange={(e) => setLat(e.target.value)}
-        />
-        <input
-          className={osUi.input}
-          placeholder="Longitude"
-          value={lng}
-          onChange={(e) => setLng(e.target.value)}
+        <BranchLocationEditor
+          className="sm:col-span-2"
+          value={newLocation}
+          onChange={setNewLocation}
+          branchName={name || undefined}
+          siblings={rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            lat: r.lat,
+            lng: r.lng,
+          }))}
         />
         <button
           type="button"
@@ -197,7 +229,8 @@ export default function BranchesPage() {
                   {b.public_id}
                   {b.lat != null && b.lng != null
                     ? ` · ${b.lat.toFixed(4)}, ${b.lng.toFixed(4)}`
-                    : ""}
+                    : " · no pin"}
+                  {b.lat != null && b.location_verified ? " · verified" : ""}
                 </p>
                 {b.manager_clerk_id || b.phone ? (
                   <p className={cn("mt-1 text-[12px]", osUi.muted)}>
@@ -245,17 +278,19 @@ export default function BranchesPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
-                <input
-                  className={osUi.input}
-                  placeholder="Latitude"
-                  value={editLat}
-                  onChange={(e) => setEditLat(e.target.value)}
-                />
-                <input
-                  className={osUi.input}
-                  placeholder="Longitude"
-                  value={editLng}
-                  onChange={(e) => setEditLng(e.target.value)}
+                <BranchLocationEditor
+                  className="sm:col-span-2"
+                  value={editLocation}
+                  onChange={setEditLocation}
+                  branchName={b.name}
+                  siblings={rows
+                    .filter((r) => r.id !== b.id)
+                    .map((r) => ({
+                      id: r.id,
+                      name: r.name,
+                      lat: r.lat,
+                      lng: r.lng,
+                    }))}
                 />
                 <div className="flex gap-2 sm:col-span-2">
                   <button

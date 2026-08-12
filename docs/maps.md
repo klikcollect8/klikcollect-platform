@@ -2,6 +2,8 @@
 
 KlikCollect maps use **Mapbox GL JS** only. Google Maps appears as outbound deep links and Street View embeds.
 
+For the full location, delivery pricing, Vendor OS, and marketplace ecosystem (including live vs retired courier plane), see **[`docs/location-delivery-vendor-ecosystem.md`](location-delivery-vendor-ecosystem.md)**.
+
 Visual language matches Obscura: warm canvas, black ink, zero radius, translucent glass (`mapGlass` in `MapChrome`).
 
 ## Default basemap
@@ -24,7 +26,7 @@ If a Studio style fails to load, MapCanvas falls back to public `mapbox://styles
 | Checkout pickup | Buyer | Branded Street, flyTo selected shop, active pin pulse, tap to focus |
 | Cart preview | Buyer | Compact AdvancedNavMap route + follow, branded Streets |
 | Vendor / product | Buyer | Branded Street, click → flyTo, active pulse, fit-all |
-| `/app/couriers` | Vendor dispatch | Shared MapCanvas engine |
+| `/app/couriers` | — | **Retired** — redirects home; courier dispatch UI is not shipped (`couriers` flag off) |
 
 Shared engine: `components/map/MapCanvas.tsx` · chrome: `components/map/MapChrome.tsx` · APIs: `lib/mapbox-api.ts` / `lib/mapbox-search.ts`
 

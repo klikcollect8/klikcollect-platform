@@ -27,6 +27,8 @@ export type AddressSuggestion = {
   featureType: string;
   lng?: number;
   lat?: number;
+  /** Provider match confidence 0..1 when returned (Search Box v6 style) */
+  relevance?: number;
 };
 
 export type DirectionStep = {
@@ -76,6 +78,7 @@ export async function suggestAddresses(
     proximity?: LngLat;
     sessionToken?: string;
     limit?: number;
+    signal?: AbortSignal;
   },
 ): Promise<{ suggestions: AddressSuggestion[]; sessionToken: string }> {
   const token = tokenOrNull();
@@ -105,6 +108,7 @@ export async function suggestAddresses(
 
   const res = await fetch(
     `https://api.mapbox.com/search/searchbox/v1/suggest?${params}`,
+    { signal: opts?.signal },
   );
   if (!res.ok) return { suggestions: [], sessionToken };
 
@@ -133,6 +137,7 @@ export async function suggestAddresses(
 export async function retrieveAddress(
   mapboxId: string,
   sessionToken: string,
+  opts?: { signal?: AbortSignal },
 ): Promise<AddressSuggestion | null> {
   const token = tokenOrNull();
   if (!token) return null;
@@ -145,6 +150,7 @@ export async function retrieveAddress(
 
   const res = await fetch(
     `https://api.mapbox.com/search/searchbox/v1/retrieve/${encodeURIComponent(mapboxId)}?${params}`,
+    { signal: opts?.signal },
   );
   if (!res.ok) return null;
 
@@ -187,7 +193,7 @@ export async function retrieveAddress(
 
 export async function searchBoxForward(
   query: string,
-  opts?: { proximity?: LngLat; limit?: number },
+  opts?: { proximity?: LngLat; limit?: number; signal?: AbortSignal },
 ): Promise<AddressSuggestion[]> {
   const token = tokenOrNull();
   const q = query.trim();
@@ -210,6 +216,7 @@ export async function searchBoxForward(
 
   const res = await fetch(
     `https://api.mapbox.com/search/searchbox/v1/forward?${params}`,
+    { signal: opts?.signal },
   );
   if (!res.ok) return [];
 
@@ -222,6 +229,7 @@ export async function searchBoxForward(
         full_address?: string;
         place_formatted?: string;
         feature_type?: string;
+        relevance?: number;
       };
     }>;
   };
@@ -243,6 +251,10 @@ export async function searchBoxForward(
         featureType: f.properties?.feature_type || "place",
         lng: c[0],
         lat: c[1],
+        relevance:
+          typeof f.properties?.relevance === "number"
+            ? f.properties.relevance
+            : undefined,
       } satisfies AddressSuggestion;
     })
     .filter(Boolean) as AddressSuggestion[];
@@ -251,7 +263,7 @@ export async function searchBoxForward(
 export async function searchBoxReverse(
   lng: number,
   lat: number,
-  opts?: { limit?: number },
+  opts?: { limit?: number; signal?: AbortSignal },
 ): Promise<AddressSuggestion | null> {
   const token = tokenOrNull();
   if (!token) return null;
@@ -267,6 +279,7 @@ export async function searchBoxReverse(
 
   const res = await fetch(
     `https://api.mapbox.com/search/searchbox/v1/reverse?${params}`,
+    { signal: opts?.signal },
   );
   if (!res.ok) return null;
 
@@ -306,8 +319,13 @@ export async function searchBoxReverse(
 export async function forwardGeocode(
   query: string,
   proximity?: LngLat,
+  opts?: { signal?: AbortSignal },
 ): Promise<{ lng: number; lat: number; label: string } | null> {
-  const hits = await searchBoxForward(query, { proximity, limit: 1 });
+  const hits = await searchBoxForward(query, {
+    proximity,
+    limit: 1,
+    signal: opts?.signal,
+  });
   const hit = hits[0];
   if (!hit?.lng || !hit?.lat) return null;
   return { lng: hit.lng, lat: hit.lat, label: hit.fullAddress || hit.name };
@@ -316,8 +334,9 @@ export async function forwardGeocode(
 export async function reverseGeocode(
   lng: number,
   lat: number,
+  opts?: { signal?: AbortSignal },
 ): Promise<string | null> {
-  const hit = await searchBoxReverse(lng, lat);
+  const hit = await searchBoxReverse(lng, lat, { signal: opts?.signal });
   return hit?.fullAddress || hit?.name || null;
 }
 
@@ -325,7 +344,7 @@ export async function reverseGeocode(
 export async function searchBoxReverseMany(
   lng: number,
   lat: number,
-  opts?: { limit?: number },
+  opts?: { limit?: number; signal?: AbortSignal },
 ): Promise<AddressSuggestion[]> {
   const token = tokenOrNull();
   if (!token) return [];
@@ -341,6 +360,7 @@ export async function searchBoxReverseMany(
 
   const res = await fetch(
     `https://api.mapbox.com/search/searchbox/v1/reverse?${params}`,
+    { signal: opts?.signal },
   );
   if (!res.ok) return [];
 
@@ -493,6 +513,7 @@ export async function fetchDirections(
     alternatives?: boolean;
     annotations?: string[];
     waypoints?: LngLat[];
+    signal?: AbortSignal;
   },
 ): Promise<DirectionsResult | null> {
   const routes = await fetchDirectionsAll(from, to, profile, opts);
@@ -508,6 +529,7 @@ export async function fetchDirectionsAll(
     alternatives?: boolean;
     annotations?: string[];
     waypoints?: LngLat[];
+    signal?: AbortSignal;
   },
 ): Promise<DirectionsResult[]> {
   const token = tokenOrNull();
@@ -531,6 +553,7 @@ export async function fetchDirectionsAll(
 
   const res = await fetch(
     `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordsParam(points)}?${params}`,
+    { signal: opts?.signal },
   );
   if (!res.ok) return [];
 
@@ -693,7 +716,7 @@ export async function fetchOptimizedTrip(
 export async function matchTraceToRoads(
   points: LngLat[],
   profile: TravelProfile = "driving",
-  opts?: { tidy?: boolean },
+  opts?: { tidy?: boolean; signal?: AbortSignal },
 ): Promise<DirectionsResult | null> {
   const token = tokenOrNull();
   if (!token || points.length < 2) return null;
@@ -714,6 +737,7 @@ export async function matchTraceToRoads(
 
   const res = await fetch(
     `https://api.mapbox.com/matching/v5/mapbox/${matchProfile}/${coordsParam(clipped)}?${params}`,
+    { signal: opts?.signal },
   );
   if (!res.ok) return null;
 
@@ -769,6 +793,7 @@ export async function fetchTravelMatrix(
   sources: LngLat[],
   destinations: LngLat[],
   profile: TravelProfile = "driving",
+  opts?: { signal?: AbortSignal },
 ): Promise<MatrixResult | null> {
   const token = tokenOrNull();
   if (!token || !sources.length || !destinations.length) return null;
@@ -802,6 +827,7 @@ export async function fetchTravelMatrix(
 
   const res = await fetch(
     `https://api.mapbox.com/directions-matrix/v1/mapbox/${matrixProfile}/${coordsParam(points)}?${params}`,
+    { signal: opts?.signal },
   );
   if (!res.ok) return null;
 
@@ -845,6 +871,7 @@ export async function fetchIsochrone(
     /** Contour minutes, e.g. [10, 20, 30] — max 4 */
     contoursMinutes?: number[];
     polygons?: boolean;
+    signal?: AbortSignal;
   },
 ): Promise<GeoJSON.FeatureCollection | null> {
   const token = tokenOrNull();
@@ -864,6 +891,7 @@ export async function fetchIsochrone(
 
   const res = await fetch(
     `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${center.lng},${center.lat}?${params}`,
+    { signal: opts?.signal },
   );
   if (!res.ok) return null;
 

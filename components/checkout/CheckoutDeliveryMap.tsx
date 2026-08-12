@@ -26,13 +26,13 @@ import { formatPrice } from "@/lib/currency";
 import {
   fetchDirectionsAll,
   fetchIsochrone,
-  searchBoxReverse,
   searchBoxReverseMany,
   searchCategory,
   type AddressSuggestion,
   type DirectionStep,
   type TravelProfile,
 } from "@/lib/mapbox-search";
+import { reverseGeocodeLocation } from "@/lib/location/provider";
 import {
   buildDeliveryTripRoutes,
   shopLegsToAltGeoJSON,
@@ -488,8 +488,10 @@ export default function CheckoutDeliveryMap({
       let label: string | null = null;
       if (hasToken) {
         try {
-          const hit = await searchBoxReverse(lng, lat);
-          label = hit?.fullAddress || hit?.name || null;
+          // Cached provider reverse — the parent re-uses the same cache entry,
+          // so the pin change costs one Mapbox call, not two.
+          const hit = await reverseGeocodeLocation(lng, lat);
+          label = hit?.label || null;
           const related = await searchBoxReverseMany(lng, lat, { limit: 5 });
           setWhatsHere(related);
         } catch {

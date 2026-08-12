@@ -4,6 +4,74 @@ import { getServiceSupabase } from "@/lib/supabase/admin";
 import { publicId } from "@/lib/ids";
 import { emitVendorActivity } from "@/lib/vendor-activity";
 import { notifyVendorStaff } from "@/lib/vendor-notifications";
+import { checkCoordinate, isInKenyaBbox } from "@/lib/location/validate";
+
+/**
+ * Validate optional branch coordinates. Returns:
+ * - { ok: true, lat, lng }         valid coordinate pair
+ * - { ok: true, lat: null, ... }   no coordinates supplied
+ * - { ok: false, response }        rejected (422)
+ */
+function parseBranchCoords(body: Record<string, unknown>):
+  | { ok: true; lat: number | null; lng: number | null }
+  | { ok: false; response: NextResponse } {
+  const rawLat = body?.lat;
+  const rawLng = body?.lng;
+  const hasLat = rawLat != null && rawLat !== "";
+  const hasLng = rawLng != null && rawLng !== "";
+  if (!hasLat && !hasLng) return { ok: true, lat: null, lng: null };
+  if (hasLat !== hasLng) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          error: {
+            code: "INVALID_COORDINATES",
+            message: "Provide both latitude and longitude",
+          },
+        },
+        { status: 422 },
+      ),
+    };
+  }
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
+  const check = checkCoordinate(lat, lng);
+  if (!check.ok) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          error: {
+            code: "INVALID_COORDINATES",
+            message:
+              check.reason === "suspicious"
+                ? "These coordinates look like a placeholder (0,0 or default centre). Drop the pin on the actual branch."
+                : "Branch coordinates are out of range",
+            reason: check.reason,
+          },
+        },
+        { status: 422 },
+      ),
+    };
+  }
+  if (!isInKenyaBbox(lat, lng)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          error: {
+            code: "OUTSIDE_KENYA",
+            message: "Branch coordinates must be inside Kenya",
+            reason: "outside_kenya",
+          },
+        },
+        { status: 422 },
+      ),
+    };
+  }
+  return { ok: true, lat, lng };
+}
 
 export async function GET(request: NextRequest) {
   const vendorPublicId =
@@ -30,7 +98,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from("stores")
     .select(
-      "id, public_id, name, neighbourhood, address_text, is_primary, lat, lng, manager_clerk_id, phone, pos_meta",
+      "id, public_id, name, neighbourhood, address_text, is_primary, lat, lng, manager_clerk_id, phone, pos_meta, place_id, location_verified, location_confidence, location_updated_at",
     )
     .eq("vendor_id", vendor.id)
     .order("is_primary", { ascending: false });
@@ -73,8 +141,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const lat = body?.lat != null && body.lat !== "" ? Number(body.lat) : null;
-  const lng = body?.lng != null && body.lng !== "" ? Number(body.lng) : null;
+  const coords = parseBranchCoords(body);
+  if (!coords.ok) return coords.response;
 
   const { data, error } = await supabase
     .from("stores")
@@ -85,10 +153,16 @@ export async function POST(request: NextRequest) {
       neighbourhood: body?.neighbourhood || null,
       address_text: body?.address || null,
       is_primary: !!body?.isPrimary,
-      lat: Number.isFinite(lat as number) ? lat : null,
-      lng: Number.isFinite(lng as number) ? lng : null,
+      lat: coords.lat,
+      lng: coords.lng,
       phone: body?.phone || null,
       manager_clerk_id: body?.managerClerkId || null,
+      place_id: body?.placeId ? String(body.placeId).slice(0, 120) : null,
+      location_verified: !!body?.locationVerified && coords.lat != null,
+      location_confidence: body?.locationConfidence
+        ? String(body.locationConfidence).slice(0, 32)
+        : null,
+      location_updated_at: coords.lat != null ? new Date().toISOString() : null,
     })
     .select("*")
     .single();
@@ -170,13 +244,33 @@ export async function PATCH(request: NextRequest) {
   if (body?.managerClerkId != null) {
     patch.manager_clerk_id = String(body.managerClerkId) || null;
   }
-  if (body?.lat != null && body.lat !== "") {
-    const lat = Number(body.lat);
-    if (Number.isFinite(lat)) patch.lat = lat;
-  }
-  if (body?.lng != null && body.lng !== "") {
-    const lng = Number(body.lng);
-    if (Number.isFinite(lng)) patch.lng = lng;
+  if (body?.clearLocation === true) {
+    // Explicit removal of a bad pin — never silently, only on request.
+    patch.lat = null;
+    patch.lng = null;
+    patch.place_id = null;
+    patch.location_verified = false;
+    patch.location_confidence = null;
+    patch.location_updated_at = new Date().toISOString();
+  } else {
+    const coords = parseBranchCoords(body);
+    if (!coords.ok) return coords.response;
+    if (coords.lat != null && coords.lng != null) {
+      patch.lat = coords.lat;
+      patch.lng = coords.lng;
+      patch.location_updated_at = new Date().toISOString();
+    }
+    if (body?.placeId != null) {
+      patch.place_id = body.placeId ? String(body.placeId).slice(0, 120) : null;
+    }
+    if (body?.locationVerified != null) {
+      patch.location_verified = !!body.locationVerified;
+    }
+    if (body?.locationConfidence != null) {
+      patch.location_confidence = body.locationConfidence
+        ? String(body.locationConfidence).slice(0, 32)
+        : null;
+    }
   }
 
   const { data, error } = await supabase

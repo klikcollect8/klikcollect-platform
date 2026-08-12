@@ -29,6 +29,10 @@ const NotificationsPanel = dynamic(() => import("./NotificationsPanel"), {
   ssr: false,
 });
 const OrdersPanel = dynamic(() => import("./OrdersPanel"), { ssr: false });
+const DeliverToButton = dynamic(
+  () => import("@/components/location/DeliverToButton"),
+  { ssr: false },
+);
 
 const NAV_BASE = [
   { name: "Shop", href: "/shop" },
@@ -171,6 +175,7 @@ export default function Header() {
                 paddingBottom: "calc(2rem + env(safe-area-inset-bottom))",
               }}
             >
+              <DeliverToButton className="mb-5 self-start" />
               <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-black/40">
                 Menu
               </p>
@@ -297,6 +302,7 @@ export default function Header() {
                 ™
               </span>
             </Link>
+            <DeliverToButton className="ml-4 hidden lg:inline-flex" />
           </div>
 
           {/* Center - desktop nav */}

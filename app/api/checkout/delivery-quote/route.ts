@@ -7,6 +7,7 @@ import {
   quoteHybridConsolidate,
   type Coord,
 } from "@/lib/checkout/delivery-pricing";
+import { checkCoordinate } from "@/lib/location/validate";
 
 type Body = {
   fulfilment?: "pickup" | "delivery";
@@ -58,12 +59,35 @@ export async function POST(request: NextRequest) {
     const body = (await request.json().catch(() => ({}))) as Body;
     const hourBucket = nairobiHourBucket();
 
-    const drop =
+    let drop =
       body.drop &&
       Number.isFinite(body.drop.lat) &&
       Number.isFinite(body.drop.lng)
         ? { lat: Number(body.drop.lat), lng: Number(body.drop.lng) }
         : null;
+    let dropFlagged = false;
+    if (drop) {
+      const check = checkCoordinate(drop.lat, drop.lng);
+      if (check.reason === "invalid_range") {
+        // Malformed coordinates are a hard failure — the client sent garbage.
+        return NextResponse.json(
+          {
+            error: {
+              code: "INVALID_COORDINATES",
+              message: "Delivery coordinates are out of range",
+              reason: check.reason,
+            },
+          },
+          { status: 422 },
+        );
+      }
+      if (check.reason === "suspicious" || check.reason === "outside_kenya") {
+        // Placeholder / out-of-country pins: fall back to zone pricing rather
+        // than routing to null island.
+        drop = null;
+        dropFlagged = true;
+      }
+    }
 
     const heavyRain =
       body.fulfilment === "delivery" && drop
@@ -84,7 +108,9 @@ export async function POST(request: NextRequest) {
         (s): s is { lat: number; lng: number } =>
           !!s && Number.isFinite(s.lat) && Number.isFinite(s.lng),
       )
-      .map((s) => ({ lat: Number(s.lat), lng: Number(s.lng) }));
+      .map((s) => ({ lat: Number(s.lat), lng: Number(s.lng) }))
+      // Drop placeholder/garbage branch coordinates (0,0, seed centre, etc.)
+      .filter((s) => checkCoordinate(s.lat, s.lng).ok);
 
     if (fulfilment === "pickup") {
       if (body.collectMode === "hybrid" && shops.length > 1) {
@@ -112,7 +138,7 @@ export async function POST(request: NextRequest) {
           heavyRain: false,
         },
       );
-      const payload = { ...q, fulfilment };
+      const payload = { ...q, fulfilment, dropFlagged };
       quoteCache.set(key, { at: Date.now(), payload });
       return NextResponse.json({ data: payload });
     }

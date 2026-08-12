@@ -48,6 +48,7 @@ export default function Cart({
     quote: deliveryQuote,
     shopCount,
     areaLabel: liveAreaLabel,
+    needsLocation,
   } = useCartDeliveryQuote(items);
   const total = subtotal + deliveryTotal;
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -339,8 +340,17 @@ export default function Cart({
                       Total delivery cost
                     </p>
                     <p className="mt-0.5 text-[12px] text-black/35">
-                      {shopCount > 1 ? `${shopCount} shops` : "1 shop"}
-                      {deliveryLabel ? ` · ${deliveryLabel}` : ""}
+                      {needsLocation
+                        ? "Set Deliver to for a road-distance price"
+                        : `${
+                            deliveryQuote?.distanceKm
+                              ? `${deliveryQuote.distanceKm < 1 ? `${Math.round(deliveryQuote.distanceKm * 1000)} m` : `${deliveryQuote.distanceKm.toFixed(1)} km`} · `
+                              : ""
+                          }${shopCount > 1 ? `${shopCount} stops` : "1 stop"}${
+                            deliveryQuote?.etaMinutes
+                              ? ` · ~${deliveryQuote.etaMinutes} min`
+                              : ""
+                          }${deliveryLabel ? ` · ${deliveryLabel}` : ""}`}
                     </p>
                     {deliveryQuote?.adjustments?.length ? (
                       <p className="mt-0.5 text-[11px] text-black/35">

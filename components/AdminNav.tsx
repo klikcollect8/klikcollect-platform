@@ -14,6 +14,7 @@ import {
   Layout,
   LayoutDashboard,
   Lock,
+  MapPin,
   MessageSquare,
   Package,
   PackagePlus,
@@ -316,6 +317,19 @@ const allNavItems: NavItem[] = [
     icon: Truck,
     roles: ["super_admin", "platform_admin"],
     permission: "delivery:view",
+    group: "marketplace",
+  },
+  {
+    href: "/admin/locations",
+    label: "Location quality",
+    icon: MapPin,
+    roles: [
+      "super_admin",
+      "platform_admin",
+      "marketplace_curator",
+      "support_manager",
+    ],
+    permission: "vendors:view",
     group: "marketplace",
   },
   {

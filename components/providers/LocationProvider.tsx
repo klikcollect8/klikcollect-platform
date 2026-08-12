@@ -10,18 +10,29 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { isInKenyaBbox } from "@/lib/location/validate";
+import {
+  GPS_USABLE_ACCURACY_M,
+  GPS_VERIFIED_ACCURACY_M,
+} from "@/lib/location/types";
 
 const STORAGE_KEY = "klikcollect:user-location";
 /** Prefer fresh, high-accuracy GPS for delivery quoting. */
 const WATCH_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,
-  maximumAge: 1_500,
-  timeout: 18_000,
+  maximumAge: 0,
+  timeout: 20_000,
 };
 /** Ignore noisy fixes when we already have a tighter reading nearby. */
-const ACCURACY_ACCEPT_M = 120;
+const ACCURACY_ACCEPT_M = GPS_USABLE_ACCURACY_M;
 const ACCURACY_IMPROVE_M = 25;
 const MOVE_ACCEPT_M = 18;
+/** IP / cell-tower guesses are typically kilometres off — never treat as a pin. */
+const ACCURACY_REJECT_M = 400;
+/** A cached fix older than this is reported as "stale", never "ready". */
+const STALE_FIX_MS = 5 * 60_000;
+/** Wait this long for a tighter reading before accepting a coarse one. */
+const SETTLE_MS = 8_000;
 
 export type UserCoords = {
   lat: number;
@@ -30,10 +41,13 @@ export type UserCoords = {
   updatedAt: number;
 };
 
-type LocationStatus =
+export type LocationStatus =
   | "idle"
+  | "requesting_permission"
   | "locating"
   | "ready"
+  | "low_accuracy"
+  | "stale"
   | "denied"
   | "error"
   | "unsupported";
@@ -102,13 +116,20 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [isTracking, setIsTracking] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
+  const coordsRef = useRef<UserCoords | null>(null);
+  const watchStartedAtRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
     const cached = readCached();
     if (cached) {
+      coordsRef.current = cached;
       setCoords(cached);
-      setStatus("ready");
+      const age = Date.now() - cached.updatedAt;
+      const coarse = (cached.accuracy ?? 999) > ACCURACY_ACCEPT_M;
+      setStatus(
+        age > STALE_FIX_MS || coarse ? "stale" : "ready",
+      );
     }
     return () => {
       mountedRef.current = false;
@@ -120,40 +141,55 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   const applyPosition = useCallback((pos: GeolocationPosition) => {
     if (!mountedRef.current) return;
+    const accuracy = pos.coords.accuracy ?? 999;
     const next: UserCoords = {
       lat: pos.coords.latitude,
       lng: pos.coords.longitude,
-      accuracy: pos.coords.accuracy,
+      accuracy,
       updatedAt: Date.now(),
     };
 
-    setCoords((prev) => {
-      if (!prev) {
-        writeCached(next);
-        return next;
-      }
-      const accuracy = next.accuracy ?? 999;
+    // City-level / IP geolocation and out-of-country guesses are worse than
+    // having no pin — they reverse-geocode to the wrong neighbourhood.
+    if (!isInKenyaBbox(next.lat, next.lng)) return;
+    if (accuracy > ACCURACY_REJECT_M) {
+      setStatus("low_accuracy");
+      return;
+    }
+
+    const prev = coordsRef.current;
+    let accepted = next;
+    if (prev) {
       const prevAccuracy = prev.accuracy ?? 999;
-      const movedM = haversineMeters(
-        prev.lat,
-        prev.lng,
-        next.lat,
-        next.lng,
-      );
+      const movedM = haversineMeters(prev.lat, prev.lng, next.lat, next.lng);
       const improved =
         accuracy + ACCURACY_IMPROVE_M < prevAccuracy ||
         (accuracy <= ACCURACY_ACCEPT_M && accuracy <= prevAccuracy);
-      const relocated = movedM >= MOVE_ACCEPT_M && accuracy <= Math.max(prevAccuracy, 80);
+      const relocated =
+        movedM >= MOVE_ACCEPT_M && accuracy <= Math.max(prevAccuracy, 80);
       const stale = Date.now() - prev.updatedAt > 45_000;
 
       // Keep the better pin when the new fix is vague and nearby.
       if (!stale && !relocated && !improved && accuracy > ACCURACY_ACCEPT_M) {
-        return prev;
+        accepted = prev;
       }
-      writeCached(next);
-      return next;
-    });
-    setStatus("ready");
+    }
+
+    const settled =
+      Date.now() - watchStartedAtRef.current >= SETTLE_MS ||
+      (accepted.accuracy ?? 999) <= GPS_VERIFIED_ACCURACY_M;
+    if (!settled && (accepted.accuracy ?? 999) > ACCURACY_ACCEPT_M) {
+      setStatus("locating");
+      return;
+    }
+
+    if (accepted === next || !prev) {
+      writeCached(accepted);
+      coordsRef.current = accepted;
+      setCoords(accepted);
+    }
+    const acceptedAccuracy = accepted.accuracy ?? 999;
+    setStatus(acceptedAccuracy > ACCURACY_ACCEPT_M ? "low_accuracy" : "ready");
     setError(null);
   }, []);
 
@@ -181,6 +217,19 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     setIsTracking(false);
   }, []);
 
+  const startWatch = useCallback(() => {
+    stop();
+    setStatus("locating");
+    setError(null);
+    setIsTracking(true);
+    watchStartedAtRef.current = Date.now();
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      applyPosition,
+      applyError,
+      WATCH_OPTIONS,
+    );
+  }, [applyError, applyPosition, stop]);
+
   const track = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setStatus("unsupported");
@@ -188,22 +237,31 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    stop();
-    setStatus("locating");
-    setError(null);
-    setIsTracking(true);
-
-    navigator.geolocation.getCurrentPosition(
-      applyPosition,
-      applyError,
-      WATCH_OPTIONS,
-    );
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      applyPosition,
-      applyError,
-      WATCH_OPTIONS,
-    );
-  }, [applyError, applyPosition, stop]);
+    // Probe permission first so we can show "requesting permission" and
+    // short-circuit when access is already denied (no pointless watch).
+    const permissions = navigator.permissions;
+    if (permissions?.query) {
+      setStatus("requesting_permission");
+      permissions
+        .query({ name: "geolocation" })
+        .then((result) => {
+          if (!mountedRef.current) return;
+          if (result.state === "denied") {
+            setStatus("denied");
+            setError("Location permission denied");
+            setIsTracking(false);
+            return;
+          }
+          startWatch();
+        })
+        .catch(() => {
+          if (!mountedRef.current) return;
+          startWatch();
+        });
+      return;
+    }
+    startWatch();
+  }, [startWatch]);
 
   /** Do not auto-start GPS — only load cached coords. Call track() from checkout maps. */
   // (intentionally no mount-time track())

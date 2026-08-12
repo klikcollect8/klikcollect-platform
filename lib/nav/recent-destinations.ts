@@ -25,6 +25,15 @@ export function listRecentDestinations(): RecentDestination[] {
   }
 }
 
+export function clearRecentDestinations() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function pushRecentDestination(
   dest: Omit<RecentDestination, "usedAt" | "id"> & { id?: string },
 ) {

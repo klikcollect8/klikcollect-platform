@@ -115,6 +115,7 @@ export default function PickupCollectStep({
               cameraKey={hubVendorId || "all"}
               interactive
               alwaysShowLabels
+              followUser={false}
               showNavControls
               minimalControls
               onMarkerClick={(id) => onHubVendorChange(id)}

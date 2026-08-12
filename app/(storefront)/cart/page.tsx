@@ -191,6 +191,7 @@ export default function CartPage() {
     quote: deliveryQuote,
     shopCount,
     areaLabel: liveAreaLabel,
+    needsLocation,
   } = useCartDeliveryQuote(cartItems);
   const grandTotal = subtotal + deliveryTotal;
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -350,7 +351,7 @@ export default function CartPage() {
                     markers={deliveryMarkers}
                     showSearch={false}
                     showStreetPreview
-                    followUserDefault={Boolean(coords)}
+                    followUserDefault={false}
                     interactive={false}
                   />
                 </div>
@@ -505,8 +506,17 @@ export default function CartPage() {
                       Total delivery cost
                     </p>
                     <p className="mt-0.5 text-[12px] text-black/35">
-                      {shopCount > 1 ? `${shopCount} shops` : "1 shop"}
-                      {deliveryLabel ? ` · ${deliveryLabel}` : ""}
+                      {needsLocation
+                        ? "Set Deliver to for a road-distance price"
+                        : `${
+                            deliveryQuote?.distanceKm
+                              ? `${deliveryQuote.distanceKm < 1 ? `${Math.round(deliveryQuote.distanceKm * 1000)} m` : `${deliveryQuote.distanceKm.toFixed(1)} km`} · `
+                              : ""
+                          }${shopCount > 1 ? `${shopCount} stops` : "1 stop"}${
+                            deliveryQuote?.etaMinutes
+                              ? ` · ~${deliveryQuote.etaMinutes} min`
+                              : ""
+                          }${deliveryLabel ? ` · ${deliveryLabel}` : ""}`}
                     </p>
                     {deliveryQuote?.adjustments?.length ? (
                       <p className="mt-0.5 text-[11px] text-black/35">

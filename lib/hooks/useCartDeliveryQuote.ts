@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CartItem } from "@/types";
 import { useUserLocation } from "@/components/providers/LocationProvider";
+import { useActiveLocation } from "@/components/providers/ActiveLocationProvider";
 import {
   cartDeliveryAreaLabel,
   cartHasDelivery,
@@ -10,6 +11,8 @@ import {
 } from "@/lib/checkout/cart-vendors";
 import { cartDeliveryTotalMajor } from "@/lib/checkout/delivery-zones";
 import type { DeliveryQuote } from "@/lib/checkout/delivery-pricing";
+import { GPS_USABLE_ACCURACY_M } from "@/lib/location/types";
+import { isInKenyaBbox } from "@/lib/location/validate";
 
 type VendorCoord = {
   vendorId: string;
@@ -23,7 +26,8 @@ type VendorCoord = {
  * Falls back to stamped per-line max fee while locating / loading.
  */
 export function useCartDeliveryQuote(items: CartItem[]) {
-  const { coords, status, track } = useUserLocation();
+  const { coords, status } = useUserLocation();
+  const { active } = useActiveLocation();
   const [quote, setQuote] = useState<DeliveryQuote | null>(null);
   const [loading, setLoading] = useState(false);
   const [shopCoords, setShopCoords] = useState<VendorCoord[]>([]);
@@ -39,10 +43,18 @@ export function useCartDeliveryQuote(items: CartItem[]) {
   );
   const stampedFallback = cartDeliveryTotalMajor(items);
 
-  useEffect(() => {
-    if (!wantsDelivery) return;
-    if (status === "idle") track();
-  }, [wantsDelivery, status, track]);
+  // Confirmed "Deliver to" wins. Raw GPS is only used when it's a tight
+  // Kenya fix — never a city-level IP guess.
+  const gpsUsable =
+    coords != null &&
+    status === "ready" &&
+    (coords.accuracy ?? 999) <= GPS_USABLE_ACCURACY_M &&
+    isInKenyaBbox(coords.lat, coords.lng);
+  const dropLat = active?.lat ?? (gpsUsable ? coords!.lat : null);
+  const dropLng = active?.lng ?? (gpsUsable ? coords!.lng : null);
+
+  // Do not auto-start GPS from the bag — that overwrote vendor maps and
+  // quoted the wrong neighbourhood. User sets location via Deliver to.
 
   // Resolve unique shop coords
   useEffect(() => {
@@ -118,10 +130,11 @@ export function useCartDeliveryQuote(items: CartItem[]) {
               fulfilment: "delivery",
               areaLabel,
               drop:
-                coords &&
-                Number.isFinite(coords.lat) &&
-                Number.isFinite(coords.lng)
-                  ? { lat: coords.lat, lng: coords.lng }
+                dropLat != null &&
+                dropLng != null &&
+                Number.isFinite(dropLat) &&
+                Number.isFinite(dropLng)
+                  ? { lat: dropLat, lng: dropLng }
                   : null,
               shops: shopCoords.map((s) => ({ lat: s.lat, lng: s.lng })),
             }),
@@ -149,8 +162,8 @@ export function useCartDeliveryQuote(items: CartItem[]) {
   }, [
     wantsDelivery,
     shopCoords,
-    coords?.lat,
-    coords?.lng,
+    dropLat,
+    dropLng,
     areaLabel,
   ]);
 
@@ -167,6 +180,7 @@ export function useCartDeliveryQuote(items: CartItem[]) {
     wantsDelivery,
     shopCount: shopCoords.length || vendorIds.length,
     areaLabel,
-    locating: wantsDelivery && !coords && status === "locating",
+    locating: false,
+    needsLocation: wantsDelivery && dropLat == null,
   };
 }

@@ -12,6 +12,8 @@ import { appendUsageEvent } from "@/lib/m1-store";
 import { publicId } from "@/lib/ids";
 import { getCatalogueProduct } from "@/lib/catalogue-store";
 import { withIdempotency, idempotencyKeyFrom } from "@/lib/idempotency";
+import { checkCoordinate } from "@/lib/location/validate";
+import type { OrderDeliveryPoint } from "@/lib/orders-store";
 export async function GET() {
   try {
     await ensureOrderSeed();
@@ -53,9 +55,56 @@ export async function POST(request: NextRequest) {
       landmark,
       gateCode,
       deliveryNote,
+      deliveryLat,
+      deliveryLng,
+      deliveryConfidence,
+      deliveryPlaceId,
     } = body;
     const fulfilmentMethod =
       fulfilment === "delivery" ? "delivery" : "pickup";
+
+    // Authoritative delivery point (038). Coordinates are validated: hard
+    // failures (range/suspicious) are rejected with 422, out-of-Kenya is
+    // flagged as low confidence instead of dropped silently.
+    let delivery: OrderDeliveryPoint | undefined;
+    if (
+      fulfilmentMethod === "delivery" &&
+      deliveryLat != null &&
+      deliveryLng != null
+    ) {
+      const lat = Number(deliveryLat);
+      const lng = Number(deliveryLng);
+      const check = checkCoordinate(lat, lng);
+      if (!check.ok) {
+        return NextResponse.json(
+          {
+            error: {
+              code: "INVALID_COORDINATES",
+              message:
+                "The delivery location coordinates are invalid. Adjust the pin and try again.",
+              reason: check.reason,
+            },
+          },
+          { status: 422 },
+        );
+      }
+      const confidence =
+        typeof deliveryConfidence === "string" && deliveryConfidence
+          ? deliveryConfidence.slice(0, 32)
+          : null;
+      delivery = {
+        lat,
+        lng,
+        landmark: landmark ? String(landmark).trim().slice(0, 200) : null,
+        instructions: deliveryNote
+          ? String(deliveryNote).trim().slice(0, 500)
+          : null,
+        confidence: check.flagged ? "low" : confidence,
+        placeId: deliveryPlaceId
+          ? String(deliveryPlaceId).slice(0, 120)
+          : null,
+      };
+    }
 
     if (
       !customerName ||
@@ -158,6 +207,7 @@ export async function POST(request: NextRequest) {
           vendorId,
           actorUserId: actor.userId,
           channel: "marketplace",
+          delivery,
           collectHub:
             fulfilmentMethod === "pickup"
               ? String(collectHub || "Westlands")

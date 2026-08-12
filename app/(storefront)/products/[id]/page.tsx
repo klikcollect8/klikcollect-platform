@@ -23,6 +23,7 @@ import { useToast } from "@/components/ToastProvider";
 import { useUserAuth } from "@/lib/hooks/useUserAuth";
 import { useCart } from "@/lib/hooks/useCart";
 import { useUserLocation } from "@/components/providers/LocationProvider";
+import { useActiveLocation } from "@/components/providers/ActiveLocationProvider";
 import { formatPrice } from "@/lib/currency";
 import { resolveVendorSlug } from "@/lib/vendor-slug";
 import {
@@ -34,6 +35,7 @@ import {
 } from "@/lib/offers/rank-offers";
 import { cn } from "@/lib/utils";
 import MapPreview from "@/components/map/MapPreview";
+import { formatQuoteSummary } from "@/lib/checkout/delivery-pricing";
 
 type TabType = "details" | "location" | "reviews" | "questions";
 
@@ -45,6 +47,7 @@ function ProductPageInner() {
   const { addToCart: addToCartHook } = useCart();
   const { coords, status: locationStatus, track: trackLocation } =
     useUserLocation();
+  const { active: activeLocation } = useActiveLocation();
   const [product, setProduct] = useState<Product | null>(null);
   const [offers, setOffers] = useState<ProductOffer[]>([]);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
@@ -140,13 +143,20 @@ function ProductPageInner() {
       .finally(() => setLoading(false));
   }, [params.id, prefillOffer]);
 
-  const userPoint = useMemo(
-    () =>
-      coords
-        ? { lat: coords.lat, lng: coords.lng }
-        : null,
-    [coords],
-  );
+  // Chosen "Deliver to" location wins. Raw GPS only if it's a tight Kenya fix.
+  const userPoint = useMemo(() => {
+    if (activeLocation) {
+      return { lat: activeLocation.lat, lng: activeLocation.lng };
+    }
+    if (
+      coords &&
+      locationStatus === "ready" &&
+      (coords.accuracy ?? 999) <= 120
+    ) {
+      return { lat: coords.lat, lng: coords.lng };
+    }
+    return null;
+  }, [activeLocation, coords, locationStatus]);
 
   const selectedVariantId = useMemo(() => {
     const variants = product?.catalogueVariants || [];
@@ -241,7 +251,7 @@ function ProductPageInner() {
       return;
     }
 
-    if (!coords) {
+    if (!userPoint) {
       setDeliveryQuoteMajor(null);
       setDeliveryQuoteLabel(null);
       setDeliveryQuoting(false);
@@ -266,7 +276,7 @@ function ProductPageInner() {
           body: JSON.stringify({
             fulfilment: "delivery",
             areaLabel: selectedOffer.neighbourhood || null,
-            drop: { lat: coords.lat, lng: coords.lng },
+            drop: { lat: userPoint.lat, lng: userPoint.lng },
             shops,
           }),
         });
@@ -275,26 +285,28 @@ function ProductPageInner() {
         const minor = Number(json?.data?.deliveryMinor);
         if (Number.isFinite(minor)) {
           setDeliveryQuoteMajor(minor / 100);
-          const km = Number(json?.data?.distanceKm) || 0;
-          const eta = Number(json?.data?.etaMinutes) || 0;
-          const adjs = Array.isArray(json?.data?.adjustments)
-            ? (json.data.adjustments as Array<{
-                label?: string;
-                amountMajor?: number;
-              }>)
-            : [];
-          const parts = [
-            km > 0
-              ? km < 1
-                ? `${Math.round(km * 1000)} m`
-                : `${km.toFixed(1)} km`
-              : null,
-            eta > 0 ? `~${eta} min` : null,
-            ...adjs
-              .filter((a) => a?.label && a?.amountMajor)
-              .map((a) => `${a.label} +${a.amountMajor}`),
-          ].filter(Boolean);
-          setDeliveryQuoteLabel(parts.length ? parts.join(" · ") : null);
+          const q = json?.data as {
+            distanceKm?: number;
+            etaMinutes?: number;
+            shopCount?: number;
+            adjustments?: Array<{ label?: string; amountMajor?: number }>;
+          };
+          const summary = formatQuoteSummary({
+            deliveryMinor: minor,
+            distanceKm: Number(q?.distanceKm) || 0,
+            etaMinutes: Number(q?.etaMinutes) || 0,
+            breakdown: "",
+            baseMajor: 0,
+            shopCount: Number(q?.shopCount) || 1,
+            adjustments: Array.isArray(q?.adjustments)
+              ? q.adjustments.map((a) => ({
+                  id: a.label || "",
+                  label: a.label || "",
+                  amountMajor: Number(a.amountMajor) || 0,
+                }))
+              : [],
+          });
+          setDeliveryQuoteLabel(summary || null);
         }
       } catch (e) {
         if (cancelled) return;
@@ -310,7 +322,7 @@ function ProductPageInner() {
       cancelled = true;
       controller.abort();
     };
-  }, [selectedOffer, coords?.lat, coords?.lng]);
+  }, [selectedOffer, userPoint?.lat, userPoint?.lng]);
 
   const switchVendorHint = useMemo(() => {
     if (!selectedOfferId || !userPoint || rankedOffers.length < 2) return null;
@@ -343,8 +355,11 @@ function ProductPageInner() {
       showToast("Choose pickup or delivery", "error");
       return false;
     }
-    if (fulfilment === "delivery" && !coords) {
-      showToast("Allow location to calculate delivery", "error");
+    if (fulfilment === "delivery" && !userPoint) {
+      showToast(
+        "Set your delivery location or allow GPS to calculate delivery",
+        "error",
+      );
       trackLocation();
       return false;
     }
@@ -744,7 +759,7 @@ function ProductPageInner() {
                         setFulfilment(null);
                         return;
                       }
-                      if (!coords) trackLocation();
+                      if (!userPoint) trackLocation();
                       setFulfilment("delivery");
                     }}
                     className={cn(
@@ -763,7 +778,7 @@ function ProductPageInner() {
                           : "text-black/35",
                       )}
                     >
-                      {!coords
+                      {!userPoint
                         ? locationStatus === "locating"
                           ? "…"
                           : "GPS"
@@ -778,23 +793,33 @@ function ProductPageInner() {
                 {fulfilment === "delivery" ? (
                   <div className="mt-2 space-y-1.5">
                     <p className="text-[11px] text-black/35">
-                      {!coords ? (
+                      {!userPoint ? (
                         <>
-                          Using your live location.{" "}
+                          Set where we should deliver — use{" "}
+                          <span className="font-medium text-black/55">
+                            Deliver to
+                          </span>{" "}
+                          in the header, or{" "}
                           <button
                             type="button"
                             onClick={() => trackLocation()}
                             className="underline underline-offset-2 hover:text-black"
                           >
-                            Enable GPS
+                            use GPS
                           </button>
+                          .
                         </>
                       ) : deliveryQuoteLabel ? (
-                        <>To you · {deliveryQuoteLabel}</>
+                        <>
+                          To {activeLocation?.label || "your pin"} ·{" "}
+                          {deliveryQuoteLabel}
+                        </>
                       ) : deliveryQuoting ? (
-                        <>Calculating from your location…</>
+                        <>Calculating road distance and stops…</>
+                      ) : activeLocation ? (
+                        <>To {activeLocation.label}</>
                       ) : (
-                        <>To your live location</>
+                        <>To your confirmed location</>
                       )}
                     </p>
                     {switchVendorHint ? (
@@ -865,7 +890,7 @@ function ProductPageInner() {
                       isAddingToCart ||
                       !fulfilment ||
                       (fulfilment === "delivery" &&
-                        (deliveryQuoteMajor == null || !coords))
+                        (deliveryQuoteMajor == null || !userPoint))
                     }
                     className="min-h-12 bg-black py-4 text-[12px] font-medium uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-80 disabled:opacity-50 sm:text-[13px] sm:tracking-[0.16em]"
                   >
@@ -878,7 +903,7 @@ function ProductPageInner() {
                       isAddingToCart ||
                       !fulfilment ||
                       (fulfilment === "delivery" &&
-                        (deliveryQuoteMajor == null || !coords))
+                        (deliveryQuoteMajor == null || !userPoint))
                     }
                     className="min-h-12 border border-black/20 py-4 text-[12px] font-medium uppercase tracking-[0.14em] transition-colors hover:border-black hover:bg-black hover:text-white disabled:opacity-50 sm:text-[13px] sm:tracking-[0.16em]"
                   >

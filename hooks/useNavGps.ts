@@ -20,12 +20,18 @@ type Options = {
 /**
  * High-accuracy GPS watch for turn-by-turn navigation (speed + heading).
  */
+/** Reject a new fix worse than this when a tighter recent fix exists. */
+const NAV_ACCURACY_GATE_M = 150;
+/** A previous fix older than this is replaced regardless of accuracy. */
+const NAV_FIX_FRESH_MS = 15_000;
+
 export function useNavGps({ enabled = true }: Options = {}) {
   const [fix, setFix] = useState<NavGpsFix | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const lastHeadingRef = useRef<number | null>(null);
+  const lastFixRef = useRef<NavGpsFix | null>(null);
 
   const stop = useCallback(() => {
     if (watchIdRef.current != null && typeof navigator !== "undefined") {
@@ -44,6 +50,22 @@ export function useNavGps({ enabled = true }: Options = {}) {
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, speed, heading, accuracy } = pos.coords;
+
+        // Accuracy gate: ignore very loose fixes while a tight recent fix
+        // exists — prevents the nav camera jumping on noisy readings.
+        const prev = lastFixRef.current;
+        const accM = accuracy != null && Number.isFinite(accuracy) ? accuracy : null;
+        if (
+          prev &&
+          accM != null &&
+          accM > NAV_ACCURACY_GATE_M &&
+          prev.accuracyM != null &&
+          prev.accuracyM <= NAV_ACCURACY_GATE_M &&
+          Date.now() - prev.updatedAt < NAV_FIX_FRESH_MS
+        ) {
+          return;
+        }
+
         let h =
           heading != null && Number.isFinite(heading) && heading >= 0
             ? heading
@@ -53,23 +75,27 @@ export function useNavGps({ enabled = true }: Options = {}) {
         }
         if (h != null) lastHeadingRef.current = h;
 
-        setFix({
+        const next: NavGpsFix = {
           lat: latitude,
           lng: longitude,
           speedMps: speed != null && speed >= 0 ? speed : null,
           heading: h,
-          accuracyM: accuracy != null ? accuracy : null,
+          accuracyM: accM,
           updatedAt: Date.now(),
-        });
+        };
+        lastFixRef.current = next;
+        setFix(next);
         setReady(true);
         setError(null);
       },
       (err) => {
-        setError(
-          err.code === err.PERMISSION_DENIED
-            ? "Location permission denied"
-            : "Waiting for GPS…",
-        );
+        if (err.code === err.PERMISSION_DENIED) {
+          setError("Location permission denied");
+          // Permission will not recover mid-session — stop burning battery.
+          stop();
+          return;
+        }
+        setError("Waiting for GPS…");
       },
       {
         enableHighAccuracy: true,
